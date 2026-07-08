@@ -30,7 +30,9 @@ packageable for Steam.
 | Bundler | **Vite** | Instant HMR, one-command production build |
 | Desktop | **Tauri** or **Electron** (later) | Wrap the web build for Steam |
 
-See [`docs/MIGRATION_PLAN.md`](docs/MIGRATION_PLAN.md) for the full, phased build plan.
+Work is tracked as [GitHub issues](https://github.com/gabepsilva/heli-attack-2/issues)
+(the source of truth for every ticket); [`docs/MIGRATION_PLAN.md`](docs/MIGRATION_PLAN.md)
+holds the principles, definition of done, deliberate cuts, and milestone map.
 
 ## What we're porting vs. recreating
 
@@ -51,7 +53,7 @@ that *must* be new for a modern look (art) is the part we'd want to redo anyway.
 heli-attack-2/
 ├── README.md                     ← you are here
 ├── docs/
-│   └── MIGRATION_PLAN.md         ← phased plan → becomes GitHub issues
+│   └── MIGRATION_PLAN.md         ← principles & milestone map (tickets = GitHub issues)
 ├── reference/                    ← distilled reference only (text, no binaries)
 │   └── spec/
 │       ├── HELIATTACK2-SPEC.md   ← reverse-engineered spec (weapons, physics, enemies)
