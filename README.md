@@ -52,15 +52,18 @@ heli-attack-2/
 ├── README.md                     ← you are here
 ├── docs/
 │   └── MIGRATION_PLAN.md         ← phased plan → becomes GitHub issues
-├── reference/                    ← original game, NOT shipped; for reference only
-│   ├── ha2-source/               ← original Flash .fla files + all assets (PNG/WAV)
-│   │   ├── ORIGINAL-LICENSE      ← GPL-3.0
-│   │   └── ORIGINAL-README.md
+├── reference/                    ← distilled reference only (text, no binaries)
 │   └── spec/
 │       ├── HELIATTACK2-SPEC.md   ← reverse-engineered spec (weapons, physics, enemies)
 │       └── heli2-decompiled-actionscript.txt  ← recovered original AS source
 └── src/                          ← (created in M0) the new game
 ```
+
+> **No binary originals in this repo.** The original Flash `.fla` files and the
+> PNG/WAV assets are **not** committed (they're large and GPL-licensed). The
+> canonical source lives upstream at
+> [github.com/iopred/heliattack](https://github.com/iopred/heliattack) (`ha2/`).
+> Pull assets from there when a ticket needs them; keep them out of this repo.
 
 ## Licensing note ⚠️
 

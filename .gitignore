@@ -18,3 +18,11 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Reference binaries are NOT tracked (originals live upstream at iopred/heliattack)
+reference/ha2-source/
+reference/**/*.fla
+reference/**/*.png
+reference/**/*.wav
+reference/**/*.zip
+reference/**/*.psd

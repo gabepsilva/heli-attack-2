@@ -320,7 +320,7 @@ optional stats (helis killed, accuracy).
 **Acceptance:**
 - A test SFX plays on click after unlock; muting silences all; no clipping on overlap.
 **Depends on:** #3
-**Ref:** `reference/ha2-source/assets/helisounds/` (39 WAVs).
+**Ref:** original WAVs upstream at `iopred/heliattack` → `ha2/assets/helisounds/` (39 WAVs).
 
 ### #27 — Wire SFX & music to events
 **Goal:** The game sounds like Heli Attack 2.
@@ -379,7 +379,7 @@ the originals.
 **Acceptance:**
 - Game renders with atlased placeholder art at 1080p; adding a sprite is documented.
 **Depends on:** #1
-**Ref:** `reference/ha2-source/assets/` (originals as art bible).
+**Ref:** original sprites upstream at `iopred/heliattack` → `ha2/assets/` (art bible).
 
 ### #33 — Hi-res player art & animations
 **Goal:** Final, crisp player.
