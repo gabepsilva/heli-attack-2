@@ -1,6 +1,6 @@
 # Heli Attack 2 — Tickets
 
-All 41 tickets, ready to become GitHub issues. Each has a **tangible deliverable** —
+All 42 tickets, ready to become GitHub issues. Each has a **tangible deliverable** —
 a concrete, demonstrable artifact you can point at when it's done (a running demo
 behavior, a committed file, a measurable result). If you can't demo it, it's not done.
 
@@ -46,9 +46,10 @@ a `GameScene` stub, and a central `config/constants.ts` seeded with world consta
   steady 30×/sec regardless of monitor refresh rate; `config/constants.ts` committed.
 - ✅ Sim rate reads ~30/s on both a 60Hz and 144Hz display; scene switching works.
 - ⏱️ **Time-scale from day one:** expose a per-frame `timeStep` multiplier (default 1)
-  that all entity updates apply to their motion. The TimeRift powerup (#22) slows the
-  world by lowering it while the player stays at 1 — retrofitting this later is painful,
-  so bake it into the loop now. (See spec §Powerups note.)
+  that all entity updates apply to their motion. Manual bullet-time (#42) eases it to
+  0.2× and back, and the TimeRift powerup (#22) rides the same path while the player
+  stays at 1 — retrofitting this later is painful, so bake it into the loop now.
+  (See spec §Bullet-time and §Powerups notes.)
 - 🔗 #1
 - 🏷️ `milestone:M0` `type:feature` `area:physics`
 
@@ -270,17 +271,33 @@ frames), plus the instant Health pickup:
 2. **Invulnerability** — player takes no damage.
 3. **PredatorMode** — player invisible, forced onto the predator gun (infinite
    reload), weapon-switching disabled, enemies fire randomly (can't aim at you).
-4. **TimeRift** — slow-mo: world `timeStep` lowered while the player stays at 1
-   (relies on the time-scale factor baked into #3).
+4. **TimeRift** — slow-mo: forces #42's bullet-time path without draining its meter,
+   while the player stays at 1 (relies on the time-scale factor baked into #3).
 5. **Jetpack/Fly** — hold jump to rise (`yspeed = max(yspeed-2, -32)`).
 - **Health** (instant): +20, cap 100.
 
 - 🎯 **Deliverable:** All five state powerups + health working, each with a timer
   feeding the future HUD.
 - ✅ TriDamage triples kill speed; invuln blocks damage; predator turns you invisible
-  and locks weapon switching; TimeRift slows the world but not the player; jetpack
-  enables free flight; all timed effects expire.
-- 🔗 #21 · 🏷️ `milestone:M5` `type:feature` `area:combat`
+  and locks weapon switching; TimeRift slows the world but not the player (and doesn't
+  drain the bullet-time meter); jetpack enables free flight; all timed effects expire.
+- 🔗 #21, #42 · 🏷️ `milestone:M5` `type:feature` `area:combat`
+
+### #42 · Bullet-time (manual slow-motion meter)
+The original's signature Shift-key slow-mo ("timeDistort" — the in-game tutorial
+explicitly teaches it). A meter-limited resource, distinct from the TimeRift powerup:
+`maxbullettime = 250` frames, drains 1/frame while held, refills ⅓ of max per heli
+kill; game speed **eases** to 0.2× at −0.1/frame and back at +0.1/frame — and the
+**player is slowed too** (unlike TimeRift). TimeRift reuses this path without
+draining the meter; the game-over sequence also runs through it (death slow-mo).
+Meter state exposed for the HUD (#23).
+
+- 🎯 **Deliverable:** Hold-Shift slow-motion with a draining/refilling meter that
+  eases the whole sim to 0.2× and back.
+- ✅ Holding eases to 0.2×, releasing eases back (no snap); meter drains while held,
+  ends slow-mo at 0, refills ⅓ per kill; the player slows with the world; TimeRift
+  triggers it without draining.
+- 🔗 #3 (time-scale factor), #13 (kills for refill) · 🏷️ `milestone:M5` `type:feature` `area:physics`
 
 ---
 
@@ -288,12 +305,13 @@ frames), plus the instant Health pickup:
 
 ### #23 · In-game HUD
 Replace all temporary readouts with a real HUD: health bar, ammo/weapon indicator,
-score, hyper-jump charge meter, and active-powerup indicator, anchored to the design
-resolution.
+score, hyper-jump charge meter, bullet-time meter (#42), and active-powerup indicator
+with a remaining-time bar, anchored to the design resolution.
 
 - 🎯 **Deliverable:** A complete, styled HUD rendering all live game values at 1080p.
-- ✅ Every element updates correctly in real time and reads clearly at 1080p.
-- 🔗 #22 · 🏷️ `milestone:M6` `type:feature` `area:ui`
+- ✅ Every element updates correctly in real time and reads clearly at 1080p;
+  bullet-time meter drains/refills live; powerup indicator shows remaining time.
+- 🔗 #22, #42 · 🏷️ `milestone:M6` `type:feature` `area:ui`
 
 ### #24 · Game state flow (menu → play → game over)
 A complete session loop: main menu (start), gameplay, pause, and a game-over screen
@@ -497,7 +515,7 @@ optionally leaderboards.
 | 20 | Heli variants | M4 | 2+ distinct heli behaviors |
 | 21 | Powerup drops | M5 | Parachuting pickups from kills |
 | 22 | Powerup effects | M5 | 5 states (tridamage/invuln/predator/timerift/jetpack) + health |
-| 23 | HUD | M6 | Full live HUD at 1080p |
+| 23 | HUD | M6 | Full live HUD at 1080p (incl. bullet-time meter) |
 | 24 | Game states | M6 | Menu→play→gameover→restart |
 | 25 | Score persistence | M6 | High scores survive reload |
 | 26 | Audio pipeline | M7 | Web audio + manager, test SFX plays |
@@ -516,3 +534,4 @@ optionally leaderboards.
 | 39 | Steam wrapper | M11 | Desktop builds for 3 OSes |
 | 40 | Steamworks *(opt)* | M11 | Achievement + cloud save work |
 | 41 | Recreate original level | M4 | Real map layout replaces the test arena |
+| 42 | Bullet-time meter | M5 | Hold-Shift slow-mo with draining/refilling meter |

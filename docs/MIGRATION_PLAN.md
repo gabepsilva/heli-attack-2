@@ -81,14 +81,15 @@ all spec values are per-frame).
 stub; a central `config/constants.ts` seeded with world constants from the spec
 (tile size, gravity, sim rate); simple FPS/step counter. **Expose a per-frame
 `timeStep` time-scale multiplier (default 1)** that all entity updates multiply
-into their motion — the TimeRift powerup (#22) slows the world by lowering it
-while the player stays at 1. Bake this in now; retrofitting is painful.
+into their motion — manual bullet-time (#42) eases it to 0.2× and back, and the
+TimeRift powerup (#22) rides the same path while the player stays at 1. Bake this
+in now; retrofitting is painful.
 **Acceptance:**
 - Update tick fires a stable 30×/sec regardless of monitor refresh (logged/asserted).
 - Switching between GameScene and BootScene works.
 - A global `timeStep` factor exists and scales entity motion (verify by halving it).
 **Depends on:** #1
-**Ref:** spec §Powerups (TimeRift / fixed-timestep note).
+**Ref:** spec §Bullet-time, §Powerups (fixed-timestep note).
 
 ---
 
@@ -314,15 +315,30 @@ arena in the main game. Placeholder tiles are fine — final environment art is 
 frames) + instant Health:
 1. TriDamage (×3 damage), 2. Invulnerability (no damage taken),
 3. PredatorMode (invisible, forced predator gun w/ infinite reload, weapon-switch
-disabled, enemies fire randomly), 4. TimeRift (world slowed via `timeStep`, player
-stays at 1 — uses the #3 time-scale factor), 5. Jetpack/Fly (hold-to-rise);
+disabled, enemies fire randomly), 4. TimeRift (forces #42's slow-mo path without
+draining its meter, player stays at 1), 5. Jetpack/Fly (hold-to-rise);
 Health (+20 cap 100). Timers + active-effect state for HUD.
 **Acceptance:**
 - TriDamage triples kill speed; invuln blocks damage; predator turns you invisible and
-  locks weapon switching; TimeRift slows the world but not the player; jetpack lets the
-  player free-fly; all timed effects expire.
-**Depends on:** #21, #3 (time-scale factor for TimeRift)
+  locks weapon switching; TimeRift slows the world but not the player (without draining
+  the bullet-time meter); jetpack lets the player free-fly; all timed effects expire.
+**Depends on:** #21, #42 (TimeRift shares its slow-mo path)
 **Ref:** spec §Powerups (`powerupOn` 1–5).
+
+### #42 — Bullet-time (manual slow-motion meter)
+**Goal:** The original's signature Shift-key slow-mo ("timeDistort" — the in-game
+tutorial explicitly teaches it), distinct from the TimeRift powerup.
+**Scope:** Meter of `maxbullettime = 250` frames: drains 1/frame while held, refills
+⅓ of max per heli kill; game speed **eases** to 0.2× at −0.1/frame and back at
++0.1/frame; the **player is slowed too** (unlike TimeRift). TimeRift reuses this path
+without draining the meter; the game-over sequence also runs through it (death
+slow-mo). Meter state exposed for the HUD (#23).
+**Acceptance:**
+- Holding eases the sim to 0.2×; releasing eases back (no snap).
+- Meter drains while held, ends slow-mo at 0, refills ⅓ of max per heli kill.
+- The player slows with the world; TimeRift triggers slow-mo without draining.
+**Depends on:** #3 (time-scale factor), #13 (kills for the refill)
+**Ref:** spec §Bullet-time; decompiled `maxbullettime`/`sendGameSpeed`.
 
 ---
 
@@ -330,11 +346,13 @@ Health (+20 cap 100). Timers + active-effect state for HUD.
 
 ### #23 — In-game HUD
 **Goal:** Replace all temp readouts with a real HUD.
-**Scope:** Health bar, ammo/weapon indicator, score, hyper-jump charge meter, active
-powerup indicator; anchored to design resolution.
+**Scope:** Health bar, ammo/weapon indicator, score, hyper-jump charge meter,
+bullet-time meter (#42), active powerup indicator with remaining-time bar; anchored
+to design resolution.
 **Acceptance:**
-- All values update live and correctly; HUD reads clearly at 1080p.
-**Depends on:** #22
+- All values update live and correctly; bullet-time meter drains/refills live;
+  HUD reads clearly at 1080p.
+**Depends on:** #22, #42
 
 ### #24 — Game state flow (menu → play → game over)
 **Goal:** A complete session loop.
@@ -512,7 +530,7 @@ fullscreen; controller works; app icon/metadata.
 | M2 | Combat Core | Shoot a heli, it dies, score up | #9–#13 |
 | M3 | Full Arsenal | All 14 weapons | #14–#17 |
 | M4 | Enemy Behavior & Spawning | Relentless heli treadmill + real level | #18–#20, #41 |
-| M5 | Powerups | Drops + power states | #21–#22 |
+| M5 | Powerups | Drops + power states + bullet-time | #21, #22, #42 |
 | M6 | UI / HUD & Game States | Full menu→play→gameover loop | #23–#25 |
 | M7 | Audio | Sounds like HA2 | #26–#27 |
 | M8 | Responsive & Multi-Input | Desktop + mobile + gamepad | #28–#31 |

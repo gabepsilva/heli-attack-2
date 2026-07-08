@@ -16,7 +16,7 @@ MILESTONES = [
     ("M2 — Combat Core", "Shoot a heli, it dies, score up. Tickets #9–#13."),
     ("M3 — Full Arsenal", "All 14 weapons. Tickets #14–#17."),
     ("M4 — Enemy Behavior & Spawning", "Relentless heli treadmill + real level. Tickets #18–#20, #41."),
-    ("M5 — Powerups", "Drops + power states. Tickets #21–#22."),
+    ("M5 — Powerups", "Drops + power states + bullet-time. Tickets #21, #22, #42."),
     ("M6 — UI / HUD & Game States", "Full menu→play→gameover loop. Tickets #23–#25."),
     ("M7 — Audio", "Sounds like HA2. Tickets #26–#27."),
     ("M8 — Responsive & Multi-Input", "Desktop + mobile + gamepad. Tickets #28–#31."),
@@ -78,7 +78,7 @@ A running app — `npm run dev` opens a browser window showing a "Heli Attack 2"
 A `GameScene` with an on-screen counter proving the sim ticks a steady 30×/sec regardless of monitor refresh rate; `config/constants.ts` committed.
 
 ## Time-scale from day one
-Expose a per-frame `timeStep` multiplier (default 1) that all entity updates apply to their motion. The **TimeRift** powerup (#22) slows the world by lowering it while the player stays at 1. Retrofitting this later is painful — bake it into the loop now.
+Expose a per-frame `timeStep` multiplier (default 1) that all entity updates apply to their motion. Two features drive it: manual **bullet-time** (#42) eases it down to 0.2× and back, and the **TimeRift** powerup (#22) rides the same path while the player stays at 1. Retrofitting this later is painful — bake it into the loop now.
 
 ## Acceptance criteria
 - [ ] Sim rate reads ~30/s on both a 60Hz and 144Hz display
@@ -313,7 +313,7 @@ Parachuting powerups that spawn from kills and are collected by walking into the
 #19""", ["type:feature", "area:combat"]),
     Ticket(22, "Powerup effects", "M5",
            """The five timed state powerups (`powerupOn = 1 + random(5)`, each 500 frames) + instant Health:
-1. TriDamage (damage x3), 2. Invulnerability (no damage), 3. PredatorMode (invisible, forced predator gun w/ infinite reload, weapon-switch disabled, enemies fire randomly), 4. TimeRift (world slowed via `timeStep`, player stays at 1 — uses #3's time-scale factor), 5. Jetpack/Fly (hold-to-rise). Health: +20, cap 100.
+1. TriDamage (damage x3), 2. Invulnerability (no damage), 3. PredatorMode (invisible, forced predator gun w/ infinite reload, weapon-switch disabled, enemies fire randomly), 4. TimeRift (forces #42's slow-mo path without draining its meter, player stays at 1), 5. Jetpack/Fly (hold-to-rise). Health: +20, cap 100.
 
 ## Deliverable
 All five state powerups + health working, each with a timer feeding the future HUD.
@@ -321,22 +321,24 @@ All five state powerups + health working, each with a timer feeding the future H
 ## Acceptance criteria
 - [ ] TriDamage triples kill speed; invuln blocks damage
 - [ ] PredatorMode turns you invisible and locks weapon switching
-- [ ] TimeRift slows the world but not the player; jetpack enables free flight; all expire
+- [ ] TimeRift slows the world but not the player, without draining the bullet-time meter
+- [ ] Jetpack enables free flight; all timed effects expire
 
 ## Depends on
-#21, #3 (time-scale factor for TimeRift)""", ["type:feature", "area:combat"]),
+#21, #42 (TimeRift shares its slow-mo path)""", ["type:feature", "area:combat"]),
     Ticket(23, "In-game HUD", "M6",
-           """Replace all temporary readouts with a real HUD: health bar, ammo/weapon indicator, score, hyper-jump charge meter, and active-powerup indicator, anchored to the design resolution.
+           """Replace all temporary readouts with a real HUD: health bar, ammo/weapon indicator, score, hyper-jump charge meter, bullet-time meter (#42), and active-powerup indicator with a remaining-time bar, anchored to the design resolution.
 
 ## Deliverable
 A complete, styled HUD rendering all live game values at 1080p.
 
 ## Acceptance criteria
 - [ ] Every element updates correctly in real time
+- [ ] Bullet-time meter drains/refills live; powerup indicator shows remaining time
 - [ ] Reads clearly at 1080p
 
 ## Depends on
-#22""", ["type:feature", "area:ui"]),
+#22, #42""", ["type:feature", "area:ui"]),
     Ticket(24, "Game state flow (menu → play → game over)", "M6",
            """A complete session loop: main menu (start), gameplay, pause, and a game-over screen showing final score with restart — all via scene transitions.
 
@@ -558,6 +560,30 @@ A committed level/map data file reproducing the original's layout, loaded by `Ga
 
 ## Ref
 Decompiled `map[][]` tile data in `reference/spec/heli2-decompiled-actionscript.txt`.""", ["type:feature", "area:physics"]),
+    Ticket(42, "Bullet-time: manual slow-motion meter", "M5",
+           """The original's signature Shift-key slow-motion ("timeDistort" — the in-game tutorial explicitly teaches it). A meter-limited resource, distinct from the TimeRift powerup:
+
+- Meter: `maxbullettime = 250` frames; drains 1/frame while held (and > 0); refills by 1/3 of max per heli kill, capped.
+- Easing: game speed ramps toward 0.2x at -0.1/frame while active, back up at +0.1/frame on release — not an instant toggle.
+- The player is slowed too — unlike TimeRift (#22), where the player overrides back to 1.
+- TimeRift (`powerupOn == 4`) forces this same path without draining the meter.
+- The game-over sequence also runs through this slow-mo (death slow-mo).
+- Meter state exposed for the HUD meter (#23).
+
+## Deliverable
+Hold-key slow-motion with a draining/refilling meter that eases the whole sim to 0.2x and back.
+
+## Acceptance criteria
+- [ ] Holding the key eases the sim to 0.2x; releasing eases back to 1x (no snap)
+- [ ] Meter drains while held, ends slow-mo at 0, and refills by 1/3 of max per heli kill
+- [ ] The player slows with the world (unlike TimeRift)
+- [ ] TimeRift triggers the same slow-mo without draining the meter
+
+## Depends on
+#3 (time-scale factor), #13 (heli kills for the refill)
+
+## Ref
+Spec §Bullet-time; decompiled AS (`maxbullettime`, `sendGameSpeed` easing).""", ["type:feature", "area:physics"]),
 ]
 
 
@@ -614,7 +640,7 @@ def main() -> int:
     open_issues = gh_json(
         "issue", "list", "--state", "all", "--limit", "100", "--json", "number,title,state"
     )
-    if len(open_issues) >= 41:
+    if len(open_issues) >= 42:
         print(f"\nRepo already has {len(open_issues)} issues — skipping issue creation.")
         return 0
 

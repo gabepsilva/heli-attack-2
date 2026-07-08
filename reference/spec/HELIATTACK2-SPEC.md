@@ -47,8 +47,29 @@ A real mechanic in the original, easy to miss:
   (note: the original uses *Width* here, not Height — a faithful-port quirk).
 
 Default keys: **←/→ move, ↑ jump, ↓ duck, Ctrl boost, Shift bullet-time**
-(rebindable in the original, stored in a SharedObject — see "Deliberate cuts" in
-the migration plan for our stance).
+(see §Bullet-time; rebindable in the original, stored in a SharedObject — see
+"Deliberate cuts" in the migration plan for our stance).
+
+## Bullet-time (manual slow-motion) — `bulletTimeKey = Key.SHIFT`
+The original's "timeDistort" — a signature mechanic the in-game tutorial
+explicitly teaches (*"Use timeDistort to slow down time and give yourself longer
+to react."*). A meter-limited, player-triggered slow-mo, distinct from the
+TimeRift powerup:
+
+- **Meter**: `maxbullettime = 250` frames; drains **1/frame** while the key is
+  held (and the meter is > 0).
+- **Refill**: each heli kill refunds **⅓ of max** (`bullettime + maxbullettime/3`),
+  capped at max.
+- **Easing**: the global game speed ramps toward **0.2×** at −0.1/frame while
+  active, and back up to 1× at +0.1/frame on release
+  (`sendGameSpeed = max(0.2, sendGameSpeed - 0.1)`) — never an instant toggle.
+- **The player is slowed too**: every entity *and* the player update with the
+  same eased time-scale (`player.action(sendGameSpeed)`). This is the opposite
+  of TimeRift, where the player overrides back to full speed.
+- **TimeRift reuses this path**: `powerupOn == 4` forces the slow-mo on
+  *without draining the meter*.
+- **Death slow-mo**: the game-over sequence also runs through this slow-mo.
+- The HUD shows the meter (`HUD.bullettime.mask._xscale`).
 
 ## Weapons (the full HA2 arsenal — 14)
 `reload` = frames between shots (lower = faster). `speed` = bullet px/frame.
@@ -86,15 +107,16 @@ is collected: `powerupOn = 1 + random(5)` → a value in **1..5**. Each runs for
 | 1 | **TriDamage** | All weapon damage ×3 — fires `guns[type].damage*3`. |
 | 2 | **Invulnerability** | Player takes no damage — hit code is gated `if (powerupon != 2)`. |
 | 3 | **PredatorMode** | Player turns invisible (`gfx._alpha = 0`); forced onto the last "predator" gun with infinite reload; **weapon switching disabled** (`powerupon != 3`); enemies can't aim and fire in a random direction. |
-| 4 | **TimeRift** | Slow-motion: the world's `timeStep` is reduced, but the **player keeps `timeStep = 1`**, so you move at full speed through a slowed world. |
+| 4 | **TimeRift** | Slow-motion: forces the §Bullet-time slow-mo path **without draining the meter**; the player's own update overrides back to `timeStep = 1`, so you move at full speed through a slowed world. |
 | 5 | **Jetpack / Fly** | Hold jump → `yspeed = max(yspeed - 2, -32)` (free vertical flight). |
 
-> ⚠️ **Fixed-timestep design note (affects the M0 loop, ticket #3):** TimeRift is
-> implemented by scaling the global `timeStep` multiplier that every entity's
-> `*Frame(timeStep)` update multiplies into its motion. The fixed-step loop must
+> ⚠️ **Fixed-timestep design note (affects the M0 loop, ticket #3):** both manual
+> §Bullet-time (#42) and TimeRift work by scaling the global `timeStep` multiplier
+> that every entity's `*Frame(timeStep)` update multiplies into its motion —
+> bullet-time eases it down to 0.2× and back (player included), TimeRift rides the
+> same path while the player overrides back to 1. The fixed-step loop must
 > therefore expose a **time-scale factor** from day one (per-frame `timeStep`,
-> default 1, lowered during TimeRift, held at 1 for the player). Retrofitting this
-> later is painful — bake it in at #3.
+> default 1). Retrofitting this later is painful — bake it in at #3.
 
 **Instant pickup — Health:** +20, capped at 100.
 
@@ -118,6 +140,8 @@ is collected: `powerupOn = 1 + random(5)` → a value in **1..5**. Each runs for
 2. Narrow hitbox (10px wide) makes dodging bullet spreads satisfying.
 3. Weapon variety spans fast-weak → slow-nuke; balance is via reload vs damage vs projectile speed.
 4. Endless replacement spawns = arcade score chase, no level end.
+5. **Bullet-time** (hold Shift, meter-limited, kill-refilled) — dodging through
+   slowed bullet spreads is a core survival tool, not a gimmick.
 
 ---
 
@@ -125,7 +149,8 @@ is collected: `powerupOn = 1 + random(5)` → a value in **1..5**. Each runs for
 ```ts
 // Assuming you run the sim at a fixed 30 fps to match the original.
 // `timeStep` is the per-frame time-scale multiplier every entity applies to its
-// motion (default 1). TimeRift lowers it for the world while the player holds 1.
+// motion (default 1). Bullet-time eases it to 0.2 and back (player included);
+// TimeRift rides the same path while the player overrides back to 1.
 export const WORLD = { tile: 50, gravity: 1, terminal: 50, timeStep: 1 };
 export const PLAYER = {
   health: 100, walkAccel: 1, walkCap: 5, hardCap: 6, friction: 1,
@@ -142,6 +167,13 @@ export const POWERUP = {
   TriDamage: 1, Invulnerability: 2, PredatorMode: 3, TimeRift: 4, Jetpack: 5,
 } as const;
 export const HEALTH_PICKUP = { amount: 20, cap: 100, firstThreshold: 15 };
+// Manual bullet-time (Shift): whole-sim slow-mo (player included), meter-limited.
+export const BULLET_TIME = {
+  maxFrames: 250,     // meter capacity; drains 1/frame while held
+  refillPerKill: 250 / 3, // each heli kill refunds a third of the meter
+  minScale: 0.2,      // eased floor of the global time-scale
+  easePerFrame: 0.1,  // time-scale ramps down/up by this per frame
+};
 export const WEAPONS = [
   { name: "MachineGun",     reload: 5,   speed: 8,  damage: 10 },
   { name: "AkimboMac10",    reload: 4,   speed: 8,  damage: 9  },

@@ -79,7 +79,7 @@ The original code and assets in `reference/` are **GPL-3.0**. Two implications:
 
 ## Status
 
-📋 **Planning complete.** All 40 implementation tickets are tracked as
+📋 **Planning complete.** All 42 implementation tickets are tracked as
 [GitHub issues](https://github.com/gabepsilva/heli-attack-2/issues) across
 milestones M0–M11. First implementation milestone is **M0 (project scaffold)** —
 start with [#1](https://github.com/gabepsilva/heli-attack-2/issues/1).
