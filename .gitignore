@@ -19,6 +19,10 @@ Thumbs.db
 *.log
 npm-debug.log*
 
+# Python (bootstrap script)
+__pycache__/
+*.pyc
+
 # Reference binaries are NOT tracked (originals live upstream at iopred/heliattack)
 reference/ha2-source/
 reference/**/*.fla
