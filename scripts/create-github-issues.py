@@ -15,7 +15,7 @@ MILESTONES = [
     ("M1 — Core Movement & Feel", "Player moves exactly like the original. Tickets #4–#8."),
     ("M2 — Combat Core", "Shoot a heli, it dies, score up. Tickets #9–#13."),
     ("M3 — Full Arsenal", "All 14 weapons. Tickets #14–#17."),
-    ("M4 — Enemy Behavior & Spawning", "Relentless heli treadmill. Tickets #18–#20."),
+    ("M4 — Enemy Behavior & Spawning", "Relentless heli treadmill + real level. Tickets #18–#20, #41."),
     ("M5 — Powerups", "Drops + power states. Tickets #21–#22."),
     ("M6 — UI / HUD & Game States", "Full menu→play→gameover loop. Tickets #23–#25."),
     ("M7 — Audio", "Sounds like HA2. Tickets #26–#27."),
@@ -77,9 +77,13 @@ A running app — `npm run dev` opens a browser window showing a "Heli Attack 2"
 ## Deliverable
 A `GameScene` with an on-screen counter proving the sim ticks a steady 30×/sec regardless of monitor refresh rate; `config/constants.ts` committed.
 
+## Time-scale from day one
+Expose a per-frame `timeStep` multiplier (default 1) that all entity updates apply to their motion. The **TimeRift** powerup (#22) slows the world by lowering it while the player stays at 1. Retrofitting this later is painful — bake it into the loop now.
+
 ## Acceptance criteria
 - [ ] Sim rate reads ~30/s on both a 60Hz and 144Hz display
 - [ ] Scene switching works
+- [ ] A global `timeStep` factor exists and scales entity motion (verify by halving it)
 
 ## Depends on
 #1""", ["type:feature", "area:physics"]),
@@ -113,9 +117,13 @@ A controllable player in the arena that walks left/right with the original's acc
 ## Deliverable
 A player that jumps — tap for a short hop, hold for full height — and lands cleanly on platforms.
 
+## Ducking (down / `duckKey`)
+Holding down shrinks the hitbox to 2/3 W&H (10x42 -> ~6.7x28), blocks walking (accel only when `!duck`), blocks the double-jump (`!jump2 && !duck`), uses the duck sprite frame, and nudges `_y` back up on release. Placed here because it needs both movement (#5) and the jump to exist.
+
 ## Acceptance criteria
 - [ ] Short vs full jump heights are visibly different
 - [ ] Terminal velocity caps a long fall
+- [ ] Holding duck shrinks the hitbox and disables walking + double-jump
 
 ## Depends on
 #5""", ["type:feature", "area:physics"]),
@@ -220,14 +228,14 @@ A committed `config/weapons.ts` with all 14 weapons, plus in-game weapon switchi
 ## Depends on
 #13""", ["type:feature", "area:combat"]),
     Ticket(15, "Projectile weapons", "M3",
-           """Implement the ballistic set: Shotgun, ShotgunRockets, GrenadeLauncher, RPG, RocketLauncher with real stats and distinct behaviors.
+           """Implement the ballistic set with real stats and distinct behaviors: Akimbo Mac-10's (weapon #1 — twin-stream MachineGun clone, reload 4 / speed 8 / damage 9), Shotgun, ShotgunRockets, GrenadeLauncher, RPG, RocketLauncher.
 
 ## Deliverable
-Five selectable, working weapons that each visibly differ in spread, projectile speed, and damage.
+Six selectable, working weapons that each visibly differ in spread, projectile speed, and damage.
 
 ## Acceptance criteria
 - [ ] Each weapon's reload/speed/damage matches the spec table
-- [ ] Shotgun fires a spread; RPG is visibly slow
+- [ ] Akimbo out-fires the MachineGun; shotgun fires a spread; RPG is visibly slow
 
 ## Depends on
 #14""", ["type:feature", "area:combat"]),
@@ -304,17 +312,19 @@ Parachuting powerups that spawn from kills and are collected by walking into the
 ## Depends on
 #19""", ["type:feature", "area:combat"]),
     Ticket(22, "Powerup effects", "M5",
-           """TriDamage (×3 damage, timed), Jetpack/Fly (hold-to-rise), Invulnerability, and Health (+20, cap 100) — each with a timer feeding the future HUD.
+           """The five timed state powerups (`powerupOn = 1 + random(5)`, each 500 frames) + instant Health:
+1. TriDamage (damage x3), 2. Invulnerability (no damage), 3. PredatorMode (invisible, forced predator gun w/ infinite reload, weapon-switch disabled, enemies fire randomly), 4. TimeRift (world slowed via `timeStep`, player stays at 1 — uses #3's time-scale factor), 5. Jetpack/Fly (hold-to-rise). Health: +20, cap 100.
 
 ## Deliverable
-Four working powerup effects the player can pick up and visibly benefit from.
+All five state powerups + health working, each with a timer feeding the future HUD.
 
 ## Acceptance criteria
-- [ ] TriDamage triples kill speed; jetpack enables free flight
-- [ ] Invuln blocks damage; all expire
+- [ ] TriDamage triples kill speed; invuln blocks damage
+- [ ] PredatorMode turns you invisible and locks weapon switching
+- [ ] TimeRift slows the world but not the player; jetpack enables free flight; all expire
 
 ## Depends on
-#21""", ["type:feature", "area:combat"]),
+#21, #3 (time-scale factor for TimeRift)""", ["type:feature", "area:combat"]),
     Ticket(23, "In-game HUD", "M6",
            """Replace all temporary readouts with a real HUD: health bar, ammo/weapon indicator, score, hyper-jump charge meter, and active-powerup indicator, anchored to the design resolution.
 
@@ -359,7 +369,10 @@ Web-optimized audio files in the build + an `AudioManager`; a test SFX plays on 
 
 ## Acceptance criteria
 - [ ] Sound plays after user-gesture unlock
-- [ ] Mute silences everything; overlapping sounds don't clip
+- [ ] A master volume control attenuates all audio; mute silences everything
+- [ ] Overlapping sounds don't clip
+
+_Scope decision: master volume + mute only (no per-channel mixer)._
 
 ## Depends on
 #3""", ["type:audio"]),
@@ -396,6 +409,8 @@ A committed input-intent module; all gameplay reads intent, not raw keys — and
 ## Acceptance criteria
 - [ ] No gameplay code reads keys directly
 - [ ] Keyboard/mouse control is unchanged for the player
+
+_Scope decision: the original stored rebindable keys in a SharedObject. Key rebinding is deliberately out of scope; the intent layer must not preclude adding it later._
 
 ## Depends on
 #24""", ["type:infra", "area:input"]),
@@ -527,6 +542,22 @@ A Steam test build where an achievement unlocks and a cloud save round-trips.
 
 ## Depends on
 #39""", ["type:infra"]),
+    Ticket(41, "Recreate the original level layout", "M4",
+           """The #4 arena is a throwaway *test* level; nothing yet rebuilds the actual Heli Attack 2 playfield. Port the original map's ground/platform/wall layout as tile-map data on the 50px grid so the shipped game plays on the real level, using placeholder tiles until #34 swaps in final environment art.
+
+## Deliverable
+A committed level/map data file reproducing the original's layout, loaded by `GameScene` with real collision — replacing the test arena in the main game.
+
+## Acceptance criteria
+- [ ] The real level (not the test arena) loads in-game with correct collision
+- [ ] Layout matches the original's proportions
+- [ ] Movement and combat play correctly on it
+
+## Depends on
+#4 (tiles/collision); feeds #34 (environment art)
+
+## Ref
+Decompiled `map[][]` tile data in `reference/spec/heli2-decompiled-actionscript.txt`.""", ["type:feature", "area:physics"]),
 ]
 
 
@@ -583,7 +614,7 @@ def main() -> int:
     open_issues = gh_json(
         "issue", "list", "--state", "all", "--limit", "100", "--json", "number,title,state"
     )
-    if len(open_issues) >= 40:
+    if len(open_issues) >= 41:
         print(f"\nRepo already has {len(open_issues)} issues — skipping issue creation.")
         return 0
 
@@ -604,7 +635,6 @@ def main() -> int:
 
     for ticket in TICKETS:
         ms_title = ms_key[ticket.milestone]
-        ms_num = milestone_map[ms_title]
         body = ticket.body + "\n\n---\n_See also: [`docs/TICKETS.md`](docs/TICKETS.md) · [`docs/MIGRATION_PLAN.md`](docs/MIGRATION_PLAN.md)_"
         cmd = [
             "gh", "issue", "create",

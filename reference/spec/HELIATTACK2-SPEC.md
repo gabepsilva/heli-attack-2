@@ -30,8 +30,25 @@ Extracted from the original ActionScript inside `ha2/heli2.fla`
 | Double jump | yes | `jump` then `jump2` flags |
 | Hyper/boost jump | `yspeed = -32` | charges over 150 frames; needs boost key |
 | Wall behavior | stops X, zeroes xspeed | classic AABB tile resolve |
+| **Duck** | hold `duckKey` (↓) | shrinks hitbox, blocks walking, blocks double-jump |
 
-Default keys: **←/→ move, ↑ jump, Ctrl boost** (rebindable, stored in SharedObject).
+### Duck (crouch) — `duckKey = Key.DOWN`
+A real mechanic in the original, easy to miss:
+- **Hitbox shrinks to 2/3**: `playerWidth = 2/3 · defPlayerWidth` and
+  `playerHeight = 2/3 · defPlayerHeight` (default hitbox **10 × 42** →
+  **~6.7 × 28** while ducked).
+- **Blocks horizontal input**: acceleration only runs `if (move && !duck)` —
+  you cannot walk while ducking (friction still decays existing xspeed).
+- **Interacts with jump**: the jump-hold window (`up=6`) and the double-jump both
+  require `!duck` (`!this.jump2 && !this.duck`) — you can't start/extend a jump or
+  double-jump while holding duck.
+- **Uses the duck sprite frame** (`gfx.gotoAndStop(2)`; art asset `duck.png`).
+- **Stand-up nudge**: on release while grounded, `_y -= 2/3 · defPlayerWidth`
+  (note: the original uses *Width* here, not Height — a faithful-port quirk).
+
+Default keys: **←/→ move, ↑ jump, ↓ duck, Ctrl boost, Shift bullet-time**
+(rebindable in the original, stored in a SharedObject — see "Deliberate cuts" in
+the migration plan for our stance).
 
 ## Weapons (the full HA2 arsenal — 14)
 `reload` = frames between shots (lower = faster). `speed` = bullet px/frame.
@@ -59,13 +76,33 @@ Firing model: reload counts up each frame; can fire when
 Weapons have limited ammo (`bullets`) except starting gun (∞).
 
 ## Powerups
-- **TriDamage** (`powerupon == 3`): all weapon damage ×3, temporary.
-- **Fly/jetpack** (`powerupon == 5`): hold jump → `yspeed -= 2` up to −32 (free flight).
-- **Health**: +20 (cap 100).
-- Drop logic:
-  - Health drops when kill-count `rthelis` crosses a **doubling threshold**
-    (1, 2, 4, 8, 16, …) — `nextHealth *= 2`.
-  - Weapon/ammo powerup: ~3% per kill (`random(100) % 32 == 0`).
+There are **five** timed "state" powerups, chosen at random when a state powerup
+is collected: `powerupOn = 1 + random(5)` → a value in **1..5**. Each runs for
+`powerupTime = 500` frames (~16.7s @30fps), counted down each frame; when it hits
+0, `powerupOn = 0`. Health is a separate, instant pickup (not one of the five).
+
+| `powerupOn` | Name | Effect (from the AS) |
+|---:|---|---|
+| 1 | **TriDamage** | All weapon damage ×3 — fires `guns[type].damage*3`. |
+| 2 | **Invulnerability** | Player takes no damage — hit code is gated `if (powerupon != 2)`. |
+| 3 | **PredatorMode** | Player turns invisible (`gfx._alpha = 0`); forced onto the last "predator" gun with infinite reload; **weapon switching disabled** (`powerupon != 3`); enemies can't aim and fire in a random direction. |
+| 4 | **TimeRift** | Slow-motion: the world's `timeStep` is reduced, but the **player keeps `timeStep = 1`**, so you move at full speed through a slowed world. |
+| 5 | **Jetpack / Fly** | Hold jump → `yspeed = max(yspeed - 2, -32)` (free vertical flight). |
+
+> ⚠️ **Fixed-timestep design note (affects the M0 loop, ticket #3):** TimeRift is
+> implemented by scaling the global `timeStep` multiplier that every entity's
+> `*Frame(timeStep)` update multiplies into its motion. The fixed-step loop must
+> therefore expose a **time-scale factor** from day one (per-frame `timeStep`,
+> default 1, lowered during TimeRift, held at 1 for the player). Retrofitting this
+> later is painful — bake it in at #3.
+
+**Instant pickup — Health:** +20, capped at 100.
+
+**Drop logic (on heli kill):**
+- Health drops when kill-count `rthelis` crosses a **doubling threshold**
+  (`nextHealth` starts at 15, then `nextHealth *= 2`).
+- Otherwise a random powerup/weapon drop with a small chance
+  (`random(100) % 32 == 0` ≈ 3%).
 
 ## Enemy: Helicopter
 - **HP: 300** (every heli, same). Difficulty comes from *count/pressure*, not tougher units.
@@ -87,14 +124,24 @@ Weapons have limited ammo (`bullets`) except starting gun (∞).
 ## Portable pseudo-config (drop into your TS)
 ```ts
 // Assuming you run the sim at a fixed 30 fps to match the original.
-export const WORLD = { tile: 50, gravity: 1, terminal: 50 };
+// `timeStep` is the per-frame time-scale multiplier every entity applies to its
+// motion (default 1). TimeRift lowers it for the world while the player holds 1.
+export const WORLD = { tile: 50, gravity: 1, terminal: 50, timeStep: 1 };
 export const PLAYER = {
   health: 100, walkAccel: 1, walkCap: 5, hardCap: 6, friction: 1,
   jumpVel: -8, jumpHoldFrames: 6, doubleJump: true,
   boostVel: -32, boostChargeFrames: 150,
   boxW: 10, boxH: 42, spriteW: 48, spriteH: 48,
+  duckScale: 2 / 3,        // hitbox W & H multiplier while ducking
+  // → ducked hitbox ≈ 6.7 × 28; walking + double-jump disabled while held
 };
 export const HELI = { hp: 300, bulletSpeed: 7, aimSpreadDeg: 10 };
+// Timed "state" powerups: powerupOn = 1 + random(5); each lasts POWERUP_FRAMES.
+export const POWERUP_FRAMES = 500; // ~16.7s @30fps
+export const POWERUP = {
+  TriDamage: 1, Invulnerability: 2, PredatorMode: 3, TimeRift: 4, Jetpack: 5,
+} as const;
+export const HEALTH_PICKUP = { amount: 20, cap: 100, firstThreshold: 15 };
 export const WEAPONS = [
   { name: "MachineGun",     reload: 5,   speed: 8,  damage: 10 },
   { name: "AkimboMac10",    reload: 4,   speed: 8,  damage: 9  },

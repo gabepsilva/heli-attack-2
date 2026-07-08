@@ -30,6 +30,20 @@ Each milestone is a **GitHub Milestone**; each ticket becomes a **GitHub Issue**
 `milestone:M0`…`M11` · `type:feature` · `type:infra` · `type:art` · `type:audio`
 · `area:physics` · `area:combat` · `area:ui` · `area:input` · `good-first-issue`
 
+## Deliberate cuts (out of scope, by decision)
+
+The original had a couple of features we are **intentionally not** porting 1:1. These
+are decisions, not oversights:
+
+- **Key rebinding.** The original stored rebindable controls in a SharedObject. We ship
+  fixed default controls (←/→ move, ↑ jump, ↓ duck, Ctrl boost, Shift bullet-time,
+  mouse aim/fire). The input-intent layer (#29) is built so rebinding *could* be added
+  later, but no rebinding UI is planned.
+- **Audio: master volume + mute only.** No per-channel mixer; #26 delivers a single
+  master volume plus mute — enough for a web arcade game.
+
+If either is later wanted, #29 (input) and #26 (audio) are the natural homes.
+
 ---
 
 # Milestone M0 — Foundation & Tooling
@@ -65,11 +79,16 @@ no server, no backend, and the game runs entirely in the user's browser.
 all spec values are per-frame).
 **Scope:** Fixed 30 Hz update accumulator decoupled from render; `GameScene`
 stub; a central `config/constants.ts` seeded with world constants from the spec
-(tile size, gravity, sim rate); simple FPS/step counter.
+(tile size, gravity, sim rate); simple FPS/step counter. **Expose a per-frame
+`timeStep` time-scale multiplier (default 1)** that all entity updates multiply
+into their motion — the TimeRift powerup (#22) slows the world by lowering it
+while the player stays at 1. Bake this in now; retrofitting is painful.
 **Acceptance:**
 - Update tick fires a stable 30×/sec regardless of monitor refresh (logged/asserted).
 - Switching between GameScene and BootScene works.
+- A global `timeStep` factor exists and scales entity motion (verify by halving it).
 **Depends on:** #1
+**Ref:** spec §Powerups (TimeRift / fixed-timestep note).
 
 ---
 
@@ -103,11 +122,16 @@ cap (±6), friction decay (−1/frame) when no input; wall stop zeroes xspeed.
 **Goal:** Single jump with the original's variable height and gravity.
 **Scope:** Gravity (+1/frame²), terminal clamp (50), ground detection resets jump;
 jump sets `yspeed = min(yspeed, -8)` with the 6-frame hold window for variable height.
+Also **ducking** (`duckKey` = ↓): shrinks the hitbox to 2/3 W&H (10×42 → ~6.7×28),
+blocks walking (accel only when `!duck`), blocks the double-jump (`!jump2 && !duck`),
+uses the duck sprite frame, and nudges `_y` back up on release. Placed here because it
+needs both movement (#5) and the jump to exist.
 **Acceptance:**
 - Tap = short hop, hold = full jump; landing detected reliably.
 - Terminal velocity caps a long fall.
+- Holding duck shrinks the hitbox and disables walking and the double-jump.
 **Depends on:** #5
-**Ref:** spec §Player physics (jump, gravity, `up=6`).
+**Ref:** spec §Player physics (jump, gravity, `up=6`, §Duck).
 
 ### #7 — Double jump & charged hyper-jump
 **Goal:** The signature air mobility.
@@ -199,12 +223,14 @@ next/prev + number-key switching; per-weapon reload state.
 
 ### #15 — Projectile weapons
 **Goal:** The ballistic set feels distinct.
-**Scope:** Shotgun (multi-pellet spread), ShotgunRockets, GrenadeLauncher (fast arc),
-RPG (slow), RocketLauncher, using real stats; shared projectile behaviors.
+**Scope:** Akimbo Mac-10's (weapon #1 — twin-stream MachineGun clone), Shotgun
+(multi-pellet spread), ShotgunRockets, GrenadeLauncher (fast arc), RPG (slow),
+RocketLauncher, using real stats; shared projectile behaviors.
 **Acceptance:**
-- Each weapon's reload/speed/damage matches spec; spread & travel visibly differ.
+- Each weapon's reload/speed/damage matches spec; spread & travel visibly differ;
+  Akimbo out-fires the MachineGun.
 **Depends on:** #14
-**Ref:** spec §Weapons (#2–#6).
+**Ref:** spec §Weapons (#1–#6).
 
 ### #16 — Special-behavior weapons
 **Goal:** The mechanically unique weapons.
@@ -257,6 +283,17 @@ paths; off-screen timers so helis reposition.
 - At least two visibly different heli behaviors appear in a session.
 **Depends on:** #19
 
+### #41 — Recreate the original level layout
+**Goal:** Ship on the real Heli Attack 2 playfield, not the #4 test arena.
+**Scope:** Port the original map's ground/platform/wall layout as tile-map data on the
+50px grid; load it in `GameScene` with real collision, replacing the throwaway test
+arena in the main game. Placeholder tiles are fine — final environment art is #34.
+**Acceptance:**
+- The real level (not the test arena) loads and plays with correct collision; layout
+  matches the original's proportions.
+**Depends on:** #4 (tiles/collision); feeds #34 (environment art).
+**Ref:** decompiled `map[][]` tile data.
+
 ---
 
 # Milestone M5 — Powerups
@@ -273,13 +310,19 @@ paths; off-screen timers so helis reposition.
 
 ### #22 — Powerup effects
 **Goal:** The temporary power states.
-**Scope:** TriDamage (×3 damage, timed), Jetpack/Fly (hold-to-rise), Invulnerability,
-Health (+20 cap 100); timers + active-effect state for HUD.
+**Scope:** All **five** timed state powerups (`powerupOn = 1 + random(5)`, each 500
+frames) + instant Health:
+1. TriDamage (×3 damage), 2. Invulnerability (no damage taken),
+3. PredatorMode (invisible, forced predator gun w/ infinite reload, weapon-switch
+disabled, enemies fire randomly), 4. TimeRift (world slowed via `timeStep`, player
+stays at 1 — uses the #3 time-scale factor), 5. Jetpack/Fly (hold-to-rise);
+Health (+20 cap 100). Timers + active-effect state for HUD.
 **Acceptance:**
-- TriDamage triples kill speed while active; jetpack lets the player free-fly;
-  invuln blocks damage; all expire correctly.
-**Depends on:** #21
-**Ref:** spec §Powerups (effects, `powerupon` states).
+- TriDamage triples kill speed; invuln blocks damage; predator turns you invisible and
+  locks weapon switching; TimeRift slows the world but not the player; jetpack lets the
+  player free-fly; all timed effects expire.
+**Depends on:** #21, #3 (time-scale factor for TimeRift)
+**Ref:** spec §Powerups (`powerupOn` 1–5).
 
 ---
 
@@ -316,9 +359,11 @@ optional stats (helis killed, accuracy).
 ### #26 — Audio pipeline & manager
 **Goal:** Reference WAVs become web-ready, played through one system.
 **Scope:** Transcode `reference` WAVs → `.ogg`/`.webm` (+mp3 fallback) build step;
-`AudioManager` (SFX pooling, volume, mute, browser audio-unlock on first input).
+`AudioManager` (SFX pooling, **master volume + mute**, browser audio-unlock on first
+input).
 **Acceptance:**
-- A test SFX plays on click after unlock; muting silences all; no clipping on overlap.
+- A test SFX plays on click after unlock; a master volume control attenuates all audio
+  and mute silences all; no clipping on overlap.
 **Depends on:** #3
 **Ref:** original WAVs upstream at `iopred/heliattack` → `ha2/assets/helisounds/` (39 WAVs).
 
@@ -349,6 +394,9 @@ sources; refactor keyboard/mouse to feed it.
 **Acceptance:**
 - Keyboard/mouse still fully control the game *through* the abstraction (no direct
   key reads in gameplay code).
+**Note:** the original stored rebindable keys in a SharedObject. Key rebinding is a
+**deliberate cut** (see "Deliberate cuts" above); the intent layer must not preclude
+adding it later.
 **Depends on:** #24
 
 ### #30 — Touch controls & orientation guard
@@ -463,7 +511,7 @@ fullscreen; controller works; app icon/metadata.
 | M1 | Core Movement & Feel ⭐ | Player moves exactly like the original | #4–#8 |
 | M2 | Combat Core | Shoot a heli, it dies, score up | #9–#13 |
 | M3 | Full Arsenal | All 14 weapons | #14–#17 |
-| M4 | Enemy Behavior & Spawning | Relentless heli treadmill | #18–#20 |
+| M4 | Enemy Behavior & Spawning | Relentless heli treadmill + real level | #18–#20, #41 |
 | M5 | Powerups | Drops + power states | #21–#22 |
 | M6 | UI / HUD & Game States | Full menu→play→gameover loop | #23–#25 |
 | M7 | Audio | Sounds like HA2 | #26–#27 |

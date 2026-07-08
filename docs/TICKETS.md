@@ -1,6 +1,6 @@
 # Heli Attack 2 — Tickets
 
-All 40 tickets, ready to become GitHub issues. Each has a **tangible deliverable** —
+All 41 tickets, ready to become GitHub issues. Each has a **tangible deliverable** —
 a concrete, demonstrable artifact you can point at when it's done (a running demo
 behavior, a committed file, a measurable result). If you can't demo it, it's not done.
 
@@ -45,6 +45,10 @@ a `GameScene` stub, and a central `config/constants.ts` seeded with world consta
 - 🎯 **Deliverable:** A `GameScene` with an on-screen counter proving the sim ticks a
   steady 30×/sec regardless of monitor refresh rate; `config/constants.ts` committed.
 - ✅ Sim rate reads ~30/s on both a 60Hz and 144Hz display; scene switching works.
+- ⏱️ **Time-scale from day one:** expose a per-frame `timeStep` multiplier (default 1)
+  that all entity updates apply to their motion. The TimeRift powerup (#22) slows the
+  world by lowering it while the player stays at 1 — retrofitting this later is painful,
+  so bake it into the loop now. (See spec §Powerups note.)
 - 🔗 #1
 - 🏷️ `milestone:M0` `type:feature` `area:physics`
 
@@ -80,6 +84,11 @@ resets the jump, and a variable-height jump (`yspeed = min(yspeed,-8)` with the
 - 🎯 **Deliverable:** A player that jumps — tap for a short hop, hold for full height —
   and lands cleanly on platforms.
 - ✅ Short vs full jump heights are visibly different; terminal velocity caps a long fall.
+- 🦆 **Ducking (↓ / `duckKey`):** holding down shrinks the hitbox to 2/3 W&H
+  (10×42 → ~6.7×28), blocks walking (accel runs only when `!duck`), and blocks the
+  double-jump (`!jump2 && !duck`); releasing while grounded nudges `_y` back up.
+  Placed here because it needs both movement (#5) and the jump to exist. (Spec §Duck;
+  art comes in #33.) — ✅ crouch shrinks the box, can't walk or double-jump while held.
 - 🔗 #5 · 🏷️ `milestone:M1` `type:feature` `area:physics`
 
 ### #7 · Double jump & charged hyper-jump
@@ -168,14 +177,15 @@ with per-weapon ammo and reload state, switchable via number keys and next/prev.
 - 🔗 #13 · 🏷️ `milestone:M3` `type:feature` `area:combat`
 
 ### #15 · Projectile weapons
-Implement the ballistic set with real stats and distinct behaviors: Shotgun
+Implement the ballistic set with real stats and distinct behaviors: Akimbo Mac-10's
+(weapon #1 — twin-stream MachineGun clone, reload 4/speed 8/damage 9), Shotgun
 (multi-pellet spread), ShotgunRockets, GrenadeLauncher (fast), RPG (slow),
 RocketLauncher.
 
-- 🎯 **Deliverable:** Five selectable, working weapons that each visibly differ in
+- 🎯 **Deliverable:** Six selectable, working weapons that each visibly differ in
   spread, projectile speed, and damage.
-- ✅ Each weapon's reload/speed/damage matches the spec table; shotgun fires a spread,
-  RPG is visibly slow.
+- ✅ Each weapon's reload/speed/damage matches the spec table; Akimbo out-fires the
+  MachineGun, shotgun fires a spread, RPG is visibly slow.
 - 🔗 #14 · 🏷️ `milestone:M3` `type:feature` `area:combat`
 
 ### #16 · Special-behavior weapons
@@ -227,6 +237,19 @@ Add variety (the original used multiple heli frames): 2+ distinct heli looks/beh
 - ✅ Two behavior types are distinguishable in play; helis reposition rather than sitting still.
 - 🔗 #19 · 🏷️ `milestone:M4` `type:feature` `area:combat`
 
+### #41 · Recreate the original level layout
+The #4 arena is a throwaway *test* level; nothing yet rebuilds the **actual** Heli
+Attack 2 playfield. Port the original map's ground/platform/wall layout as tile-map
+data on the 50px grid so the shipped game plays on the real level, using placeholder
+tiles until #34 swaps in final environment art.
+
+- 🎯 **Deliverable:** A committed level/map data file reproducing the original's layout,
+  loaded by `GameScene` with real collision — replacing the test arena in the main game.
+- ✅ The real level (not the test arena) loads in-game; layout matches the original's
+  proportions; movement and combat play correctly on it.
+- 🔗 #4 (tiles/collision); feeds #34 (environment art)
+- 🏷️ `milestone:M4` `type:feature` `area:physics`
+
 ---
 
 ## Milestone M5 — Powerups
@@ -241,11 +264,22 @@ at ~3% per kill, falling on parachutes and collected on touch.
 - 🔗 #19 · 🏷️ `milestone:M5` `type:feature` `area:combat`
 
 ### #22 · Powerup effects
-The temporary power states: TriDamage (×3 damage, timed), Jetpack/Fly (hold-to-rise),
-Invulnerability, and Health (+20, cap 100) — each with a timer feeding the future HUD.
+The **five** timed state powerups (`powerupOn = 1 + random(5)`, each lasting 500
+frames), plus the instant Health pickup:
+1. **TriDamage** — all weapon damage ×3.
+2. **Invulnerability** — player takes no damage.
+3. **PredatorMode** — player invisible, forced onto the predator gun (infinite
+   reload), weapon-switching disabled, enemies fire randomly (can't aim at you).
+4. **TimeRift** — slow-mo: world `timeStep` lowered while the player stays at 1
+   (relies on the time-scale factor baked into #3).
+5. **Jetpack/Fly** — hold jump to rise (`yspeed = max(yspeed-2, -32)`).
+- **Health** (instant): +20, cap 100.
 
-- 🎯 **Deliverable:** Four working powerup effects the player can pick up and visibly benefit from.
-- ✅ TriDamage triples kill speed; jetpack enables free flight; invuln blocks damage; all expire.
+- 🎯 **Deliverable:** All five state powerups + health working, each with a timer
+  feeding the future HUD.
+- ✅ TriDamage triples kill speed; invuln blocks damage; predator turns you invisible
+  and locks weapon switching; TimeRift slows the world but not the player; jetpack
+  enables free flight; all timed effects expire.
 - 🔗 #21 · 🏷️ `milestone:M5` `type:feature` `area:combat`
 
 ---
@@ -288,7 +322,8 @@ pooling, volume, mute, and the browser audio-unlock on first input.
 
 - 🎯 **Deliverable:** Web-optimized audio files in the build + an `AudioManager`; a test
   SFX plays on click after unlock.
-- ✅ Sound plays after user-gesture unlock; mute silences everything; overlapping sounds don't clip.
+- ✅ Sound plays after user-gesture unlock; a **master volume control** attenuates all
+  audio and mute silences everything; overlapping sounds don't clip.
 - 🔗 #3 · 🏷️ `milestone:M7` `type:audio`
 
 ### #27 · Wire SFX & music to events
@@ -321,6 +356,9 @@ boost/switch) that input sources feed, with keyboard/mouse refactored to feed it
 - 🎯 **Deliverable:** A committed input-intent module; all gameplay reads intent, not raw
   keys — and the game still fully plays on keyboard/mouse.
 - ✅ No gameplay code reads keys directly; keyboard/mouse control is unchanged for the player.
+- 📝 **Note:** the original stored rebindable keys in a SharedObject. **Key rebinding is
+  deliberately out of scope** (see "Deliberate cuts" in the migration plan); the intent
+  layer here must not preclude adding it later.
 - 🔗 #24 · 🏷️ `milestone:M8` `type:infra` `area:input`
 
 ### #30 · Touch controls & orientation guard
@@ -442,7 +480,7 @@ optionally leaderboards.
 | 3 | Fixed-timestep loop | M0 | On-screen proof of steady 30Hz sim |
 | 4 | Tile arena & collision | M1 | Arena where a box collides with tiles |
 | 5 | Movement & friction | M1 | Player walks with original accel/friction |
-| 6 | Gravity & jump | M1 | Variable-height jump onto platforms |
+| 6 | Gravity, jump & duck | M1 | Variable-height jump + crouch onto platforms |
 | 7 | Double & hyper jump | M1 | Double-jump + charged boost |
 | 8 | Debug/tuning overlay | M1 | Live state panel + tunable constants |
 | 9 | Mouse aiming | M2 | Gun tracks the cursor |
@@ -451,14 +489,14 @@ optionally leaderboards.
 | 12 | Helicopter enemy | M2 | Shootable 300HP heli that dies |
 | 13 | Damage/score/feedback | M2 | Kill loop with flash + score |
 | 14 | Weapon table & switching | M3 | `weapons.ts` + in-game switching |
-| 15 | Projectile weapons | M3 | 5 distinct ballistic weapons |
+| 15 | Projectile weapons | M3 | 6 ballistic weapons (incl. Akimbo Mac-10) |
 | 16 | Special weapons | M3 | Flame/mines/rail/seeker working |
 | 17 | Heavy weapons | M3 | A-bomb/grapple/shoulder cannon |
 | 18 | Enemy fire & health | M4 | Two-way firefight, player can die |
 | 19 | Spawn treadmill | M4 | Never-empty escalating pressure |
 | 20 | Heli variants | M4 | 2+ distinct heli behaviors |
 | 21 | Powerup drops | M5 | Parachuting pickups from kills |
-| 22 | Powerup effects | M5 | Tridamage/jetpack/invuln/health |
+| 22 | Powerup effects | M5 | 5 states (tridamage/invuln/predator/timerift/jetpack) + health |
 | 23 | HUD | M6 | Full live HUD at 1080p |
 | 24 | Game states | M6 | Menu→play→gameover→restart |
 | 25 | Score persistence | M6 | High scores survive reload |
@@ -477,3 +515,4 @@ optionally leaderboards.
 | 38 | Web deploy | M11 | Public playable URL |
 | 39 | Steam wrapper | M11 | Desktop builds for 3 OSes |
 | 40 | Steamworks *(opt)* | M11 | Achievement + cloud save work |
+| 41 | Recreate original level | M4 | Real map layout replaces the test arena |
