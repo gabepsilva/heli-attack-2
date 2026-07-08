@@ -76,8 +76,10 @@ The original code and assets in `reference/` are **GPL-3.0**. Two implications:
 
 ## Status
 
-📋 **Planning.** No code yet — the migration plan below is being converted into
-GitHub issues. First implementation milestone is **M0 (project scaffold)**.
+📋 **Planning complete.** All 40 implementation tickets are tracked as
+[GitHub issues](https://github.com/gabepsilva/heli-attack-2/issues) across
+milestones M0–M11. First implementation milestone is **M0 (project scaffold)** —
+start with [#1](https://github.com/gabepsilva/heli-attack-2/issues/1).
 
 ## Getting started (once M0 lands)
 

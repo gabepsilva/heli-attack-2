@@ -536,15 +536,23 @@ def run(cmd: list[str], check: bool = True) -> subprocess.CompletedProcess:
 
 
 def gh_json(*args: str) -> object:
-    result = run(["gh", *args, "--repo", REPO])
-    return json.loads(result.stdout or "null")
+    cmd = ["gh", *args]
+    if args and args[0] != "api":
+        cmd.extend(["--repo", REPO])
+        if "--json" not in args:
+            cmd.extend(["--json", "name"])
+    result = run(cmd)
+    out = (result.stdout or "").strip()
+    if not out:
+        return []
+    return json.loads(out)
 
 
 def main() -> int:
     print(f"Setting up GitHub project: {REPO}\n")
 
     # Labels
-    existing = {item["name"] for item in gh_json("label", "list", "--limit", "100")}
+    existing = {item["name"] for item in gh_json("label", "list", "--limit", "100", "--json", "name")}
     for name, color, description in LABELS:
         if name in existing:
             print(f"  label exists: {name}")
@@ -572,7 +580,9 @@ def main() -> int:
         print(f"  created milestone: {title} (#{ms['number']})")
 
     # Issues
-    open_issues = gh_json("issue", "list", "--state", "all", "--limit", "100")
+    open_issues = gh_json(
+        "issue", "list", "--state", "all", "--limit", "100", "--json", "number,title,state"
+    )
     if len(open_issues) >= 40:
         print(f"\nRepo already has {len(open_issues)} issues — skipping issue creation.")
         return 0
@@ -601,7 +611,7 @@ def main() -> int:
             "--repo", REPO,
             "--title", ticket.title,
             "--body", body,
-            "--milestone", str(ms_num),
+            "--milestone", ms_title,
         ]
         for label in ticket.labels:
             cmd.extend(["--label", label])
