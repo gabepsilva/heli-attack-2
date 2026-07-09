@@ -1,0 +1,12 @@
+from pathlib import Path
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+REPO_ROOT = SCRIPT_DIR.parent.parent
+LOOP_CONTROLS = SCRIPT_DIR / "loop_controls"
+SOLVE_ISSUE_FILE = LOOP_CONTROLS / "solve_issue.txt"
+PR_FILE = LOOP_CONTROLS / "pr.txt"
+VERDICT_FILE = LOOP_CONTROLS / "verdict.txt"
+NEEDS_HUMAN_LABEL = "needs-human"
+MAX_REVIEW_ROUNDS = 5
+IDLE_INTERVAL = 30
+AGENT_TIMEOUT = 3600
