@@ -81,15 +81,21 @@ The original code and assets in `reference/` are **GPL-3.0**. Two implications:
 
 ## Status
 
-📋 **Planning complete.** All 42 implementation tickets are tracked as
+🚧 **M0 scaffold in progress** ([#1](https://github.com/gabepsilva/heli-attack-2/issues/1)).
+All 42 implementation tickets are tracked as
 [GitHub issues](https://github.com/gabepsilva/heli-attack-2/issues) across
-milestones M0–M11. First implementation milestone is **M0 (project scaffold)** —
-start with [#1](https://github.com/gabepsilva/heli-attack-2/issues/1).
+milestones M0–M11.
 
-## Getting started (once M0 lands)
+## Getting started
 
 ```bash
 npm install
-npm run dev      # Vite dev server with HMR
-npm run build    # production web build
+npm run dev       # Vite dev server with HMR (http://localhost:5173)
+npm run build     # typecheck + production web build → dist/
+npm run preview   # serve dist/ locally (http://localhost:4173)
+npm run typecheck # strict TypeScript check
 ```
+
+`dist/` is a static site meant to be **served over HTTP** (e.g. `npm run preview`,
+GitHub Pages, any static host). Opening `dist/index.html` via `file://` will not
+work — browsers block ES module scripts under a null origin.
