@@ -9,6 +9,9 @@
 import { TOUCH_AIM_RANGE_PX, TOUCH_DEADZONE } from '../config/touch';
 import { createPlayerIntent, type PlayerIntent } from './playerIntent';
 
+/** Re-export shared merge so existing touch imports keep working. */
+export { mergePlayerIntents } from './playerIntent';
+
 /**
  * Normalized stick / button snapshot from the on-screen HUD.
  * Stick axes are −1…+1 (x right, y down). Buttons are level-triggered except
@@ -97,29 +100,4 @@ export function sampleTouchIntent(
   }
 
   return intent;
-}
-
-/**
- * Combine keyboard/mouse and touch intents for a frame.
- * Held flags OR; weapon edges OR; aim prefers touch while the aim stick is live.
- */
-export function mergePlayerIntents(
-  keyboard: PlayerIntent,
-  touch: PlayerIntent,
-  opts: { touchAimActive: boolean },
-): PlayerIntent {
-  return {
-    left: keyboard.left || touch.left,
-    right: keyboard.right || touch.right,
-    jump: keyboard.jump || touch.jump,
-    duck: keyboard.duck || touch.duck,
-    boost: keyboard.boost || touch.boost,
-    bulletTime: keyboard.bulletTime || touch.bulletTime,
-    fire: keyboard.fire || touch.fire,
-    aimX: opts.touchAimActive ? touch.aimX : keyboard.aimX,
-    aimY: opts.touchAimActive ? touch.aimY : keyboard.aimY,
-    selectWeaponDigit: keyboard.selectWeaponDigit ?? touch.selectWeaponDigit,
-    prevWeapon: keyboard.prevWeapon || touch.prevWeapon,
-    nextWeapon: keyboard.nextWeapon || touch.nextWeapon,
-  };
 }

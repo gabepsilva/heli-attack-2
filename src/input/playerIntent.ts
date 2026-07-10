@@ -3,9 +3,9 @@
  *
  * Gameplay reads this abstract intent (move / aim / fire / jump / duck /
  * boost / bullet-time / weapon switch), never raw keyboard or pointer APIs.
- * Input sources (keyboard+mouse, touch #30; gamepad #31 later) sample
- * hardware into {@link PlayerIntent}; {@link applyPlayerIntent} copies it onto
- * the sim session each render frame.
+ * Input sources (keyboard+mouse, touch #30, gamepad #31) sample hardware into
+ * {@link PlayerIntent}; {@link applyPlayerIntent} copies it onto the sim
+ * session each render frame.
  *
  * Key rebinding is out of scope, but sources feed intent via a bindings table
  * so a future rebind UI can swap mappings without touching gameplay.
@@ -98,4 +98,29 @@ export function applyPlayerIntent(
   if (intent.nextWeapon) {
     nextWeapon(session.inventory, powerupOn);
   }
+}
+
+/**
+ * Combine two intents for a frame (keyboard + touch/gamepad, or chained merges).
+ * Held flags OR; weapon edges OR; aim prefers the secondary source when active.
+ */
+export function mergePlayerIntents(
+  primary: PlayerIntent,
+  secondary: PlayerIntent,
+  opts: { preferSecondaryAim: boolean },
+): PlayerIntent {
+  return {
+    left: primary.left || secondary.left,
+    right: primary.right || secondary.right,
+    jump: primary.jump || secondary.jump,
+    duck: primary.duck || secondary.duck,
+    boost: primary.boost || secondary.boost,
+    bulletTime: primary.bulletTime || secondary.bulletTime,
+    fire: primary.fire || secondary.fire,
+    aimX: opts.preferSecondaryAim ? secondary.aimX : primary.aimX,
+    aimY: opts.preferSecondaryAim ? secondary.aimY : primary.aimY,
+    selectWeaponDigit: primary.selectWeaponDigit ?? secondary.selectWeaponDigit,
+    prevWeapon: primary.prevWeapon || secondary.prevWeapon,
+    nextWeapon: primary.nextWeapon || secondary.nextWeapon,
+  };
 }

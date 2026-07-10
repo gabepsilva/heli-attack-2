@@ -153,7 +153,7 @@ describe('touchControls sampler (issue #30)', () => {
     expect(intent.fire).toBe(false);
   });
 
-  it('mergePlayerIntents ORs held flags and prefers touch aim when active', () => {
+  it('mergePlayerIntents ORs held flags and prefers secondary aim when active', () => {
     const keyboard = createPlayerIntent(10, 20);
     keyboard.left = true;
     keyboard.fire = true;
@@ -166,7 +166,7 @@ describe('touchControls sampler (issue #30)', () => {
     touch.fire = true;
 
     const merged = mergePlayerIntents(keyboard, touch, {
-      touchAimActive: true,
+      preferSecondaryAim: true,
     });
     expect(merged.left).toBe(true);
     expect(merged.right).toBe(true);
@@ -178,7 +178,7 @@ describe('touchControls sampler (issue #30)', () => {
     expect(merged.nextWeapon).toBe(true);
 
     const kbAim = mergePlayerIntents(keyboard, touch, {
-      touchAimActive: false,
+      preferSecondaryAim: false,
     });
     expect(kbAim.aimX).toBe(10);
     expect(kbAim.aimY).toBe(20);
