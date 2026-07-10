@@ -17,6 +17,8 @@ export default defineConfig({
         // DOM HUD is a thin view over AudioManager (covered by unit tests).
         'src/audio/audioHud.ts',
         'src/audio/gameAudio.ts',
+        // Phaser HUD view — meter math is covered via src/ui/hud.ts.
+        'src/ui/gameHud.ts',
       ],
       thresholds: {
         lines: 60,

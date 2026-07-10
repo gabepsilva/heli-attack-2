@@ -5,8 +5,6 @@ import { AudioHud } from '../audio/audioHud';
 import { getGameAudio } from '../audio/gameAudio';
 import { ATLAS_KEY } from '../config/art';
 import { AUDIO_TEST_SFX_ID } from '../config/audio';
-import { formatScoreHud } from '../combat/score';
-import { formatHealthHud } from '../combat/playerHealth';
 import { playerPowerupAlpha } from '../combat/powerupEffects';
 import {
   getActiveWeaponDef,
@@ -29,6 +27,8 @@ import { GAME_HEIGHT, GAME_WIDTH } from '../config/game';
 import { SCENE_KEYS } from '../config/scenes';
 import { SimSession } from '../core/simSession';
 import { DebugOverlay } from '../tooling/debugOverlay';
+import { buildHudSnapshot } from '../ui/hud';
+import { GameHud } from '../ui/gameHud';
 import { DEBUG_BOX_SIZE } from '../world/debugBox';
 import {
   LEVEL1_HEIGHT_PX,
@@ -50,9 +50,6 @@ const POWERUP_HEALTH_COLOR = 0x7dcfb6;
 const POWERUP_WEAPON_COLOR = 0xffe066;
 const POWERUP_STATE_COLOR = 0xc77dff;
 const POWERUP_CHUTE_COLOR = 0xf8f9fa;
-const SCORE_COLOR = '#ffe066';
-const HEALTH_COLOR = '#7dcfb6';
-const HEALTH_DEAD_COLOR = '#e63946';
 const HELI_FRAME = 'heli';
 const HELI_HIT_FRAME = 'heli_hit';
 const POWERUP_FRAME = 'powerup';
@@ -63,8 +60,8 @@ const POWERUP_FRAME = 'powerup';
  * (←/→ walk, ↑ jump, ↓ duck, Ctrl boost, Shift bullet-time, mouse aim,
  * hold-to-fire, weapon switch via 1–0 / Q–E (#14), pooled bullets) rendered
  * from the packed atlas (#32), shootable heli variants with hit flash / death
- * boom / score HUD (#12/#13/#20), parachuting powerup crates (#21), and a
- * draggable debug box.
+ * boom (#12/#13/#20), parachuting powerup crates (#21), full in-game HUD
+ * (#23), and a draggable debug box.
  * Game logic lives in plain modules under src/.
  *
  * Audio (#26): click plays the test SFX after Boot unlock; DOM HUD owns
@@ -91,10 +88,7 @@ export class GameScene extends Phaser.Scene {
   private explosionSprites: Phaser.GameObjects.Arc[] = [];
   /** Crate + chute visuals for parachuting pickups (#21). */
   private powerupSprites: Phaser.GameObjects.Container[] = [];
-  private scoreText!: Phaser.GameObjects.Text;
-  private healthText!: Phaser.GameObjects.Text;
-  private healthBarFill!: Phaser.GameObjects.Rectangle;
-  private deathText!: Phaser.GameObjects.Text;
+  private gameHud!: GameHud;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private audioHud: AudioHud | null = null;
   private boostKey!: Phaser.Input.Keyboard.Key;
@@ -128,8 +122,7 @@ export class GameScene extends Phaser.Scene {
     this.createBulletVisuals();
     this.createHeliVisual();
     this.createPowerupVisuals();
-    this.createScoreHud();
-    this.createHealthHud();
+    this.gameHud = new GameHud(this);
     this.createDebugBoxVisual();
     this.setupAudioDemo();
 
@@ -304,8 +297,8 @@ export class GameScene extends Phaser.Scene {
     this.syncEnemyBulletVisuals();
     this.syncHeliVisual();
     this.syncPowerupVisuals();
-    this.syncScoreHud();
-    this.syncHealthHud();
+    this.syncGameHud();
+    this.syncPlayerCombatFx();
     this.syncBoxVisual();
   }
 
@@ -509,72 +502,25 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private createScoreHud(): void {
-    // Temporary on-screen score readout (#13) until the full HUD lands in M6.
-    this.scoreText = this.add
-      .text(40, 40, formatScoreHud(0), {
-        fontFamily: 'monospace',
-        fontSize: '42px',
-        color: SCORE_COLOR,
-      })
-      .setOrigin(0, 0)
-      .setDepth(20);
+  private syncGameHud(): void {
+    const gunDef = getActiveWeaponDef(this.session.inventory);
+    this.gameHud.sync(
+      buildHudSnapshot({
+        score: this.session.score.value,
+        health: this.session.playerHealth,
+        weapon: this.session.weapon,
+        weaponDef: gunDef,
+        weaponIndex: this.session.inventory.activeIndex,
+        boost: this.session.player.boostState,
+        bulletTime: this.session.bulletTime,
+        powerup: this.session.playerPowerup,
+      }),
+    );
   }
 
-  private syncScoreHud(): void {
-    this.scoreText.setText(formatScoreHud(this.session.score.value));
-  }
-
-  private createHealthHud(): void {
-    // Temporary health bar (#18) until the full HUD lands in #23.
-    const barX = 40;
-    const barY = 100;
-    const barW = 280;
-    const barH = 28;
-
-    this.add
-      .rectangle(barX, barY, barW, barH, 0x1b263b)
-      .setOrigin(0, 0)
-      .setStrokeStyle(2, 0x415a77)
-      .setDepth(20);
-
-    this.healthBarFill = this.add
-      .rectangle(barX + 2, barY + 2, barW - 4, barH - 4, 0x2a9d8f)
-      .setOrigin(0, 0)
-      .setDepth(21);
-
-    this.healthText = this.add
-      .text(barX, barY + barH + 8, formatHealthHud(this.session.playerHealth), {
-        fontFamily: 'monospace',
-        fontSize: '28px',
-        color: HEALTH_COLOR,
-      })
-      .setOrigin(0, 0)
-      .setDepth(20);
-
-    this.deathText = this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'YOU DIED', {
-        fontFamily: 'monospace',
-        fontSize: '96px',
-        color: HEALTH_DEAD_COLOR,
-      })
-      .setOrigin(0.5)
-      .setDepth(30)
-      .setVisible(false);
-  }
-
-  private syncHealthHud(): void {
+  /** Hurt flash / PredatorMode alpha — kept out of the HUD view. */
+  private syncPlayerCombatFx(): void {
     const health = this.session.playerHealth;
-    const frac = Math.max(0, Math.min(1, health.health / health.maxHealth));
-    const innerW = 280 - 4;
-    this.healthBarFill.width = Math.max(0, innerW * frac);
-    this.healthBarFill.setFillStyle(health.alive ? 0x2a9d8f : 0xe63946);
-    this.healthText.setText(formatHealthHud(health));
-    this.healthText.setColor(health.alive ? HEALTH_COLOR : HEALTH_DEAD_COLOR);
-    this.deathText.setVisible(!health.alive);
-
-    // Brief red tint on the player hitbox while hurt-flashing / i-framed.
-    // PredatorMode forces near-invisible alpha (#22).
     const powerupAlpha = playerPowerupAlpha(
       this.session.playerPowerup.powerupOn,
       this.session.predatorFlicker,
