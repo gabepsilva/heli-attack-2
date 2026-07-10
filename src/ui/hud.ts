@@ -15,9 +15,9 @@
  *   HUD.powerup.text + powerup.mask._yscale = powerupTime/powerupTime * 100
  *   heroDie: HUD.ammo = "0 x "
  *
- * Meter composition (#106): Flash `Symbol 38` (HUD) places hyperjump,
- * bullettime, and reload left→right along the bottom of the 450×320 stage
- * (not reload under the weapon crate). Coords scaled into 1920×1080 design.
+ * Meter composition (#106): Flash `Symbol 38` (HUD) instance **header**
+ * places put hyperjump → bullettime → reload left-to-right on the 450×320
+ * stage (reload is not under the weapon crate). Coords scale to 1920×1080.
  */
 
 import {
@@ -61,8 +61,19 @@ export const POWERUP_HUD_NAMES: Readonly<Record<number, string>> = {
 export const FLASH_STAGE = { width: 450, height: 320 } as const;
 
 /**
- * Flash `Symbol 38` (HUD) meter instance positions in stage pixels
- * (FLA twips ÷ 20). Left→right order: hyperjump, bullettime, reload.
+ * Flash `Symbol 38` (HUD) meter instance **place** positions in stage pixels
+ * (FLA twips ÷ 20).
+ *
+ * Extraction (OLE `Symbol 38` in `reference/ha2-source/heli2.fla`):
+ * each len-prefixed instance record stores the place translate in the
+ * **header** (`01 00 <tx> <ty> …` before the symbol id / name). A post-name
+ * `13 80 01` translate is the **next-sibling cursor** (equals the next
+ * instance’s header), not this clip’s place — e.g. reload header (407,302)
+ * with post-name (129,302) which is hyperjump’s header. Identity-matrix
+ * clips (`07 80 01`, including bullettime) also use the header place.
+ *
+ * Cross-check: each meter sits just right of its label, and health/weapon
+ * headers land top-right / bottom-right as in the live HUD.
  */
 export const FLASH_HUD_METERS = {
   hyperjump: { x: 129, y: 302 },
@@ -70,7 +81,11 @@ export const FLASH_HUD_METERS = {
   reload: { x: 407, y: 302 },
 } as const;
 
-/** Flash HUD meter labels (left of each bar) in stage pixels. */
+/**
+ * Flash HUD meter labels (left of each bar) in stage pixels.
+ * Text-field place is the header `tx,ty` immediately before the font block
+ * for that string (not the following field’s header).
+ */
 export const FLASH_HUD_METER_LABELS = {
   hyperjump: { x: 58, y: 307, text: 'HyperJump:' },
   bullettime: { x: 210, y: 307, text: 'TimeDistort:' },
@@ -83,6 +98,22 @@ export function flashToDesign(x: number, y: number): { x: number; y: number } {
     x: (x * GAME_WIDTH) / FLASH_STAGE.width,
     y: (y * GAME_HEIGHT) / FLASH_STAGE.height,
   };
+}
+
+/**
+ * Meter ids sorted by Flash stage X (original left→right composition).
+ * Derived from {@link FLASH_HUD_METERS}, not a hard-coded aesthetic order.
+ */
+export function flashHudMeterOrderLeftToRight(): ReadonlyArray<
+  keyof typeof FLASH_HUD_METERS
+> {
+  return (
+    Object.entries(FLASH_HUD_METERS) as Array<
+      [keyof typeof FLASH_HUD_METERS, { x: number; y: number }]
+    >
+  )
+    .sort((a, b) => a[1].x - b[1].x)
+    .map(([id]) => id);
 }
 
 const DESIGN_HYPER_JUMP = flashToDesign(
@@ -183,14 +214,15 @@ export const HUD_LAYOUT = {
  * Under FIT these stay at the corresponding corners of the fitted canvas.
  */
 export function hudDesignAnchors() {
+  const flashOrder = flashHudMeterOrderLeftToRight();
   return {
     health: { x: HUD_LAYOUT.health.x, y: HUD_LAYOUT.health.y },
     score: { x: HUD_LAYOUT.score.x, y: HUD_LAYOUT.score.y },
     weapon: { x: HUD_LAYOUT.weapon.x, y: HUD_LAYOUT.weapon.y },
     powerup: { x: HUD_LAYOUT.powerup.x, y: HUD_LAYOUT.powerup.y },
     meters: {
-      /** Flash L→R order: hyper-jump, bullet-time, reload. */
-      order: ['hyperJump', 'bulletTime', 'reload'] as const,
+      /** Derived from Flash stage X via {@link flashHudMeterOrderLeftToRight}. */
+      order: flashOrder,
       hyperJumpX: HUD_LAYOUT.meters.hyperJumpX,
       bulletTimeX: HUD_LAYOUT.meters.bulletTimeX,
       reloadX: HUD_LAYOUT.meters.reloadX,

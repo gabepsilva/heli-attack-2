@@ -41,6 +41,7 @@ import {
   FLASH_HUD_METER_LABELS,
   FLASH_HUD_METERS,
   FLASH_STAGE,
+  flashHudMeterOrderLeftToRight,
   flashToDesign,
   formatAmmoHud,
   HUD_LAYOUT,
@@ -481,28 +482,60 @@ describe('HUD weapon crate + ammo (issue #105 AC)', () => {
 describe('HUD meter order + Flash positions (issue #106 AC)', () => {
   it('locks Flash stage size and Symbol 38 meter instance coords', () => {
     expect(FLASH_STAGE).toEqual({ width: 450, height: 320 });
-    // Exact FLA twips÷20 positions from Symbol 38 (HUD).
+    // Place positions = FLA instance **header** tx/ty (twips÷20), not the
+    // post-name next-sibling cursor (see FLASH_HUD_METERS doc).
     expect(FLASH_HUD_METERS.hyperjump).toEqual({ x: 129, y: 302 });
     expect(FLASH_HUD_METERS.bullettime).toEqual({ x: 282, y: 302 });
     expect(FLASH_HUD_METERS.reload).toEqual({ x: 407, y: 302 });
-    expect(FLASH_HUD_METER_LABELS.hyperjump.text).toBe('HyperJump:');
-    expect(FLASH_HUD_METER_LABELS.bullettime.text).toBe('TimeDistort:');
-    expect(FLASH_HUD_METER_LABELS.reload.text).toBe('Reload:');
+    expect(FLASH_HUD_METER_LABELS.hyperjump).toEqual({
+      x: 58,
+      y: 307,
+      text: 'HyperJump:',
+    });
+    expect(FLASH_HUD_METER_LABELS.bullettime).toEqual({
+      x: 210,
+      y: 307,
+      text: 'TimeDistort:',
+    });
+    expect(FLASH_HUD_METER_LABELS.reload).toEqual({
+      x: 365,
+      y: 307,
+      text: 'Reload:',
+    });
   });
 
-  it('places hyper-jump, bullet-time, reload in Flash left→right order', () => {
+  it('pairs each Flash label to the meter on its right (name↔coord check)', () => {
+    // Mis-reading the post-name matrix as place swaps reload↔hyperjump and
+    // breaks these pairs — keep them locked to the FLA header places.
+    expect(FLASH_HUD_METER_LABELS.hyperjump.x).toBeLessThan(
+      FLASH_HUD_METERS.hyperjump.x,
+    );
+    expect(FLASH_HUD_METER_LABELS.bullettime.x).toBeLessThan(
+      FLASH_HUD_METERS.bullettime.x,
+    );
+    expect(FLASH_HUD_METER_LABELS.reload.x).toBeLessThan(
+      FLASH_HUD_METERS.reload.x,
+    );
+    // Gaps match the Flash layout (~71–72px label→bar).
+    expect(
+      FLASH_HUD_METERS.hyperjump.x - FLASH_HUD_METER_LABELS.hyperjump.x,
+    ).toBe(71);
+    expect(
+      FLASH_HUD_METERS.bullettime.x - FLASH_HUD_METER_LABELS.bullettime.x,
+    ).toBe(72);
+    expect(FLASH_HUD_METERS.reload.x - FLASH_HUD_METER_LABELS.reload.x).toBe(
+      42,
+    );
+  });
+
+  it('derives L→R order from Flash stage X (hyperjump → bullettime → reload)', () => {
+    const order = flashHudMeterOrderLeftToRight();
+    expect(order).toEqual(['hyperjump', 'bullettime', 'reload']);
     const a = hudDesignAnchors();
-    expect(a.meters.order).toEqual(['hyperJump', 'bulletTime', 'reload']);
-    // Strict L→R on the shared bottom row.
+    expect(a.meters.order).toEqual(order);
+    // Strict L→R on the shared bottom row in design space.
     expect(a.meters.hyperJumpX).toBeLessThan(a.meters.bulletTimeX);
     expect(a.meters.bulletTimeX).toBeLessThan(a.meters.reloadX);
-    expect(HUD_LAYOUT.meters.hyperJumpX).toBeLessThan(
-      HUD_LAYOUT.meters.bulletTimeX,
-    );
-    expect(HUD_LAYOUT.meters.bulletTimeX).toBeLessThan(
-      HUD_LAYOUT.meters.reloadX,
-    );
-    // Shared Flash bottom Y (not split across weapon cluster + center strip).
     expect(a.meters.y).toBe(HUD_LAYOUT.meters.y);
     expect(HUD_LAYOUT.meters.hyperJumpX).toBe(a.meters.hyperJumpX);
     expect(HUD_LAYOUT.meters.bulletTimeX).toBe(a.meters.bulletTimeX);
