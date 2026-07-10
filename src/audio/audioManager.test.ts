@@ -1,3 +1,6 @@
+import { existsSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   AUDIO_DEFAULT_MASTER_VOLUME,
@@ -12,6 +15,8 @@ import {
   type GainNodeLike,
 } from './audioManager';
 import { SOUND_IDS, soundUrls } from './catalog';
+
+const AUDIO_DIR = dirname(fileURLToPath(import.meta.url));
 
 type MockGain = GainNodeLike & { connectedTo: unknown[] };
 type MockSource = AudioBufferSourceLike & {
@@ -111,6 +116,31 @@ describe('audio catalog / constants (issue #26)', () => {
     expect(AUDIO_DEFAULT_MASTER_VOLUME).toBe(1);
     expect(AUDIO_POOL_SIZE).toBe(4);
     expect(AUDIO_MAX_ACTIVE_VOICES).toBe(16);
+  });
+});
+
+describe('play surface without AudioHud (issue #107)', () => {
+  it('removes the AudioHud DOM panel module from the play surface (AC)', () => {
+    expect(existsSync(resolve(AUDIO_DIR, 'audioHud.ts'))).toBe(false);
+  });
+
+  it('keeps AudioManager SFX/music controls without a volume panel (AC)', async () => {
+    const { ctx, sources, masterGains } = createMockContext();
+    const audio = new AudioManager({ createContext: () => ctx });
+    audio.registerBuffer(AUDIO_TEST_SFX_ID, silentBuffer());
+    await audio.unlock();
+
+    // Playback still works with no AudioHud wiring.
+    expect(audio.play(AUDIO_TEST_SFX_ID)).not.toBeNull();
+    expect(sources).toHaveLength(1);
+
+    // Master volume / mute remain API-driven (no DOM panel required).
+    audio.setMasterVolume(0.5);
+    expect(masterGains[0]!.gain.value).toBe(0.5);
+    audio.setMuted(true);
+    expect(audio.effectiveMasterGain()).toBe(0);
+    audio.setMuted(false);
+    expect(audio.effectiveMasterGain()).toBe(0.5);
   });
 });
 

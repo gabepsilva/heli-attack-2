@@ -2,7 +2,7 @@
  * Toggleable debug overlay + physics tuning panel (issue #8).
  *
  * Plain DOM module — no Phaser dependency. GameScene only feeds live state
- * each frame and wires the toggle key. Editing an input calls
+ * each frame and wires the End toggle key (#107). Editing an input calls
  * {@link setTunable} so the next sim tick uses the new constant.
  */
 
@@ -142,7 +142,7 @@ export class DebugOverlay {
     } as CSSStyleDeclaration);
 
     const title = doc.createElement('div');
-    title.textContent = 'Physics debug  (` toggle)';
+    title.textContent = 'Physics debug  (End toggle)';
     Object.assign(title.style, {
       fontWeight: '700',
       marginBottom: '8px',

@@ -24,7 +24,7 @@ export type KeyBinding = {
   event: string;
 };
 
-/** Phaser KeyCodes.LEFT / UP / RIGHT / DOWN / CTRL / SHIFT / Q / E / 0–9. */
+/** Phaser KeyCodes.LEFT / UP / RIGHT / DOWN / CTRL / SHIFT / Q / E / END / 0–9. */
 const PHASER = {
   LEFT: 37,
   UP: 38,
@@ -34,6 +34,8 @@ const PHASER = {
   SHIFT: 16,
   Q: 81,
   E: 69,
+  /** Physics debug overlay toggle (#107) — was BACKTICK (192). */
+  END: 35,
   ZERO: 48,
   ONE: 49,
   TWO: 50,
@@ -72,6 +74,11 @@ export const DEFAULT_KEY_BINDINGS = {
   bulletTime: { code: PHASER.SHIFT, event: 'SHIFT' } satisfies KeyBinding,
   prevWeapon: { code: PHASER.Q, event: 'Q' } satisfies KeyBinding,
   nextWeapon: { code: PHASER.E, event: 'E' } satisfies KeyBinding,
+  /**
+   * Toggle physics debug overlay (#107).
+   * Phaser `keydown-END` — replaces the old backtick/tilde binding (#8).
+   */
+  debugOverlay: { code: PHASER.END, event: 'END' } satisfies KeyBinding,
   /**
    * Digit 0–9 → Phaser keydown event name (Flash number-key map).
    * Index is the digit; value is the `keydown-${name}` suffix.

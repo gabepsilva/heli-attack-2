@@ -57,6 +57,11 @@ describe('keyboardMouse source (issue #29)', () => {
     });
     expect(DEFAULT_KEY_BINDINGS.prevWeapon).toEqual({ code: 81, event: 'Q' });
     expect(DEFAULT_KEY_BINDINGS.nextWeapon).toEqual({ code: 69, event: 'E' });
+    // #107: End toggles physics debug overlay (replaces backtick).
+    expect(DEFAULT_KEY_BINDINGS.debugOverlay).toEqual({
+      code: 35,
+      event: 'END',
+    });
     expect(DEFAULT_KEY_BINDINGS.fire).toBe('MousePrimary');
     // #104: wheel down (positive deltaY) → next; wheel up → prev.
     expect(DEFAULT_KEY_BINDINGS.wheelWeapon.nextDeltaYSign).toBe(1);

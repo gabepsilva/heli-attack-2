@@ -3,6 +3,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { PLAYER, WORLD, resetPhysicsConstants } from '../config/constants';
+import { DEFAULT_KEY_BINDINGS } from '../input/keyboardMouse';
 import {
   DebugOverlay,
   emptyDebugSnapshot,
@@ -68,6 +69,8 @@ describe('DebugOverlay (issue #8)', () => {
     expect(overlay.visible).toBe(true);
     expect(overlay.root.style.display).toBe('block');
     expect(overlay.root.getAttribute('aria-hidden')).toBe('false');
+    // #107: End is the documented toggle (GameScene binds DEFAULT_KEY_BINDINGS.debugOverlay).
+    expect(overlay.root.textContent).toContain('End toggle');
 
     overlay.toggle();
     expect(overlay.visible).toBe(false);
@@ -80,6 +83,17 @@ describe('DebugOverlay (issue #8)', () => {
 
     overlay.destroy();
     expect(document.getElementById('ha2-debug-overlay')).toBeNull();
+  });
+
+  it('End key binding is the debug overlay toggle (#107 AC)', () => {
+    expect(DEFAULT_KEY_BINDINGS.debugOverlay).toEqual({
+      code: 35,
+      event: 'END',
+    });
+    // Phaser keydown event GameScene wires: `keydown-${event}` → keydown-END.
+    expect(`keydown-${DEFAULT_KEY_BINDINGS.debugOverlay.event}`).toBe(
+      'keydown-END',
+    );
   });
 
   it('honors ?debug=0 so demos start with the overlay hidden', () => {

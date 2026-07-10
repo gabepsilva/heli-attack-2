@@ -11,7 +11,6 @@ import {
   playerSpritePlacement,
   scaledDisplaySize,
 } from '../art/spritePlacement';
-import { AudioHud } from '../audio/audioHud';
 import { getGameAudio } from '../audio/gameAudio';
 import { GameSfx } from '../audio/gameSfx';
 import { GameParticles } from '../fx/gameParticles';
@@ -123,7 +122,7 @@ const TILE_FRAME = 'tile_floor';
  *
  * Audio (#26/#27): menu unlock + catalog load; GameScene starts looping music
  * and drains sim SFX events (weapon / hurt / hyper-jump / heliboom / powerups).
- * DOM HUD owns master volume + mute. Pooling / gain math lives in AudioManager.
+ * Pooling / gain math lives in AudioManager (no in-play volume panel — #107).
  *
  * Particles (#35): pooled Phaser emitters for explosions, impacts, smoke,
  * debris, muzzle flashes, and blood — drained from sim FX events each frame.
@@ -134,8 +133,8 @@ const TILE_FRAME = 'tile_floor';
  * Perf (#37): rolling FPS / frame-budget HUD (F3), fixed pool audit, single
  * atlas batching, and a measured peak-load report under the mobile frame budget.
  *
- * The debug overlay (#8) is a DOM panel outside Phaser so it can host real
- * `<input>` controls for live physics tuning and toggle off for clean demos.
+ * The debug overlay (#8/#107) is a DOM panel outside Phaser so it can host real
+ * `<input>` controls for live physics tuning; End toggles it for clean demos.
  */
 export class GameScene extends Phaser.Scene {
   private readonly session = new SimSession();
@@ -198,7 +197,6 @@ export class GameScene extends Phaser.Scene {
   private rightKey!: Phaser.Input.Keyboard.Key;
   private jumpKey!: Phaser.Input.Keyboard.Key;
   private duckKey!: Phaser.Input.Keyboard.Key;
-  private audioHud: AudioHud | null = null;
   private gameSfx: GameSfx | null = null;
   private gameParticles: GameParticles | null = null;
   private gameCameraFeel: GameCameraFeel | null = null;
@@ -239,7 +237,6 @@ export class GameScene extends Phaser.Scene {
     this.perfMonitor.reset();
     this.gameSfx?.destroy();
     this.gameSfx = null;
-    this.audioHud?.destroy();
     this.overlay?.destroy();
     const search =
       typeof window !== 'undefined' ? window.location.search : undefined;
@@ -307,7 +304,7 @@ export class GameScene extends Phaser.Scene {
     this.add.text(
       40,
       GAME_HEIGHT - 60,
-      '←/→ walk · ↑ jump · Ctrl boost · Shift slow-mo · ↓ duck · mouse/pad aim · hold fire/RT · 1–0 / Q–E / wheel / LB–RB weapons · -/= timeStep · drag box · ` debug · P/Esc pause',
+      '←/→ walk · ↑ jump · Ctrl boost · Shift slow-mo · ↓ duck · mouse/pad aim · hold fire/RT · 1–0 / Q–E / wheel / LB–RB weapons · -/= timeStep · drag box · End debug · P/Esc pause',
       {
         fontFamily: 'monospace',
         fontSize: '20px',
@@ -351,8 +348,8 @@ export class GameScene extends Phaser.Scene {
     this.escKey.on('down', () => {
       this.enterPause();
     });
-    // Backtick / tilde key — toggle overlay for clean demos (issue #8).
-    this.input.keyboard?.on('keydown-BACKTICK', () => {
+    // End — toggle physics debug overlay (#107; was backtick in #8).
+    this.input.keyboard?.on(`keydown-${bind.debugOverlay.event}`, () => {
       this.overlay?.toggle();
     });
     // F3 — toggle perf HUD (issue #37).
@@ -394,8 +391,6 @@ export class GameScene extends Phaser.Scene {
       this.perfHud = null;
       this.gameSfx?.destroy();
       this.gameSfx = null;
-      this.audioHud?.destroy();
-      this.audioHud = null;
       this.overlay?.destroy();
       this.overlay = null;
     });
@@ -413,7 +408,6 @@ export class GameScene extends Phaser.Scene {
   /** Unlock (if needed), load catalog, start looping music, bind SFX (#27). */
   private setupGameAudio(): void {
     const audio = getGameAudio();
-    this.audioHud = new AudioHud({ audio });
     this.gameSfx = new GameSfx({ audio });
 
     void (async () => {
@@ -426,7 +420,6 @@ export class GameScene extends Phaser.Scene {
         // Partial catalog still plays whatever decoded.
       }
       this.gameSfx?.startMusic();
-      this.audioHud?.refreshStatus();
     })();
   }
 
