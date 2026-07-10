@@ -1,13 +1,67 @@
-import { describe, expect, it } from 'vitest';
-import { PLAYER } from '../config/constants';
+import { afterEach, describe, expect, it } from 'vitest';
+import {
+  PLAYER,
+  PLAYER_DEFAULTS,
+  resetPhysicsConstants,
+} from '../config/constants';
+import { setTunable } from '../config/physicsTuning';
 import { applyHorizontalWalk } from './walkPhysics';
 
 describe('applyHorizontalWalk (spec §Player physics)', () => {
+  afterEach(() => {
+    resetPhysicsConstants();
+  });
+
   it('locks accel / input cap / hard cap / friction to exact spec values', () => {
     expect(PLAYER.walkAccel).toBe(1);
     expect(PLAYER.walkCap).toBe(5);
     expect(PLAYER.hardCap).toBe(6);
     expect(PLAYER.friction).toBe(1);
+  });
+
+  /**
+   * Issue #94 — supersedes any “bump walkCap 5 → 6” proposal. Defaults stay
+   * Flash-exact; live PLAYER.* remain tunable (#8) without changing seeds.
+   */
+  describe('issue #94 — Flash walk cap (no bump)', () => {
+    it('keeps PLAYER_DEFAULTS at Flash walkCap ±5 / hardCap ±6 (not bumped)', () => {
+      expect(PLAYER_DEFAULTS.walkAccel).toBe(1);
+      expect(PLAYER_DEFAULTS.friction).toBe(1);
+      expect(PLAYER_DEFAULTS.walkCap).toBe(5);
+      expect(PLAYER_DEFAULTS.walkCap).not.toBe(6);
+      expect(PLAYER_DEFAULTS.hardCap).toBe(6);
+      // Input ceiling and knockback ceiling stay distinct (Flash heroAction).
+      expect(PLAYER_DEFAULTS.walkCap).toBeLessThan(PLAYER_DEFAULTS.hardCap);
+      expect(PLAYER).toMatchObject({
+        walkAccel: PLAYER_DEFAULTS.walkAccel,
+        walkCap: PLAYER_DEFAULTS.walkCap,
+        hardCap: PLAYER_DEFAULTS.hardCap,
+        friction: PLAYER_DEFAULTS.friction,
+      });
+    });
+
+    it('never reaches ±6 from walk input alone (walkCap stays below hardCap)', () => {
+      let right = 0;
+      let left = 0;
+      for (let i = 0; i < 20; i += 1) {
+        right = applyHorizontalWalk(right, { left: false, right: true });
+        left = applyHorizontalWalk(left, { left: true, right: false });
+      }
+      expect(right).toBe(5);
+      expect(left).toBe(-5);
+      expect(right).toBeLessThan(PLAYER.hardCap);
+      expect(left).toBeGreaterThan(-PLAYER.hardCap);
+    });
+
+    it('keeps Flash defaults after live walkCap tuning is reset', () => {
+      setTunable('walkCap', 6);
+      expect(PLAYER.walkCap).toBe(6);
+      expect(PLAYER_DEFAULTS.walkCap).toBe(5);
+
+      resetPhysicsConstants();
+      expect(PLAYER.walkCap).toBe(5);
+      expect(PLAYER.hardCap).toBe(6);
+    });
   });
 
   it('ramps +1/frame while holding right and stops at the ±5 input cap', () => {

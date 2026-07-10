@@ -50,6 +50,7 @@ describe('config/constants (spec seed)', () => {
 
   it('seeds PLAYER physics from the spec', () => {
     expect(PLAYER_DEFAULTS.health).toBe(100);
+    // Issue #94 — Flash heroAction walk values (walkCap ±5, not bumped to 6).
     expect(PLAYER_DEFAULTS.walkAccel).toBe(1);
     expect(PLAYER_DEFAULTS.walkCap).toBe(5);
     expect(PLAYER_DEFAULTS.hardCap).toBe(6);
