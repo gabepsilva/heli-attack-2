@@ -356,15 +356,18 @@ describe('SimSession', () => {
     // Prior slot untouched.
     expect(session.inventory.slots[0]!.reloadTime).toBe(mgReload);
 
-    // Fire Akimbo once — bullet uses Akimbo speed 8 / damage 9.
+    // Fire Akimbo once — twin-stream (#15): two bullets at speed 8 / damage 9.
     session.bullets.reset();
     const before = session.bullets.acquireCount;
     session.fireHeld = true;
     session.update(1000 / 30);
-    expect(session.bullets.acquireCount).toBe(before + 1);
-    const bullet = session.bullets.slots.find((b) => b.active)!;
-    expect(bullet.damage).toBe(WEAPONS[1].damage);
-    expect(bullet.speed).toBe(WEAPONS[1].speed);
+    expect(session.bullets.acquireCount).toBe(before + 2);
+    const active = session.bullets.slots.filter((b) => b.active);
+    expect(active).toHaveLength(2);
+    for (const bullet of active) {
+      expect(bullet.damage).toBe(WEAPONS[1].damage);
+      expect(bullet.speed).toBe(WEAPONS[1].speed);
+    }
     expect(session.weapon.bullets).toBe(49);
 
     expect(selectWeaponByDigitKey(session.inventory, 1)).toBe(true);
@@ -375,5 +378,55 @@ describe('SimSession', () => {
     expect(session.inventory.activeIndex).toBe(0);
     expect(session.weapon.shots).toBe(0);
     expect(session.inventory.slots[1]!.bullets).toBe(50);
+  });
+
+  it('Shotgun spawns a five-pellet spread; RPG is slower than GrenadeLauncher (#15)', () => {
+    const session = new SimSession();
+    // Aim straight +X so gunAim settles near 0° (player.step overwrites gunAim).
+    session.player.mouse = {
+      x: session.player.gunPivot.x + 400,
+      y: session.player.gunPivot.y,
+    };
+    for (let i = 0; i < 60; i += 1) {
+      session.update(1000 / 30);
+    }
+
+    // Shotgun (digit 3 → index 2).
+    expect(selectWeaponByDigitKey(session.inventory, 3)).toBe(true);
+    expect(session.inventory.activeIndex).toBe(2);
+    session.bullets.reset();
+    session.fireHeld = true;
+    session.update(1000 / 30);
+    expect(session.bullets.acquireCount).toBe(5);
+    const pellets = session.bullets.slots.filter((b) => b.active);
+    expect(pellets).toHaveLength(5);
+    const rotations = pellets.map((b) => b.rotationDeg).sort((a, b) => a - b);
+    const mid = rotations[2]!;
+    expect(rotations.map((r) => Math.round(r - mid))).toEqual([
+      -10, -5, 0, 5, 10,
+    ]);
+    for (const p of pellets) {
+      expect(p.speed).toBe(WEAPONS[2].speed);
+      expect(p.damage).toBe(WEAPONS[2].damage);
+    }
+
+    // GrenadeLauncher (digit 5 → index 4) vs RPG (digit 6 → index 5).
+    expect(selectWeaponByDigitKey(session.inventory, 5)).toBe(true);
+    session.bullets.reset();
+    session.weapon.reloadTime = Number.POSITIVE_INFINITY;
+    session.update(1000 / 30);
+    const grenade = session.bullets.slots.find((b) => b.active)!;
+    expect(grenade.speed).toBe(15);
+    expect(grenade.damage).toBe(75);
+    const grenadeSpeed = grenade.speed;
+
+    expect(selectWeaponByDigitKey(session.inventory, 6)).toBe(true);
+    session.bullets.reset();
+    session.weapon.reloadTime = Number.POSITIVE_INFINITY;
+    session.update(1000 / 30);
+    const rpg = session.bullets.slots.find((b) => b.active)!;
+    expect(rpg.speed).toBe(4);
+    expect(rpg.damage).toBe(75);
+    expect(rpg.speed).toBeLessThan(grenadeSpeed);
   });
 });

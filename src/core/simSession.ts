@@ -16,6 +16,7 @@ import {
   createScoreState,
   type ScoreState,
 } from '../combat/score';
+import { planWeaponFire } from '../combat/gunFire';
 import { stepWeaponFire, type WeaponState } from '../combat/weapon';
 import {
   createWeaponInventory,
@@ -170,22 +171,39 @@ export class SimSession {
   }
 
   /**
-   * Spawn one pooled bullet from the current muzzle along the gun aim,
-   * using the active weapon's speed/damage.
-   * Returns false if the pool is exhausted (capacity never grows).
+   * Spawn pooled projectile(s) for the active weapon from the current muzzle
+   * (#15 ballistic patterns: akimbo twin-stream, shotgun spreads, etc.).
+   * Returns false only when the first acquire fails (pool exhausted — capacity
+   * never grows). Partial multi-pellet spawns still return true.
    */
   tryFire(): boolean {
     const { muzzle, gunAim } = this.player;
+    const weapon = this.weapon;
     const def = getActiveWeaponDef(this.inventory);
-    return (
-      this.bullets.acquire(
-        muzzle.x,
-        muzzle.y,
-        gunAim.rotationDeg,
-        def.speed,
-        def.damage,
-      ) !== null
+    const spawns = planWeaponFire(
+      weapon.type,
+      muzzle.x,
+      muzzle.y,
+      gunAim.rotationDeg,
+      def,
     );
+    if (spawns.length === 0) {
+      return false;
+    }
+    let any = false;
+    for (const spawn of spawns) {
+      const bullet = this.bullets.acquire(
+        spawn.x,
+        spawn.y,
+        spawn.rotationDeg,
+        spawn.speed,
+        spawn.damage,
+      );
+      if (bullet !== null) {
+        any = true;
+      }
+    }
+    return any;
   }
 
   private simTick(): void {
