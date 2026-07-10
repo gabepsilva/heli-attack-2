@@ -7,6 +7,8 @@ import { GameScene } from './scenes/GameScene';
 import { MenuScene } from './scenes/MenuScene';
 import { PauseScene } from './scenes/PauseScene';
 import { mountFullscreenButton } from './ui/fullscreenButton';
+import { mountOrientationGuard } from './ui/orientationGuard';
+import { mountTouchControlsHud } from './ui/touchControlsHud';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -20,13 +22,12 @@ const config: Phaser.Types.Core.GameConfig = {
 
 const game = new Phaser.Game(config);
 
-// Mount inside the fullscreen target so the button stays visible in FS
+// Mount inside the fullscreen target so chrome stays visible in FS
 // (Fullscreen API only paints the target element and its descendants).
-const fullscreenParent =
-  document.getElementById(SCALE_PARENT_ID) ?? document.body;
+const chromeParent = document.getElementById(SCALE_PARENT_ID) ?? document.body;
 
 mountFullscreenButton({
-  parent: fullscreenParent,
+  parent: chromeParent,
   scale: {
     isFullscreen: () => game.scale.isFullscreen,
     startFullscreen: () => {
@@ -37,3 +38,7 @@ mountFullscreenButton({
     },
   },
 });
+
+// Issue #30: portrait rotate prompt + on-screen touch controls (touch devices).
+mountOrientationGuard({ parent: chromeParent });
+mountTouchControlsHud({ parent: chromeParent });

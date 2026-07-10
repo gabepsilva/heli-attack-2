@@ -43,9 +43,15 @@ import {
   type IntentActionBuffer,
 } from '../input/keyboardMouse';
 import { applyPlayerIntent } from '../input/playerIntent';
+import {
+  mergePlayerIntents,
+  sampleTouchIntent,
+  stickActive,
+} from '../input/touchControls';
 import { DebugOverlay } from '../tooling/debugOverlay';
 import { buildHudSnapshot } from '../ui/hud';
 import { GameHud } from '../ui/gameHud';
+import { getMountedTouchControlsHud } from '../ui/touchControlsHud';
 import { DEBUG_BOX_SIZE } from '../world/debugBox';
 import {
   LEVEL1_HEIGHT_PX,
@@ -81,8 +87,9 @@ const POWERUP_FRAME = 'powerup';
  * (#23), menu/pause/game-over session loop (#24), and a draggable debug box.
  * Game logic lives in plain modules under src/.
  *
- * Input (#29): keyboard/mouse only feed the intent layer; gameplay reads
- * {@link applyPlayerIntent} output on the session — never raw keys.
+ * Input (#29/#30): keyboard/mouse and on-screen touch feed the intent layer;
+ * gameplay reads {@link applyPlayerIntent} output on the session — never raw
+ * keys or touch events. Portrait shows a rotate overlay (#30).
  *
  * Audio (#26/#27): menu unlock + catalog load; GameScene starts looping music
  * and drains sim SFX events (weapon / hurt / hyper-jump / heliboom / powerups).
@@ -284,9 +291,14 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
-    // Keyboard/mouse → intent → session. Gameplay never reads keys directly (#29).
+    // Keyboard/mouse (+ touch #30) → intent → session. Never raw keys/touches.
     const pointer = this.input.activePointer;
-    const intent = sampleKeyboardMouseIntent({
+    const allowFire =
+      this.flow.phase === 'playing' && !this.session.debugBox.dragging;
+    const touchHud = getMountedTouchControlsHud();
+    const touchMode = touchHud?.isVisible() ?? false;
+    // In touch mode, ignore canvas pointer fire/aim — sticks own those slots.
+    const kbIntent = sampleKeyboardMouseIntent({
       held: {
         left: this.leftKey.isDown,
         right: this.rightKey.isDown,
@@ -296,15 +308,36 @@ export class GameScene extends Phaser.Scene {
         bulletTime: this.bulletTimeKey.isDown,
       },
       pointer: {
-        aimX: pointer.worldX - this.arenaOriginX,
-        aimY: pointer.worldY - this.arenaOriginY,
-        primaryDown: pointer.isDown,
-        rightDown: pointer.rightButtonDown(),
+        aimX: touchMode
+          ? this.session.player.mouse.x
+          : pointer.worldX - this.arenaOriginX,
+        aimY: touchMode
+          ? this.session.player.mouse.y
+          : pointer.worldY - this.arenaOriginY,
+        primaryDown: touchMode ? false : pointer.isDown,
+        rightDown: touchMode ? false : pointer.rightButtonDown(),
       },
       actions: this.intentActions,
-      allowFire:
-        this.flow.phase === 'playing' && !this.session.debugBox.dragging,
+      allowFire,
     });
+    let intent = kbIntent;
+    if (touchHud && touchMode) {
+      const touchSample = touchHud.getSample(allowFire);
+      const touchIntent = sampleTouchIntent(
+        touchSample,
+        this.session.player.body,
+        {
+          fallbackAimX: kbIntent.aimX,
+          fallbackAimY: kbIntent.aimY,
+        },
+      );
+      intent = mergePlayerIntents(kbIntent, touchIntent, {
+        touchAimActive: stickActive(
+          touchSample.aimStickX,
+          touchSample.aimStickY,
+        ),
+      });
+    }
     applyPlayerIntent(this.session, intent);
 
     const wasDying = this.flow.phase === 'dying';
