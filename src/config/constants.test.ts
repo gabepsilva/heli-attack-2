@@ -6,6 +6,7 @@ import {
   GUN,
   HEALTH_PICKUP,
   HELI,
+  HELI_LOOK_TINT,
   HELI_SPAWN,
   PLAYER,
   PLAYER_COMBAT,
@@ -79,6 +80,21 @@ describe('config/constants (spec seed)', () => {
       spriteH: 106,
       onScreenFramesMin: 150,
       onScreenFramesRand: 100,
+      lookCount: 2,
+      hoverAccelXDiv: 200,
+      hoverAccelYDiv: 100,
+      hoverDriftPeriod: 75,
+      hoverVertPeriod: 40,
+      strafeAccelXDiv: 80,
+      strafeAccelYDiv: 120,
+      strafeDriftPeriod: 40,
+      strafeVertPeriod: 55,
+      exitAccelXDiv: 100,
+      exitAccelYDiv: 20,
+      exitGotoRange: 10,
+      exitLeftMax: 4,
+      exitRightMax: 8,
+      exitMarginMul: 2,
       explosionDurationFrames: 20,
       hitFlashFrames: 1,
       fireIntervalFrames: 16,
@@ -87,6 +103,8 @@ describe('config/constants (spec seed)', () => {
       gunTurnDivisorMin: 1,
       muzzleOffset: 40,
     });
+    expect(HELI_LOOK_TINT).toEqual([0xf4a261, 0x4cc9f0]);
+    expect(HELI_LOOK_TINT).toHaveLength(HELI.lookCount);
     expect(HELI_SPAWN).toEqual({
       initialConcurrent: 1,
       killsPerExtraHeli: 3,

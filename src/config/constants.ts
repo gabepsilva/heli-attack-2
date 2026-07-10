@@ -119,6 +119,41 @@ export const HELI = {
   /** Flash `onscreen = 150+random(100)` spawn timer. */
   onScreenFramesMin: 150,
   onScreenFramesRand: 100,
+  /**
+   * Flash `gotoAndStop(random(2)+1)` — two visual frames / looks (#20).
+   */
+  lookCount: 2,
+  /**
+   * Hover (look 0): soft player track — Flash on-screen `dx/200`, `dy/100`.
+   */
+  hoverAccelXDiv: 200,
+  hoverAccelYDiv: 100,
+  /** Hover X retarget period (Flash `xt++%75 == 1`). */
+  hoverDriftPeriod: 75,
+  /** Hover Y retarget period (Flash `yt++%40 == 1`). */
+  hoverVertPeriod: 40,
+  /**
+   * Strafe (look 1): snappier lateral sweeps — distinguishable from hover (#20).
+   * Wider X chase, more frequent retarget, slightly softer vertical.
+   */
+  strafeAccelXDiv: 80,
+  strafeAccelYDiv: 120,
+  strafeDriftPeriod: 40,
+  strafeVertPeriod: 55,
+  /**
+   * Flash off-screen / leaving accel: `dx/100`, `dy/20` when outside the
+   * viewport or after the onscreen timer expires.
+   */
+  exitAccelXDiv: 100,
+  exitAccelYDiv: 20,
+  /**
+   * Flash exit pick: `goto = random(10)`; `<4` left, `<8` right, else top.
+   */
+  exitGotoRange: 10,
+  exitLeftMax: 4,
+  exitRightMax: 8,
+  /** How far past the arena edge exit targets sit (sprite widths). */
+  exitMarginMul: 2,
   /** Placeholder boom VFX lifetime (sim frames). */
   explosionDurationFrames: 20,
   /**
@@ -142,6 +177,12 @@ export const HELI = {
   /** Muzzle distance from heli center along the barrel (px). */
   muzzleOffset: 40,
 } as const;
+
+/**
+ * Scene tints for the two Flash heli looks (#20). Look 0 = hover (warm),
+ * look 1 = strafe (cool) so the behaviors read as distinct on screen.
+ */
+export const HELI_LOOK_TINT = [0xf4a261, 0x4cc9f0] as const;
 
 /**
  * Replacement spawn treadmill + difficulty ramp (#19).

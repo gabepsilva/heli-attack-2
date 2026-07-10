@@ -270,6 +270,7 @@ export class SimSession {
         playerBody.y,
         LEVEL1_WIDTH_PX,
         LEVEL1_HEIGHT_PX,
+        this.spawnRng,
       );
       if (this.playerHealth.alive) {
         stepHeliCombat(
