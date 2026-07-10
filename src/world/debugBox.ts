@@ -32,6 +32,7 @@ export class DebugBox {
     this.body.vx = 0;
     this.body.vy = 0;
     this.body.onGround = false;
+    this.body.onCeiling = false;
   }
 
   /**

@@ -11,6 +11,8 @@ export interface AabbBody {
   vy: number;
   /** True after a downward collision snap this frame (resting on a floor). */
   onGround: boolean;
+  /** True after an upward collision snap this frame (hit a ceiling). */
+  onCeiling: boolean;
 }
 
 export function createAabbBody(
@@ -19,5 +21,5 @@ export function createAabbBody(
   w: number,
   h: number,
 ): AabbBody {
-  return { x, y, w, h, vx: 0, vy: 0, onGround: false };
+  return { x, y, w, h, vx: 0, vy: 0, onGround: false, onCeiling: false };
 }

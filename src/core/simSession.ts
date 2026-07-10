@@ -2,17 +2,17 @@ import { FixedTimestepAccumulator } from './fixedTimestep';
 import { TimeScale } from './timeScale';
 import { PLAYER_SPAWN, Player } from '../player/player';
 import { DebugBox } from '../world/debugBox';
-import { createTestArena } from '../world/testArena';
+import { createLevel1 } from '../world/level1';
 import type { TileMap } from '../world/tileMap';
 
-/** Spawn point above the left floor shoulder (offset from the player). */
+/** Spawn point above open ground near the left side of level 1. */
 export const DEBUG_BOX_SPAWN = { x: 200, y: 200 } as const;
 
 /**
  * Per-run sim state for GameScene: fixed-step accumulator, timeStep, HUD
- * counters, tile arena, player, and the debug box. Lives outside Phaser so
- * scene restarts and the update loop are unit-testable (Phaser reuses the
- * scene instance; only create() re-runs).
+ * counters, original level map, player, and the debug box. Lives outside
+ * Phaser so scene restarts and the update loop are unit-testable (Phaser
+ * reuses the scene instance; only create() re-runs).
  */
 export class SimSession {
   readonly accumulator = new FixedTimestepAccumulator();
@@ -23,8 +23,8 @@ export class SimSession {
   secondTimerMs = 0;
   displayedSimRate = 0;
 
-  /** Static test arena — rebuilt on reset so callers always see a fresh map. */
-  map: TileMap = createTestArena();
+  /** Original HA2 playfield — rebuilt on reset so callers always see a fresh map. */
+  map: TileMap = createLevel1();
 
   /** Controllable player (walk accel/cap/friction + gravity + tile resolve). */
   readonly player = new Player(PLAYER_SPAWN.x, PLAYER_SPAWN.y);
@@ -40,8 +40,14 @@ export class SimSession {
     this.ticksThisSecond = 0;
     this.secondTimerMs = 0;
     this.displayedSimRate = 0;
-    this.map = createTestArena();
-    this.player.input = { left: false, right: false };
+    this.map = createLevel1();
+    this.player.input = {
+      left: false,
+      right: false,
+      jump: false,
+      duck: false,
+      boost: false,
+    };
     this.player.placeAt(PLAYER_SPAWN.x, PLAYER_SPAWN.y);
     this.debugBox.dragging = false;
     this.debugBox.placeAt(DEBUG_BOX_SPAWN.x, DEBUG_BOX_SPAWN.y);

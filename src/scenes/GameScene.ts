@@ -3,18 +3,13 @@ import { GUN, PLAYER, SIM_HZ, WORLD } from '../config/constants';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/game';
 import { SCENE_KEYS } from '../config/scenes';
 import { SimSession } from '../core/simSession';
+import { DebugOverlay } from '../tooling/debugOverlay';
 import { DEBUG_BOX_SIZE } from '../world/debugBox';
 import {
-  TEST_ARENA_HEIGHT_PX,
-  TEST_ARENA_WIDTH_PX,
-  isArenaSolid,
-} from '../world/testArena';
-
-const HUD_STYLE: Phaser.Types.GameObjects.Text.TextStyle = {
-  fontFamily: 'monospace',
-  fontSize: '22px',
-  color: '#e8e8e8',
-};
+  LEVEL1_HEIGHT_PX,
+  LEVEL1_WIDTH_PX,
+  isLevelSolid,
+} from '../world/level1';
 
 const TILE_COLOR = 0x3d5a80;
 const BOX_COLOR = 0xe09f3e;
@@ -27,22 +22,23 @@ const MUZZLE_COLOR = 0xff6b6b;
 
 /**
  * Thin Phaser shell: banks render deltas into a 30 Hz fixed sim, draws the
- * hand-authored tile arena, hosts a controllable player (←/→ walk + mouse aim),
- * and a draggable debug box. Game logic lives in plain modules under src/.
+ * original level layout (placeholder tiles), hosts a controllable player
+ * (←/→ walk, ↑ jump, ↓ duck, Ctrl boost, mouse aim), and a draggable debug box.
+ * Game logic lives in plain modules under src/.
+ *
+ * The debug overlay (#8) is a DOM panel outside Phaser so it can host real
+ * `<input>` controls for live physics tuning and toggle off for clean demos.
  */
 export class GameScene extends Phaser.Scene {
   private readonly session = new SimSession();
 
-  private rateText!: Phaser.GameObjects.Text;
-  private timeStepText!: Phaser.GameObjects.Text;
-  private playerText!: Phaser.GameObjects.Text;
-  private aimText!: Phaser.GameObjects.Text;
-  private boxText!: Phaser.GameObjects.Text;
   private boxRect!: Phaser.GameObjects.Rectangle;
   private playerRect!: Phaser.GameObjects.Rectangle;
   private gunRect!: Phaser.GameObjects.Rectangle;
   private muzzleDot!: Phaser.GameObjects.Arc;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
+  private boostKey!: Phaser.Input.Keyboard.Key;
+  private overlay: DebugOverlay | null = null;
   private arenaOriginX = 0;
   private arenaOriginY = 0;
 
@@ -53,12 +49,16 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     // Phaser reuses this instance across scene.start — only create() re-runs.
     this.session.reset();
+    this.overlay?.destroy();
+    this.overlay = new DebugOverlay({
+      search:
+        typeof window !== 'undefined' ? window.location.search : undefined,
+    });
 
     this.cameras.main.setBackgroundColor('#0d1b2a');
 
-    this.arenaOriginX = Math.floor((GAME_WIDTH - TEST_ARENA_WIDTH_PX) / 2);
-    this.arenaOriginY =
-      Math.floor((GAME_HEIGHT - TEST_ARENA_HEIGHT_PX) / 2) - 40;
+    this.arenaOriginX = Math.floor((GAME_WIDTH - LEVEL1_WIDTH_PX) / 2);
+    this.arenaOriginY = Math.floor((GAME_HEIGHT - LEVEL1_HEIGHT_PX) / 2) - 40;
 
     this.drawArena();
     this.createPlayerVisual();
@@ -66,26 +66,32 @@ export class GameScene extends Phaser.Scene {
     this.createDebugBoxVisual();
 
     this.cursors = this.input.keyboard!.createCursorKeys();
+    this.boostKey = this.input.keyboard!.addKey(
+      Phaser.Input.Keyboard.KeyCodes.CTRL,
+    );
 
     this.add
-      .text(GAME_WIDTH / 2, 28, 'Walk ←/→ · aim with mouse', {
-        fontFamily: 'Arial, Helvetica, sans-serif',
-        fontSize: '36px',
-        color: '#f5f5f5',
-      })
+      .text(
+        GAME_WIDTH / 2,
+        28,
+        '↑ jump · Ctrl boost · ↓ duck · ←/→ walk · mouse aim',
+        {
+          fontFamily: 'Arial, Helvetica, sans-serif',
+          fontSize: '36px',
+          color: '#f5f5f5',
+        },
+      )
       .setOrigin(0.5);
-
-    this.rateText = this.add.text(40, 70, '', HUD_STYLE);
-    this.timeStepText = this.add.text(40, 98, '', HUD_STYLE);
-    this.playerText = this.add.text(40, 126, '', HUD_STYLE);
-    this.aimText = this.add.text(40, 154, '', HUD_STYLE);
-    this.boxText = this.add.text(40, 182, '', HUD_STYLE);
 
     this.add.text(
       40,
       GAME_HEIGHT - 60,
-      '←/→ walk · mouse aim · drag box · 1/2 = timeStep 1.0/0.5 · Esc → BootScene',
-      { ...HUD_STYLE, fontSize: '20px', color: '#9ab' },
+      '←/→ walk · ↑ jump · Ctrl boost · ↓ duck · mouse aim · drag box · ` debug · 1/2 timeStep · Esc → Boot',
+      {
+        fontFamily: 'monospace',
+        fontSize: '20px',
+        color: '#9ab',
+      },
     );
 
     this.input.keyboard?.on('keydown-ONE', () => {
@@ -97,12 +103,24 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-ESC', () => {
       this.scene.start(SCENE_KEYS.Boot);
     });
+    // Backtick / tilde key — toggle overlay for clean demos (issue #8).
+    this.input.keyboard?.on('keydown-BACKTICK', () => {
+      this.overlay?.toggle();
+    });
+
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.overlay?.destroy();
+      this.overlay = null;
+    });
   }
 
   update(_time: number, delta: number): void {
     this.session.player.input = {
       left: this.cursors.left.isDown,
       right: this.cursors.right.isDown,
+      jump: this.cursors.up.isDown,
+      duck: this.cursors.down.isDown,
+      boost: this.boostKey.isDown,
     };
     this.session.player.mouse = {
       x: this.input.activePointer.worldX - this.arenaOriginX,
@@ -111,30 +129,25 @@ export class GameScene extends Phaser.Scene {
 
     this.session.update(delta);
 
-    this.rateText.setText(
-      `Sim rate: ${this.session.displayedSimRate.toFixed(1)} /s  (target ${SIM_HZ})`,
-    );
-    this.timeStepText.setText(
-      `timeStep: ${this.session.timeScale.timeStep.toFixed(2)}`,
-    );
     const p = this.session.player.body;
-    this.playerText.setText(
-      `player vx=${p.vx.toFixed(0)}  vy=${p.vy.toFixed(1)}  ` +
-        `(${p.x.toFixed(0)}, ${p.y.toFixed(0)})  ` +
-        `${p.onGround ? 'grounded' : 'air'}  ` +
-        `cap±${PLAYER.walkCap}/hard±${PLAYER.hardCap}`,
-    );
-    const aim = this.session.player.gunAim;
-    const muzzle = this.session.player.muzzle;
-    this.aimText.setText(
-      `aim ${aim.rotationDeg.toFixed(0)}°  ` +
-        `${aim.flipY ? 'flipY' : 'upright'}  ` +
-        `muzzle (${muzzle.x.toFixed(0)}, ${muzzle.y.toFixed(0)})`,
-    );
-    const b = this.session.debugBox.body;
-    this.boxText.setText(
-      `box (${b.x.toFixed(0)}, ${b.y.toFixed(0)})  vy=${b.vy.toFixed(1)}  ${b.onGround ? 'grounded' : 'air'}`,
-    );
+    const pl = this.session.player;
+    this.overlay?.update({
+      simRate: this.session.displayedSimRate,
+      simHzTarget: SIM_HZ,
+      timeStep: this.session.timeScale.timeStep,
+      vx: p.vx,
+      vy: p.vy,
+      x: p.x,
+      y: p.y,
+      onGround: p.onGround,
+      ducking: pl.ducking,
+      jump: pl.jumpState.jump,
+      jump2: pl.jumpState.jump2,
+      jumpUp: pl.jumpState.up,
+      boostCharge: pl.boostState.charge,
+      boostChargeMax: PLAYER.boostChargeFrames,
+      hjump: pl.boostState.hjump,
+    });
 
     this.syncPlayerVisual();
     this.syncGunVisual();
@@ -148,7 +161,7 @@ export class GameScene extends Phaser.Scene {
 
     for (let row = 0; row < map.height; row += 1) {
       for (let col = 0; col < map.width; col += 1) {
-        if (!isArenaSolid(map, col, row)) {
+        if (!isLevelSolid(map, col, row)) {
           continue;
         }
         g.fillRect(
@@ -164,7 +177,7 @@ export class GameScene extends Phaser.Scene {
     g.lineStyle(1, 0x1b263b, 0.6);
     for (let row = 0; row < map.height; row += 1) {
       for (let col = 0; col < map.width; col += 1) {
-        if (!isArenaSolid(map, col, row)) {
+        if (!isLevelSolid(map, col, row)) {
           continue;
         }
         g.strokeRect(
@@ -196,6 +209,7 @@ export class GameScene extends Phaser.Scene {
       this.arenaOriginX + p.x + p.w / 2,
       this.arenaOriginY + p.y + p.h / 2,
     );
+    this.playerRect.setSize(p.w, p.h);
   }
 
   private createGunVisual(): void {
