@@ -301,8 +301,10 @@ export class GameScene extends Phaser.Scene {
     const wasDying = this.flow.phase === 'dying';
     const ticksBefore = this.session.simTickCount;
     this.session.update(delta);
-    this.gameSfx?.drainAndPlay(this.session.drainAudioEvents());
     const simSteps = this.session.simTickCount - ticksBefore;
+    this.gameSfx?.drainAndPlay(this.session.drainAudioEvents(), {
+      simTicks: simSteps,
+    });
 
     if (!this.session.playerHealth.alive) {
       if (this.flow.phase === 'playing') {

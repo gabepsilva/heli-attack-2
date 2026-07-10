@@ -102,7 +102,8 @@ export function soundForPowerupCollect(
     return HEALTH_PICKUP_SOUND;
   }
   if (collect.kind === 'weapon') {
-    return WEAPON_PICKUP_SOUNDS[collect.amount] ?? null;
+    // `amount` is ammo granted — VO keys off arsenal index (Flash `sp*`).
+    return WEAPON_PICKUP_SOUNDS[collect.weaponIndex] ?? null;
   }
   return STATE_PICKUP_SOUNDS[collect.amount] ?? null;
 }

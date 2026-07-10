@@ -319,4 +319,26 @@ describe('AudioManager', () => {
     expect(sources[0]!.loop).toBe(true);
     expect(sources[0]!.started).toBe(true);
   });
+
+  it('never steals looping voices when the global cap is full (issue #27)', async () => {
+    const { ctx, sources } = createMockContext();
+    const audio = new AudioManager({
+      createContext: () => ctx,
+      maxActiveVoices: 3,
+    });
+    audio.registerBuffer('music', silentBuffer());
+    audio.registerBuffer(AUDIO_TEST_SFX_ID, silentBuffer());
+    await audio.unlock();
+
+    audio.play('music', { loop: true });
+    const music = sources[0]!;
+    audio.play(AUDIO_TEST_SFX_ID);
+    audio.play(AUDIO_TEST_SFX_ID);
+    expect(audio.getActiveVoiceCount()).toBe(3);
+
+    // Cap full — next one-shot steals an older one-shot, not music.
+    audio.play(AUDIO_TEST_SFX_ID);
+    expect(music.stopped).toBe(false);
+    expect(audio.getActiveVoiceCount()).toBe(3);
+  });
 });

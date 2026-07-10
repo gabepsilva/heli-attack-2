@@ -4,7 +4,15 @@
  */
 import { describe, expect, it } from 'vitest';
 import { POWERUP } from '../config/constants';
-import { WEAPON_COUNT } from '../config/weapons';
+import { WEAPON_COUNT, WEAPON_PICKUP_AMMO } from '../config/weapons';
+import {
+  applyPowerupCollect,
+  createPlayerPowerupState,
+  spawnPowerup,
+} from '../combat/powerupDrop';
+import { createPlayerHealth } from '../combat/playerHealth';
+import { createWeaponInventory } from '../combat/weaponInventory';
+import { createSpawnRng } from '../combat/helicopter';
 import {
   eventMapMatchesFlashArsenal,
   HEALTH_PICKUP_SOUND,
@@ -81,9 +89,14 @@ describe('eventMap (issue #27 AC — correct Flash sounds)', () => {
       11: 'sprailgun',
       12: 'spgrapplecannon',
     });
-    expect(soundForPowerupCollect({ kind: 'weapon', amount: 2 })).toBe(
-      'spshotgun',
-    );
+    // amount is ammo; weaponIndex drives the VO (Flash spshotgun for gun 2).
+    expect(
+      soundForPowerupCollect({
+        kind: 'weapon',
+        amount: 14,
+        weaponIndex: 2,
+      }),
+    ).toBe('spshotgun');
 
     expect(STATE_PICKUP_SOUNDS).toEqual({
       [POWERUP.TriDamage]: 'sptridamage',
@@ -98,6 +111,46 @@ describe('eventMap (issue #27 AC — correct Flash sounds)', () => {
         amount: POWERUP.Invulnerability,
       }),
     ).toBe('spinvulnerability');
+  });
+
+  it('resolves every droppable weapon crate through applyPowerupCollect → VO', () => {
+    const expected: Record<number, string> = {
+      1: 'spmac10',
+      2: 'spshotgun',
+      3: 'spshotgunrockets',
+      4: 'spgrenadelauncher',
+      5: 'sprpg',
+      6: 'sprocketlauncher',
+      7: 'spseekerlauncher',
+      8: 'spflamethrower',
+      9: 'spfiremines',
+      10: 'spabomb',
+      11: 'sprailgun',
+      12: 'spgrapplecannon',
+    };
+    const health = createPlayerHealth();
+    const inventory = createWeaponInventory();
+    const powerupState = createPlayerPowerupState();
+    const rng = createSpawnRng(1);
+
+    for (const [indexText, soundId] of Object.entries(expected)) {
+      const weaponIndex = Number(indexText);
+      const crate = spawnPowerup(0, 0, { kind: 'weapon', weaponIndex });
+      const collect = applyPowerupCollect(
+        crate,
+        health,
+        inventory,
+        powerupState,
+        rng,
+      );
+      expect(collect).toEqual({
+        kind: 'weapon',
+        amount: WEAPON_PICKUP_AMMO[weaponIndex],
+        weaponIndex,
+      });
+      // Pins producer + consumer to the same meaning of amount vs weaponIndex.
+      expect(soundForPowerupCollect(collect)).toBe(soundId);
+    }
   });
 
   it('maps combat one-shots to hjump / hurt / heliboom', () => {

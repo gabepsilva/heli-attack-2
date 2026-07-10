@@ -54,9 +54,12 @@ export type PlayOptions = {
   volume?: number;
   /**
    * Seamless buffer loop (Flash `start(0, 9999999)`). Music and FlameThrower
-   * hold use this; one-shot SFX leave it false.
+   * hold use this; one-shot SFX leave it false. Looping voices are exempt
+   * from global voice-steal so music cannot be evicted mid-run.
    */
   loop?: boolean;
+  /** Fired when the voice ends (stop, steal, or natural finish). */
+  onEnded?: () => void;
 };
 
 type Voice = {
@@ -65,11 +68,17 @@ type Voice = {
   gain: GainNodeLike;
   startedAt: number;
   playing: boolean;
+  /** Looping voices (music / flame hold) are never stolen for the pool cap. */
+  loop: boolean;
 };
 
 export type PlayHandle = {
   soundId: SoundId;
   stop: () => void;
+  /** Live voice gain (0–1), still gated by master × mute. */
+  setVolume: (volume: number) => void;
+  /** False after stop / natural end / steal. */
+  isPlaying: () => boolean;
 };
 
 function clamp01(value: number): number {
@@ -238,7 +247,8 @@ export class AudioManager {
    * testable; callers that need audible output should check {@link isUnlocked}.
    *
    * Overlapping calls allocate distinct voices up to {@link AUDIO_POOL_SIZE}
-   * per id / {@link AUDIO_MAX_ACTIVE_VOICES} globally (oldest stolen).
+   * per id / {@link AUDIO_MAX_ACTIVE_VOICES} globally (oldest non-looping
+   * stolen). Looping voices are never stolen.
    */
   play(id: SoundId, options: PlayOptions = {}): PlayHandle | null {
     if (!this.unlocked) {
@@ -250,21 +260,36 @@ export class AudioManager {
     }
     this.ensureGraph();
 
+    const loop = options.loop === true;
+
     while (this.getActiveVoiceCount() >= this.maxActiveVoices) {
-      this.stopVoice(this.oldestActiveVoice()!);
+      const victim = this.oldestStealableVoice();
+      if (!victim) {
+        // Cap is full of protected loops — refuse another one-shot rather than
+        // killing music / flame hold.
+        if (!loop) {
+          return null;
+        }
+        break;
+      }
+      this.stopVoice(victim);
     }
 
     const sameIdActive = this.active.filter((v) => v.playing && v.id === id);
     if (sameIdActive.length >= this.poolSize) {
-      this.stopVoice(
-        sameIdActive.reduce((a, b) => (a.startedAt <= b.startedAt ? a : b)),
-      );
+      const stealable = sameIdActive.filter((v) => !v.loop);
+      if (stealable.length > 0) {
+        this.stopVoice(
+          stealable.reduce((a, b) => (a.startedAt <= b.startedAt ? a : b)),
+        );
+      } else if (!loop) {
+        return null;
+      }
     }
 
     const source = this.ctx!.createBufferSource();
     const gain = this.ctx!.createGain();
     const playVol = clamp01(options.volume ?? 1);
-    const loop = options.loop === true;
     gain.gain.value = playVol;
     source.buffer = buffer;
     source.loop = loop;
@@ -277,14 +302,24 @@ export class AudioManager {
       gain,
       startedAt: this.ctx!.currentTime,
       playing: true,
+      loop,
     };
-    // Looping sources only end when stopped — still clear the voice slot.
-    source.onended = () => {
+    const endedCallback = options.onEnded;
+    let finished = false;
+    const finish = (): void => {
+      if (finished) {
+        return;
+      }
+      finished = true;
       voice.playing = false;
       const idx = this.active.indexOf(voice);
       if (idx >= 0) {
         this.active.splice(idx, 1);
       }
+      endedCallback?.();
+    };
+    source.onended = () => {
+      finish();
     };
     this.active.push(voice);
     source.start(0);
@@ -292,6 +327,12 @@ export class AudioManager {
     return {
       soundId: id,
       stop: () => this.stopVoice(voice),
+      setVolume: (volume: number) => {
+        if (voice.playing) {
+          voice.gain.gain.value = clamp01(volume);
+        }
+      },
+      isPlaying: () => voice.playing,
     };
   }
 
@@ -326,10 +367,10 @@ export class AudioManager {
     this.masterGain.gain.value = this.effectiveMasterGain();
   }
 
-  private oldestActiveVoice(): Voice | undefined {
+  private oldestStealableVoice(): Voice | undefined {
     let oldest: Voice | undefined;
     for (const voice of this.active) {
-      if (!voice.playing) {
+      if (!voice.playing || voice.loop) {
         continue;
       }
       if (!oldest || voice.startedAt < oldest.startedAt) {
@@ -343,15 +384,15 @@ export class AudioManager {
     if (!voice.playing) {
       return;
     }
+    // Mark inactive before stop so a re-entrant onended is a no-op via finish().
     voice.playing = false;
     try {
       voice.source.stop(0);
     } catch {
       // already stopped
     }
-    const idx = this.active.indexOf(voice);
-    if (idx >= 0) {
-      this.active.splice(idx, 1);
-    }
+    // Real AudioContext fires onended async; mocks may fire inside stop().
+    // Always run the assigned handler so cleanup + onEnded stay deterministic.
+    voice.source.onended?.(new Event('ended'));
   }
 }
