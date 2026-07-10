@@ -2,17 +2,23 @@
  * Portrait orientation guard — issue #30.
  *
  * DOM overlay outside Phaser so it covers the FIT canvas and fullscreen
- * chrome. Shown when the viewport is taller than wide; hidden in landscape.
+ * chrome. Shown only on touch-primary devices in portrait; desktop portrait
+ * windows stay playable (mirrors {@link shouldShowTouchControls} gating).
  */
 
 import {
   isPortraitViewport,
+  isTouchPrimaryDevice,
   ORIENTATION_GUARD_HINT,
   ORIENTATION_GUARD_MESSAGE,
+  readTouchDeviceEnv,
+  type TouchDeviceEnv,
 } from '../config/touch';
 
 export type OrientationGuardOptions = {
   parent?: HTMLElement;
+  /** Injected for tests; defaults to {@link readTouchDeviceEnv}. */
+  env?: TouchDeviceEnv;
   /** Defaults to `window.innerWidth` / `innerHeight`. */
   getViewport?: () => { width: number; height: number };
 };
@@ -27,14 +33,17 @@ export type OrientationGuardHandle = {
 };
 
 /**
- * Whether the guard should be visible for the given viewport.
- * Acceptance criterion: portrait shows the overlay.
+ * Whether the guard should be visible.
+ * Acceptance: portrait on a phone/tablet shows the overlay; desktop never does.
  */
-export function shouldShowOrientationGuard(viewport: {
-  width: number;
-  height: number;
-}): boolean {
-  return isPortraitViewport(viewport.width, viewport.height);
+export function shouldShowOrientationGuard(
+  env: TouchDeviceEnv,
+  viewport: { width: number; height: number },
+): boolean {
+  return (
+    isTouchPrimaryDevice(env) &&
+    isPortraitViewport(viewport.width, viewport.height)
+  );
 }
 
 /**
@@ -45,6 +54,7 @@ export function mountOrientationGuard(
   options: OrientationGuardOptions = {},
 ): OrientationGuardHandle {
   const parent = options.parent ?? document.body;
+  const env = options.env ?? readTouchDeviceEnv();
   const getViewport =
     options.getViewport ??
     (() => ({
@@ -96,7 +106,7 @@ export function mountOrientationGuard(
 
   let visible = false;
   const refresh = (): void => {
-    visible = shouldShowOrientationGuard(getViewport());
+    visible = shouldShowOrientationGuard(env, getViewport());
     root.style.display = visible ? 'flex' : 'none';
   };
 

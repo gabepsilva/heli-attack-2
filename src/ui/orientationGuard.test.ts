@@ -2,23 +2,51 @@
  * @vitest-environment happy-dom
  *
  * Orientation guard — issue #30.
- * Asserts portrait shows the rotate overlay and landscape hides it.
+ * Asserts portrait shows the rotate overlay on touch devices only;
+ * desktop portrait windows stay unblocked.
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   ORIENTATION_GUARD_HINT,
   ORIENTATION_GUARD_MESSAGE,
+  type TouchDeviceEnv,
 } from '../config/touch';
 import {
   mountOrientationGuard,
   shouldShowOrientationGuard,
 } from './orientationGuard';
 
+const phoneEnv: TouchDeviceEnv = { maxTouchPoints: 5, coarsePointer: true };
+const desktopEnv: TouchDeviceEnv = {
+  maxTouchPoints: 0,
+  coarsePointer: false,
+};
+
 describe('shouldShowOrientationGuard (issue #30)', () => {
-  it('is true in portrait and false in landscape (AC: portrait shows overlay)', () => {
-    expect(shouldShowOrientationGuard({ width: 390, height: 844 })).toBe(true);
-    expect(shouldShowOrientationGuard({ width: 844, height: 390 })).toBe(false);
+  it('is true only for touch-primary portrait (AC: portrait shows overlay)', () => {
+    expect(
+      shouldShowOrientationGuard(phoneEnv, { width: 390, height: 844 }),
+    ).toBe(true);
+    expect(
+      shouldShowOrientationGuard(phoneEnv, { width: 844, height: 390 }),
+    ).toBe(false);
+  });
+
+  it('stays false for a portrait desktop viewport (Lead: no false rotate prompt)', () => {
+    expect(
+      shouldShowOrientationGuard(desktopEnv, { width: 390, height: 844 }),
+    ).toBe(false);
+    expect(
+      shouldShowOrientationGuard(desktopEnv, { width: 844, height: 390 }),
+    ).toBe(false);
+    // Touch laptop with fine pointer — still not a phone.
+    expect(
+      shouldShowOrientationGuard(
+        { maxTouchPoints: 10, coarsePointer: false },
+        { width: 390, height: 844 },
+      ),
+    ).toBe(false);
   });
 });
 
@@ -38,6 +66,7 @@ describe('mountOrientationGuard (issue #30)', () => {
     const container = document.getElementById('game-container')!;
     const guard = mountOrientationGuard({
       parent: container,
+      env: phoneEnv,
       getViewport: () => viewport,
     });
 
@@ -55,10 +84,11 @@ describe('mountOrientationGuard (issue #30)', () => {
     expect(container.contains(guard.root)).toBe(false);
   });
 
-  it('shows the overlay when the viewport becomes portrait (AC)', () => {
+  it('shows the overlay when a touch device becomes portrait (AC)', () => {
     const container = document.getElementById('game-container')!;
     const guard = mountOrientationGuard({
       parent: container,
+      env: phoneEnv,
       getViewport: () => viewport,
     });
 
@@ -80,10 +110,29 @@ describe('mountOrientationGuard (issue #30)', () => {
     guard.destroy();
   });
 
-  it('refreshes on window resize to portrait', () => {
+  it('keeps the overlay hidden for a portrait desktop window', () => {
+    const container = document.getElementById('game-container')!;
+    viewport = { width: 390, height: 844 };
+    const guard = mountOrientationGuard({
+      parent: container,
+      env: desktopEnv,
+      getViewport: () => viewport,
+    });
+
+    expect(guard.isVisible()).toBe(false);
+    expect(guard.root.style.display).toBe('none');
+
+    window.dispatchEvent(new Event('resize'));
+    expect(guard.isVisible()).toBe(false);
+
+    guard.destroy();
+  });
+
+  it('refreshes on window resize to portrait on a touch device', () => {
     const container = document.getElementById('game-container')!;
     const guard = mountOrientationGuard({
       parent: container,
+      env: phoneEnv,
       getViewport: () => viewport,
     });
 
