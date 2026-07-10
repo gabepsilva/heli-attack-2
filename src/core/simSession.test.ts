@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PLAYER, SIM_DT, SIM_HZ, WORLD } from '../config/constants';
+import { BULLET, PLAYER, SIM_DT, SIM_HZ, WORLD } from '../config/constants';
 import { PLAYER_SPAWN } from '../player/player';
 import { DEBUG_BOX_SPAWN, SimSession } from './simSession';
 
@@ -42,6 +42,9 @@ describe('SimSession', () => {
       duck: false,
       boost: false,
     });
+    expect(session.bullets.activeCount).toBe(0);
+    expect(session.bullets.acquireCount).toBe(0);
+    expect(session.fireRequested).toBe(false);
     expect(session.debugBox.body.x).toBe(DEBUG_BOX_SPAWN.x);
     expect(session.debugBox.body.y).toBe(DEBUG_BOX_SPAWN.y);
     expect(session.debugBox.body.vx).toBe(0);
@@ -153,5 +156,63 @@ describe('SimSession', () => {
     expect(session.map.height).toBe(15);
     // Continuous ground row from decompiled map1.
     expect(session.map.cells[14]!.every((c) => c === 1)).toBe(true);
+  });
+
+  it('consumes fireRequested once per sim tick and spawns a pooled bullet', () => {
+    const session = new SimSession();
+    const slotsRef = session.bullets.slots;
+    expect(session.bullets.capacity).toBe(BULLET.poolCapacity);
+
+    session.fireRequested = true;
+    session.update(1000 / 30);
+
+    expect(session.fireRequested).toBe(false);
+    expect(session.bullets.acquireCount).toBe(1);
+    expect(session.bullets.activeCount).toBe(1);
+    const bullet = session.bullets.slots.find((b) => b.active)!;
+    expect(bullet.age).toBe(1);
+    expect(bullet.speed).toBe(BULLET.defaultSpeed);
+    expect(bullet.damage).toBe(BULLET.defaultDamage);
+    expect(session.bullets.slots).toBe(slotsRef);
+  });
+
+  it('tryFire spawns at the current muzzle with MachineGun speed/damage', () => {
+    const session = new SimSession();
+    session.player.gunAim = { rotationDeg: 0, flipY: false };
+    session.player.muzzle = { x: 150, y: 250 };
+
+    expect(session.tryFire()).toBe(true);
+    const bullet = session.bullets.slots.find((b) => b.active)!;
+    expect(bullet.x).toBe(150);
+    expect(bullet.y).toBe(250);
+    expect(bullet.vx).toBeCloseTo(8, 10);
+    expect(bullet.vy).toBeCloseTo(0, 10);
+    expect(bullet.damage).toBe(10);
+  });
+
+  it('reuses pool slots across many fires without growing capacity', () => {
+    const session = new SimSession();
+    const capacity = session.bullets.capacity;
+    const slotsRef = session.bullets.slots;
+
+    // Aim left so bullets exit the arena cull quickly and recycle.
+    session.player.mouse = {
+      x: session.player.gunPivot.x - 400,
+      y: session.player.gunPivot.y,
+    };
+    for (let i = 0; i < 20; i += 1) {
+      session.update(1000 / 30);
+    }
+
+    for (let i = 0; i < 120; i += 1) {
+      session.fireRequested = true;
+      session.update(1000 / 30);
+    }
+
+    expect(session.bullets.capacity).toBe(capacity);
+    expect(session.bullets.slots).toBe(slotsRef);
+    expect(session.bullets.acquireCount).toBe(120);
+    expect(session.bullets.recycleCount).toBeGreaterThan(0);
+    expect(session.bullets.activeCount).toBeLessThanOrEqual(capacity);
   });
 });
