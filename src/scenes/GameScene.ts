@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { getSpriteDef, PLAYER_PLACEHOLDER_FRAME } from '../art/catalog';
-import { playerSpritePlacement } from '../art/spritePlacement';
+import { placeOnCenter, playerSpritePlacement } from '../art/spritePlacement';
 import { AudioHud } from '../audio/audioHud';
 import { getGameAudio } from '../audio/gameAudio';
 import { ATLAS_KEY } from '../config/art';
@@ -32,6 +32,8 @@ const GUN_COLOR = 0xc9ada7;
 const GUN_STROKE = 0xf2e9e4;
 const MUZZLE_COLOR = 0xff6b6b;
 const BULLET_COLOR = 0xffe066;
+const HELI_TINT = 0xffffff;
+const EXPLOSION_COLOR = 0xff9f1c;
 
 /**
  * Thin Phaser shell: banks render deltas into a 30 Hz fixed sim, draws the
@@ -56,6 +58,8 @@ export class GameScene extends Phaser.Scene {
   private muzzleDot!: Phaser.GameObjects.Arc;
   /** One visual per pool slot — toggled visible when the slot is active. */
   private bulletDots: Phaser.GameObjects.Arc[] = [];
+  private heliSprite!: Phaser.GameObjects.Image;
+  private explosionSprite!: Phaser.GameObjects.Arc;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private audioHud: AudioHud | null = null;
   private boostKey!: Phaser.Input.Keyboard.Key;
@@ -86,6 +90,7 @@ export class GameScene extends Phaser.Scene {
     this.createPlayerVisual();
     this.createGunVisual();
     this.createBulletVisuals();
+    this.createHeliVisual();
     this.createDebugBoxVisual();
     this.setupAudioDemo();
 
@@ -218,6 +223,7 @@ export class GameScene extends Phaser.Scene {
     this.syncPlayerVisual();
     this.syncGunVisual();
     this.syncBulletVisuals();
+    this.syncHeliVisual();
     this.syncBoxVisual();
   }
 
@@ -366,6 +372,57 @@ export class GameScene extends Phaser.Scene {
         this.arenaOriginX + bullet.x,
         this.arenaOriginY + bullet.y,
       );
+    }
+  }
+
+  private createHeliVisual(): void {
+    const def = getSpriteDef('heli');
+    const place = placeOnCenter(0, 0, def.pivot, {
+      w: def.originalW,
+      h: def.originalH,
+    });
+    this.heliSprite = this.add
+      .image(0, 0, ATLAS_KEY, 'heli')
+      .setOrigin(place.originX, place.originY)
+      .setDisplaySize(place.displayW, place.displayH)
+      .setTint(HELI_TINT)
+      .setVisible(false);
+
+    this.explosionSprite = this.add
+      .circle(0, 0, 40, EXPLOSION_COLOR, 0.85)
+      .setVisible(false);
+  }
+
+  private syncHeliVisual(): void {
+    const heli = this.session.helicopters.find((h) => h.active);
+    if (!heli) {
+      this.heliSprite.setVisible(false);
+    } else {
+      const def = getSpriteDef('heli');
+      const place = placeOnCenter(heli.x, heli.y, def.pivot, {
+        w: def.originalW,
+        h: def.originalH,
+      });
+      this.heliSprite.setVisible(true);
+      this.heliSprite.setPosition(
+        this.arenaOriginX + place.x,
+        this.arenaOriginY + place.y,
+      );
+      this.heliSprite.setAngle(heli.rotationDeg);
+    }
+
+    const boom = this.session.explosions.find((e) => e.active);
+    if (!boom) {
+      this.explosionSprite.setVisible(false);
+    } else {
+      const scale = 1 + (boom.age / boom.maxAge) * 0.5;
+      this.explosionSprite.setVisible(true);
+      this.explosionSprite.setPosition(
+        this.arenaOriginX + boom.x,
+        this.arenaOriginY + boom.y,
+      );
+      this.explosionSprite.setScale(scale);
+      this.explosionSprite.setAlpha(Math.max(0, 1 - boom.age / boom.maxAge));
     }
   }
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   BULLET,
+  HELI,
   PLAYER,
   SIM_DT,
   SIM_HZ,
@@ -248,5 +249,42 @@ describe('SimSession', () => {
     expect(session.bullets.slots).toBe(slotsRef);
     expect(session.bullets.recycleCount).toBeGreaterThan(0);
     expect(session.bullets.activeCount).toBeLessThanOrEqual(capacity);
+  });
+
+  it('spawns a heli on reset and kills it after 30 held-fire hits (issue #12)', () => {
+    const session = new SimSession();
+    expect(session.helicopters).toHaveLength(1);
+    const heli = session.helicopters[0]!;
+    heli.x = 900;
+    heli.y = 220;
+    heli.xspeed = 0;
+    heli.yspeed = 0;
+    heli.tx = heli.x;
+    heli.ty = heli.y;
+    expect(heli.health).toBe(300);
+    expect(heli.active).toBe(true);
+
+    const hit = {
+      x: heli.x - HELI.spriteW / 2 + 22,
+      y: heli.y - HELI.spriteH / 2 + 2,
+    };
+    session.player.placeAt(hit.x - 80, hit.y);
+    session.player.mouse = { x: hit.x, y: hit.y };
+    session.fireHeld = true;
+
+    for (let tick = 0; tick < SIM_HZ * 20 && heli.active; tick += 1) {
+      heli.xspeed = 0;
+      heli.yspeed = 0;
+      heli.tx = heli.x;
+      heli.ty = heli.y;
+      session.update(1000 / 30);
+    }
+
+    expect(heli.active).toBe(false);
+    expect(heli.health).toBe(0);
+    expect(session.weapon.shots).toBeGreaterThanOrEqual(30);
+    expect(
+      session.explosions.some((e) => e.active) || session.explosions.length > 0,
+    ).toBe(true);
   });
 });
