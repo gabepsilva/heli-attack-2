@@ -759,4 +759,86 @@ describe('SimSession', () => {
       accuracyPercent(session.runHits, session.runShots),
     ).toBeLessThanOrEqual(100);
   });
+
+  it('queues Flash-accurate SFX events for fire / hyper-jump / hurt / heliboom (issue #27)', () => {
+    const session = new SimSession();
+
+    // Weapon fire → MachineGun uses `gun`.
+    session.player.gunAim = { rotationDeg: 0, flipY: false };
+    session.player.muzzle = { x: 150, y: 250 };
+    expect(session.tryFire()).toBe(true);
+    expect(session.drainAudioEvents()).toEqual([
+      { type: 'weaponFire', weaponIndex: 0 },
+    ]);
+    expect(session.drainAudioEvents()).toEqual([]);
+
+    // Hyper-jump on charged Ctrl boost.
+    session.player.placeAt(PLAYER_SPAWN.x, PLAYER_SPAWN.y);
+    session.player.boostState.charge = PLAYER.boostChargeFrames;
+    session.player.boostState.hjump = false;
+    session.player.boostState.boostHeld = false;
+    session.player.input = {
+      left: false,
+      right: false,
+      jump: false,
+      duck: false,
+      boost: true,
+    };
+    session.update(1000 / 30);
+    const afterBoost = session.drainAudioEvents();
+    expect(afterBoost).toContainEqual({ type: 'hyperJump' });
+
+    // Hurt when an enemy bullet connects.
+    session.reset();
+    const px = session.player.body.x + session.player.body.w / 2;
+    const py = session.player.body.y + session.player.body.h / 2;
+    // Spawn on the player with zero travel so the post-motion hit still lands.
+    const eb = session.enemyBullets.acquire(px, py, 0, 0);
+    expect(eb).not.toBeNull();
+    session.update(1000 / 30);
+    expect(session.drainAudioEvents()).toContainEqual({ type: 'hurt' });
+
+    // Heli kill → heliboom.
+    session.reset();
+    const heli = session.helicopters[0]!;
+    heli.health = 1;
+    heli.x = session.player.muzzle.x + 40;
+    heli.y = session.player.muzzle.y;
+    heli.xspeed = 0;
+    heli.yspeed = 0;
+    heli.tx = heli.x;
+    heli.ty = heli.y;
+    session.player.mouse = { x: heli.x, y: heli.y };
+    session.fireHeld = true;
+    session.weapon.reloadTime = Number.POSITIVE_INFINITY;
+    for (let i = 0; i < 10 && heli.active; i += 1) {
+      heli.xspeed = 0;
+      heli.yspeed = 0;
+      session.update(1000 / 30);
+    }
+    const killEvents = session.drainAudioEvents();
+    expect(killEvents.some((e) => e.type === 'heliBoom')).toBe(true);
+  });
+
+  it('queues powerup pickup VO events with the rolled collect payload (issue #27)', () => {
+    const session = new SimSession();
+    session.playerHealth.health = 50;
+    session.playerHealth.lastHealth = 50;
+    session.powerups.push({
+      active: true,
+      x: session.player.body.x,
+      y: session.player.body.y,
+      yspeed: 0,
+      kind: 'health',
+      weaponIndex: 0,
+      fall: true,
+      chuteScale: 0,
+      stopped: true,
+    });
+    session.update(1000 / 30);
+    expect(session.drainAudioEvents()).toContainEqual({
+      type: 'powerup',
+      collect: { kind: 'health', amount: 20 },
+    });
+  });
 });

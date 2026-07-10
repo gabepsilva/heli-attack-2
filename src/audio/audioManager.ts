@@ -31,6 +31,8 @@ export type GainNodeLike = {
 
 export type AudioBufferSourceLike = {
   buffer: AudioBuffer | null;
+  /** When true, the buffer repeats until stopped (music / flame hold). */
+  loop: boolean;
   onended: ((ev?: Event) => void) | null;
   connect(dest: unknown): void;
   start(when?: number): void;
@@ -50,6 +52,11 @@ export type AudioManagerOptions = {
 export type PlayOptions = {
   /** Per-play multiplier (0–1), still gated by master volume + mute. */
   volume?: number;
+  /**
+   * Seamless buffer loop (Flash `start(0, 9999999)`). Music and FlameThrower
+   * hold use this; one-shot SFX leave it false.
+   */
+  loop?: boolean;
 };
 
 type Voice = {
@@ -257,8 +264,10 @@ export class AudioManager {
     const source = this.ctx!.createBufferSource();
     const gain = this.ctx!.createGain();
     const playVol = clamp01(options.volume ?? 1);
+    const loop = options.loop === true;
     gain.gain.value = playVol;
     source.buffer = buffer;
+    source.loop = loop;
     source.connect(gain);
     gain.connect(this.masterGain!);
 
@@ -269,6 +278,7 @@ export class AudioManager {
       startedAt: this.ctx!.currentTime,
       playing: true,
     };
+    // Looping sources only end when stopped — still clear the voice slot.
     source.onended = () => {
       voice.playing = false;
       const idx = this.active.indexOf(voice);

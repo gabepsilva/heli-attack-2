@@ -86,7 +86,7 @@ export class AudioHud {
     const hint = document.createElement('div');
     hint.style.opacity = '0.7';
     hint.style.fontSize = '11px';
-    hint.textContent = 'Click canvas → test SFX';
+    hint.textContent = 'SFX + music follow game events';
     this.root.appendChild(hint);
 
     parent.appendChild(this.root);
