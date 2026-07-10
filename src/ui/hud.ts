@@ -50,6 +50,8 @@ export const POWERUP_HUD_NAMES: Readonly<Record<number, string>> = {
 
 /**
  * Layout anchored to the 1920×1080 design resolution (#23 / #28).
+ * Under Phaser Scale.FIT these design-space coords stay correct at any
+ * window / fullscreen aspect (see {@link ./responsiveScale}).
  * Sizes chosen so bars and labels read clearly at full HD.
  */
 export const HUD_LAYOUT = {
