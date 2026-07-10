@@ -71,17 +71,12 @@ export class Player {
   }
 
   /**
-   * One sim tick — order matches `heroAction`:
-   * duck hitbox → walk → airborne mark → jump → gravity → AABB resolve →
-   * land / ceiling jump flags.
+   * One sim tick — duck hitbox → walk → airborne mark → jump → gravity →
+   * AABB resolve → land / ceiling jump flags. Close to `heroAction`; friction
+   * reads jump one frame earlier than the original (negligible).
    */
   step(map: TileMap, timeStep: number): void {
-    this.ducking = applyDuckHitbox(
-      this.body,
-      this.input.duck,
-      this.ducking,
-      this.body.onGround,
-    );
+    this.ducking = applyDuckHitbox(this.body, this.input.duck, this.ducking);
 
     this.body.vx = applyHorizontalWalk(this.body.vx, {
       left: this.input.left,

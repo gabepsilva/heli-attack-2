@@ -192,6 +192,51 @@ describe('Player (gravity, jump, duck — issue #6)', () => {
     expect(player.body.vy).toBe(PLAYER.jumpVel + WORLD.gravity);
   });
 
+  it('stays grounded with unchanged feet through a duck → stand cycle', () => {
+    const map = createTestArena();
+    const player = new Player(100, 200);
+    settle(player);
+    expect(player.body.onGround).toBe(true);
+    const feetBefore = player.body.y + player.body.h;
+
+    player.input = { left: false, right: false, jump: false, duck: true };
+    player.step(map, 1);
+    expect(player.ducking).toBe(true);
+    expect(player.body.onGround).toBe(true);
+    expect(player.body.y + player.body.h).toBeCloseTo(feetBefore, 10);
+
+    player.input = { left: false, right: false, jump: false, duck: false };
+    player.step(map, 1);
+    expect(player.ducking).toBe(false);
+    expect(player.body.onGround).toBe(true);
+    expect(player.body.y + player.body.h).toBeCloseTo(feetBefore, 10);
+    expect(player.jumpState.jump).toBe(false);
+    expect(player.jumpState.jump2).toBe(false);
+  });
+
+  it('does not burn double-jump after repeated duck taps on flat ground', () => {
+    const map = createTestArena();
+    const player = new Player(100, 200);
+    settle(player);
+    expect(player.body.onGround).toBe(true);
+
+    for (let tap = 0; tap < 3; tap += 1) {
+      player.input = { left: false, right: false, jump: false, duck: true };
+      player.step(map, 1);
+      player.input = { left: false, right: false, jump: false, duck: false };
+      player.step(map, 1);
+    }
+
+    expect(player.body.onGround).toBe(true);
+    expect(player.jumpState.jump).toBe(false);
+    expect(player.jumpState.jump2).toBe(false);
+
+    player.input = { left: false, right: false, jump: true, duck: false };
+    player.step(map, 1);
+    expect(player.jumpState.jump).toBe(true);
+    expect(player.jumpState.jump2).toBe(false);
+  });
+
   it('holding duck shrinks the hitbox and blocks walking accel', () => {
     const map = createTestArena();
     const player = new Player(100, 200);
