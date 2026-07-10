@@ -22,6 +22,7 @@ import {
   playerHealthFraction,
   stepPlayerIFrames,
   syncPlayerLastHealth,
+  healPlayer,
 } from './playerHealth';
 
 describe('playerHealth (issue #18)', () => {
@@ -37,6 +38,15 @@ describe('playerHealth (issue #18)', () => {
     expect(state.maxHealth).toBe(100);
     expect(state.alive).toBe(true);
     expect(state.iFramesRemaining).toBe(0);
+  });
+
+  it('healPlayer adds HEALTH_PICKUP amount and caps at 100', () => {
+    const state = createPlayerHealth();
+    state.health = 85;
+    expect(healPlayer(state)).toBe(15);
+    expect(state.health).toBe(100);
+    state.alive = false;
+    expect(healPlayer(state)).toBe(0);
   });
 
   it('applies exact enemy-bullet damage of 10 and reaches death at 0', () => {

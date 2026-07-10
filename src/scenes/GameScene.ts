@@ -19,6 +19,7 @@ import {
   GUN,
   HELI_LOOK_TINT,
   PLAYER,
+  POWERUP_DROP,
   SIM_HZ,
   WORLD,
 } from '../config/constants';
@@ -43,11 +44,16 @@ const MUZZLE_COLOR = 0xff6b6b;
 const BULLET_COLOR = 0xffe066;
 const ENEMY_BULLET_COLOR = 0xff6b6b;
 const EXPLOSION_COLOR = 0xff9f1c;
+const POWERUP_HEALTH_COLOR = 0x7dcfb6;
+const POWERUP_WEAPON_COLOR = 0xffe066;
+const POWERUP_STATE_COLOR = 0xc77dff;
+const POWERUP_CHUTE_COLOR = 0xf8f9fa;
 const SCORE_COLOR = '#ffe066';
 const HEALTH_COLOR = '#7dcfb6';
 const HEALTH_DEAD_COLOR = '#e63946';
 const HELI_FRAME = 'heli';
 const HELI_HIT_FRAME = 'heli_hit';
+const POWERUP_FRAME = 'powerup';
 
 /**
  * Thin Phaser shell: banks render deltas into a 30 Hz fixed sim, draws the
@@ -55,7 +61,7 @@ const HELI_HIT_FRAME = 'heli_hit';
  * (←/→ walk, ↑ jump, ↓ duck, Ctrl boost, mouse aim, hold-to-fire, weapon
  * switch via 1–0 / Q–E (#14), pooled bullets) rendered from the packed atlas
  * (#32), shootable heli variants with hit flash / death boom / score HUD
- * (#12/#13/#20), and a draggable debug box.
+ * (#12/#13/#20), parachuting powerup crates (#21), and a draggable debug box.
  * Game logic lives in plain modules under src/.
  *
  * Audio (#26): click plays the test SFX after Boot unlock; DOM HUD owns
@@ -80,6 +86,8 @@ export class GameScene extends Phaser.Scene {
   private heliSprites: Phaser.GameObjects.Image[] = [];
   /** One visual per in-flight explosion (kills can overlap). */
   private explosionSprites: Phaser.GameObjects.Arc[] = [];
+  /** Crate + chute visuals for parachuting pickups (#21). */
+  private powerupSprites: Phaser.GameObjects.Container[] = [];
   private scoreText!: Phaser.GameObjects.Text;
   private healthText!: Phaser.GameObjects.Text;
   private healthBarFill!: Phaser.GameObjects.Rectangle;
@@ -115,6 +123,7 @@ export class GameScene extends Phaser.Scene {
     this.createGunVisual();
     this.createBulletVisuals();
     this.createHeliVisual();
+    this.createPowerupVisuals();
     this.createScoreHud();
     this.createHealthHud();
     this.createDebugBoxVisual();
@@ -282,6 +291,7 @@ export class GameScene extends Phaser.Scene {
     this.syncBulletVisuals();
     this.syncEnemyBulletVisuals();
     this.syncHeliVisual();
+    this.syncPowerupVisuals();
     this.syncScoreHud();
     this.syncHealthHud();
     this.syncBoxVisual();
@@ -609,6 +619,61 @@ export class GameScene extends Phaser.Scene {
       );
       sprite.setScale(scale);
       sprite.setAlpha(Math.max(0, 1 - boom.age / boom.maxAge));
+    }
+  }
+
+  private createPowerupVisuals(): void {
+    // Enough slots for a long run of threshold + lucky weapon drops.
+    const pool = 16;
+    this.powerupSprites = [];
+    for (let i = 0; i < pool; i += 1) {
+      const chute = this.add
+        .ellipse(0, -28, 36, 14, POWERUP_CHUTE_COLOR, 0.85)
+        .setVisible(false);
+      const crate = this.add
+        .image(0, 0, ATLAS_KEY, POWERUP_FRAME)
+        .setDisplaySize(POWERUP_DROP.crateW, POWERUP_DROP.crateH)
+        .setTint(POWERUP_WEAPON_COLOR);
+      const container = this.add
+        .container(0, 0, [chute, crate])
+        .setVisible(false)
+        .setDepth(12);
+      // Stash chute/crate for sync tint + chute scale.
+      container.setData('chute', chute);
+      container.setData('crate', crate);
+      this.powerupSprites.push(container);
+    }
+  }
+
+  private syncPowerupVisuals(): void {
+    const drops = this.session.powerups;
+    for (let i = 0; i < this.powerupSprites.length; i += 1) {
+      const container = this.powerupSprites[i]!;
+      const pickup = drops[i];
+      if (!pickup || !pickup.active) {
+        container.setVisible(false);
+        continue;
+      }
+      const chute = container.getData('chute') as Phaser.GameObjects.Ellipse;
+      const crate = container.getData('crate') as Phaser.GameObjects.Image;
+      const tint =
+        pickup.kind === 'health'
+          ? POWERUP_HEALTH_COLOR
+          : pickup.kind === 'state'
+            ? POWERUP_STATE_COLOR
+            : POWERUP_WEAPON_COLOR;
+      crate.setTint(tint);
+      const chuteOpen = pickup.chuteScale > 0 && !pickup.stopped;
+      chute.setVisible(chuteOpen);
+      if (chuteOpen) {
+        const s = Math.max(0.05, pickup.chuteScale / 100);
+        chute.setScale(s, Math.min(1, s + 0.15));
+      }
+      container.setVisible(true);
+      container.setPosition(
+        this.arenaOriginX + pickup.x,
+        this.arenaOriginY + pickup.y,
+      );
     }
   }
 

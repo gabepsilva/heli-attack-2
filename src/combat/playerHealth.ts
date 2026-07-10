@@ -6,7 +6,11 @@
  * same-volley hits cannot instantly drain 100 HP.
  */
 
-import { PLAYER_COMBAT, PLAYER_DEFAULTS } from '../config/constants';
+import {
+  HEALTH_PICKUP,
+  PLAYER_COMBAT,
+  PLAYER_DEFAULTS,
+} from '../config/constants';
 
 export type PlayerHealthState = {
   health: number;
@@ -93,6 +97,23 @@ export function damagePlayer(
 /** Sync `lastHealth` after combat resolution (Flash end-of-heroAction). */
 export function syncPlayerLastHealth(state: PlayerHealthState): void {
   state.lastHealth = state.health;
+}
+
+/**
+ * Instant health pickup (Flash `health = Math.min(100, health += 20)`).
+ * Returns the amount actually healed (0 when dead / already at cap).
+ */
+export function healPlayer(
+  state: PlayerHealthState,
+  amount: number = HEALTH_PICKUP.amount,
+  cap: number = HEALTH_PICKUP.cap,
+): number {
+  if (!state.alive || amount <= 0) {
+    return 0;
+  }
+  const before = state.health;
+  state.health = Math.min(cap, state.health + amount);
+  return state.health - before;
 }
 
 /** Health fraction in [0, 1] for HUD mask scale (Flash `health/100`). */

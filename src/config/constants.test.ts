@@ -12,6 +12,7 @@ import {
   PLAYER_COMBAT,
   PLAYER_DEFAULTS,
   POWERUP,
+  POWERUP_DROP,
   POWERUP_FRAMES,
   SCORE,
   SIM_DT,
@@ -121,6 +122,19 @@ describe('config/constants (spec seed)', () => {
       Jetpack: 5,
     });
     expect(HEALTH_PICKUP).toEqual({ amount: 20, cap: 100, firstThreshold: 15 });
+    expect(POWERUP_DROP).toEqual({
+      chanceRange: 100,
+      chanceModulus: 32,
+      nonHealthFrameCount: 13,
+      crateW: 33,
+      crateH: 32,
+      chuteFallSpeed: 2,
+      fallGravity: 1,
+      groundLookaheadPx: 150,
+      softLandSpeed: 4,
+      bounceScale: -0.25,
+      chuteScaleRate: 10,
+    });
     expect(BULLET_TIME.maxFrames).toBe(250);
     expect(BULLET_TIME.refillPerKill).toBeCloseTo(83.333, 3);
     expect(BULLET_TIME.minScale).toBe(0.2);
