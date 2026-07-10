@@ -37,6 +37,7 @@ export class GameScene extends Phaser.Scene {
   private boxRect!: Phaser.GameObjects.Rectangle;
   private playerRect!: Phaser.GameObjects.Rectangle;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
+  private boostKey!: Phaser.Input.Keyboard.Key;
   private arenaOriginX = 0;
   private arenaOriginY = 0;
 
@@ -59,9 +60,12 @@ export class GameScene extends Phaser.Scene {
     this.createDebugBoxVisual();
 
     this.cursors = this.input.keyboard!.createCursorKeys();
+    this.boostKey = this.input.keyboard!.addKey(
+      Phaser.Input.Keyboard.KeyCodes.CTRL,
+    );
 
     this.add
-      .text(GAME_WIDTH / 2, 28, '↑ jump · ↓ duck · ←/→ walk', {
+      .text(GAME_WIDTH / 2, 28, '↑ jump · Ctrl boost · ↓ duck · ←/→ walk', {
         fontFamily: 'Arial, Helvetica, sans-serif',
         fontSize: '36px',
         color: '#f5f5f5',
@@ -76,7 +80,7 @@ export class GameScene extends Phaser.Scene {
     this.add.text(
       40,
       GAME_HEIGHT - 60,
-      '←/→ walk · ↑ jump · ↓ duck · drag box · 1/2 = timeStep · Esc → Boot',
+      '←/→ walk · ↑ jump · Ctrl boost · ↓ duck · drag box · 1/2 = timeStep · Esc → Boot',
       { ...HUD_STYLE, fontSize: '20px', color: '#9ab' },
     );
 
@@ -97,6 +101,7 @@ export class GameScene extends Phaser.Scene {
       right: this.cursors.right.isDown,
       jump: this.cursors.up.isDown,
       duck: this.cursors.down.isDown,
+      boost: this.boostKey.isDown,
     };
 
     this.session.update(delta);
@@ -115,7 +120,8 @@ export class GameScene extends Phaser.Scene {
         `${p.onGround ? 'grounded' : 'air'}` +
         `${pl.ducking ? ' duck' : ''}  ` +
         `j${pl.jumpState.jump ? 1 : 0}${pl.jumpState.jump2 ? 2 : ''}  ` +
-        `up=${pl.jumpState.up}`,
+        `up=${pl.jumpState.up}  ` +
+        `boost=${pl.boostState.charge}/${PLAYER.boostChargeFrames}`,
     );
     const b = this.session.debugBox.body;
     this.boxText.setText(

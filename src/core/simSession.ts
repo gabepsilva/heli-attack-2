@@ -46,6 +46,7 @@ export class SimSession {
       right: false,
       jump: false,
       duck: false,
+      boost: false,
     };
     this.player.placeAt(PLAYER_SPAWN.x, PLAYER_SPAWN.y);
     this.debugBox.dragging = false;

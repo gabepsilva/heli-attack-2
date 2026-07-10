@@ -2,6 +2,12 @@ import { PLAYER, WORLD } from '../config/constants';
 import { createAabbBody, type AabbBody } from '../world/aabbBody';
 import { resolveAabbAgainstTiles } from '../world/tileResolve';
 import type { TileMap } from '../world/tileMap';
+import {
+  applyBoostInput,
+  createBoostState,
+  resetBoostOnLand,
+  type BoostState,
+} from './boostPhysics';
 import { applyDuckHitbox } from './duckPhysics';
 import {
   applyJumpInput,
@@ -18,22 +24,26 @@ export const PLAYER_SPAWN = { x: 100, y: 200 } as const;
 
 /**
  * Per-frame keyboard state. Phaser only fills this; all physics lives here.
- * `jump` / `duck` are key-held flags (↑ / ↓), not the airborne jump state.
+ * `jump` / `duck` / `boost` are key-held flags (↑ / ↓ / Ctrl).
  */
 export type PlayerInput = {
   left: boolean;
   right: boolean;
   jump: boolean;
   duck: boolean;
+  /** Boost / hyper-jump key (Ctrl). */
+  boost: boolean;
 };
 
 /**
- * Controllable player: walk + gravity + variable jump + duck + AABB resolve.
+ * Controllable player: walk + gravity + variable jump + double-jump + charged
+ * hyper-jump + duck + AABB resolve.
  * Plain module — Phaser only owns the visual and keyboard → {@link input}.
  */
 export class Player {
   readonly body: AabbBody;
   readonly jumpState: JumpState;
+  readonly boostState: BoostState;
 
   /** True while the duck hitbox is active (after the last duck tick). */
   ducking = false;
@@ -44,6 +54,7 @@ export class Player {
     right: false,
     jump: false,
     duck: false,
+    boost: false,
   };
 
   constructor(
@@ -54,9 +65,10 @@ export class Player {
   ) {
     this.body = createAabbBody(x, y, w, h);
     this.jumpState = createJumpState();
+    this.boostState = createBoostState();
   }
 
-  /** Teleport and clear velocity / jump / duck (scene reset). */
+  /** Teleport and clear velocity / jump / boost / duck (scene reset). */
   placeAt(x: number, y: number): void {
     this.body.x = x;
     this.body.y = y;
@@ -68,12 +80,13 @@ export class Player {
     this.body.onCeiling = false;
     this.ducking = false;
     Object.assign(this.jumpState, createJumpState());
+    Object.assign(this.boostState, createBoostState());
   }
 
   /**
    * One sim tick — order matches `heroAction`:
-   * duck hitbox → walk → airborne mark → jump → gravity → AABB resolve →
-   * land / ceiling jump flags.
+   * duck hitbox → walk → airborne mark → boost → jump → gravity → AABB
+   * resolve → land / ceiling jump flags.
    */
   step(map: TileMap, timeStep: number): void {
     this.ducking = applyDuckHitbox(
@@ -93,6 +106,13 @@ export class Player {
 
     markAirborneIfMoving(this.jumpState, this.body.vy);
 
+    this.body.vy = applyBoostInput(
+      this.body.vy,
+      this.boostState,
+      this.jumpState,
+      { boost: this.input.boost },
+    );
+
     this.body.vy = applyJumpInput(this.body.vy, this.jumpState, {
       jump: this.input.jump,
       duck: this.ducking,
@@ -106,6 +126,7 @@ export class Player {
 
     if (this.body.onGround) {
       resetJumpOnLand(this.jumpState);
+      resetBoostOnLand(this.boostState);
     } else if (this.body.onCeiling) {
       cancelJumpOnCeiling(this.jumpState);
     }

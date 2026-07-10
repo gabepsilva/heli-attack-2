@@ -21,6 +21,7 @@ describe('SimSession', () => {
       right: true,
       jump: false,
       duck: false,
+      boost: false,
     };
     session.player.placeAt(400, 50);
     session.debugBox.placeAt(400, 50);
@@ -39,6 +40,7 @@ describe('SimSession', () => {
       right: false,
       jump: false,
       duck: false,
+      boost: false,
     });
     expect(session.debugBox.body.x).toBe(DEBUG_BOX_SPAWN.x);
     expect(session.debugBox.body.y).toBe(DEBUG_BOX_SPAWN.y);
@@ -65,6 +67,7 @@ describe('SimSession', () => {
       right: true,
       jump: false,
       duck: false,
+      boost: false,
     };
     const ramp: number[] = [];
     for (let i = 0; i < 8; i += 1) {
@@ -79,6 +82,7 @@ describe('SimSession', () => {
       right: false,
       jump: false,
       duck: false,
+      boost: false,
     };
     const decay: number[] = [];
     for (let i = 0; i < 6; i += 1) {
