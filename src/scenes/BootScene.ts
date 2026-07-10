@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { atlasLoadPaths } from '../art/atlasManifest';
 import {
   BOOT_BACKGROUND_COLOR,
   BOOT_TITLE,
@@ -11,6 +12,11 @@ import { SCENE_KEYS } from '../config/scenes';
 export class BootScene extends Phaser.Scene {
   constructor() {
     super({ key: SCENE_KEYS.Boot });
+  }
+
+  preload(): void {
+    const atlas = atlasLoadPaths();
+    this.load.atlas(atlas.key, atlas.imagePath, atlas.jsonPath);
   }
 
   create(): void {

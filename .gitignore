@@ -27,6 +27,9 @@ reference/**/*.wav
 reference/**/*.zip
 reference/**/*.psd
 
+# Art packer staging (committed outputs live in public/atlas/)
+public/atlas/.staging/
+
 # Python
 __pycache__/
 

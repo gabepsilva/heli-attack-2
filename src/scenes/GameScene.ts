@@ -1,4 +1,7 @@
 import Phaser from 'phaser';
+import { getSpriteDef, PLAYER_PLACEHOLDER_FRAME } from '../art/catalog';
+import { playerSpritePlacement } from '../art/spritePlacement';
+import { ATLAS_KEY } from '../config/art';
 import { PLAYER, SIM_HZ, WORLD } from '../config/constants';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/game';
 import { SCENE_KEYS } from '../config/scenes';
@@ -19,13 +22,13 @@ const HUD_STYLE: Phaser.Types.GameObjects.Text.TextStyle = {
 const TILE_COLOR = 0x3d5a80;
 const BOX_COLOR = 0xe09f3e;
 const BOX_DRAG_COLOR = 0xf4a261;
-const PLAYER_COLOR = 0x90be6d;
-const PLAYER_STROKE = 0xd8f3dc;
+const PLAYER_HITBOX_STROKE = 0xd8f3dc;
 
 /**
  * Thin Phaser shell: banks render deltas into a 30 Hz fixed sim, draws the
- * hand-authored tile arena, hosts a controllable player (←/→ walk), and a
- * draggable debug box. Game logic lives in plain modules under src/.
+ * hand-authored tile arena, hosts a controllable player (←/→ walk) rendered
+ * from the packed atlas (#32), and a draggable debug box. Game logic lives in
+ * plain modules under src/.
  */
 export class GameScene extends Phaser.Scene {
   private readonly session = new SimSession();
@@ -35,7 +38,8 @@ export class GameScene extends Phaser.Scene {
   private playerText!: Phaser.GameObjects.Text;
   private boxText!: Phaser.GameObjects.Text;
   private boxRect!: Phaser.GameObjects.Rectangle;
-  private playerRect!: Phaser.GameObjects.Rectangle;
+  private playerSprite!: Phaser.GameObjects.Image;
+  private playerHitbox!: Phaser.GameObjects.Rectangle;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private arenaOriginX = 0;
   private arenaOriginY = 0;
@@ -158,23 +162,44 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createPlayerVisual(): void {
-    const p = this.session.player.body;
-    this.playerRect = this.add
+    const body = this.session.player.body;
+    const def = getSpriteDef(PLAYER_PLACEHOLDER_FRAME);
+    const place = playerSpritePlacement(body, def);
+
+    this.playerSprite = this.add
+      .image(
+        this.arenaOriginX + place.x,
+        this.arenaOriginY + place.y,
+        ATLAS_KEY,
+        PLAYER_PLACEHOLDER_FRAME,
+      )
+      .setOrigin(place.originX, place.originY)
+      .setDisplaySize(place.displayW, place.displayH);
+
+    // Collision AABB outline (debug aid until #8 overlay owns this).
+    this.playerHitbox = this.add
       .rectangle(
-        this.arenaOriginX + p.x + p.w / 2,
-        this.arenaOriginY + p.y + p.h / 2,
+        this.arenaOriginX + body.x + body.w / 2,
+        this.arenaOriginY + body.y + body.h / 2,
         PLAYER.boxW,
         PLAYER.boxH,
-        PLAYER_COLOR,
       )
-      .setStrokeStyle(2, PLAYER_STROKE);
+      .setStrokeStyle(1, PLAYER_HITBOX_STROKE, 0.7)
+      .setFillStyle(0x000000, 0);
   }
 
   private syncPlayerVisual(): void {
-    const p = this.session.player.body;
-    this.playerRect.setPosition(
-      this.arenaOriginX + p.x + p.w / 2,
-      this.arenaOriginY + p.y + p.h / 2,
+    const body = this.session.player.body;
+    const def = getSpriteDef(PLAYER_PLACEHOLDER_FRAME);
+    const place = playerSpritePlacement(body, def);
+
+    this.playerSprite.setPosition(
+      this.arenaOriginX + place.x,
+      this.arenaOriginY + place.y,
+    );
+    this.playerHitbox.setPosition(
+      this.arenaOriginX + body.x + body.w / 2,
+      this.arenaOriginY + body.y + body.h / 2,
     );
   }
 

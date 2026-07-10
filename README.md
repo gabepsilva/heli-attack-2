@@ -97,7 +97,13 @@ npm run typecheck # strict TypeScript check
 npm run lint      # ESLint (type-aware)
 npm run format    # Prettier --write (format:check to verify only)
 npm test          # Vitest (test:watch for watch mode)
+npm run art:pack  # upscale placeholders + pack atlas + ART-SPEC (needs ImageMagick)
 ```
+
+Packed atlas + placeholders live in `public/atlas/` (committed). Reference PNGs stay
+gitignored under `reference/ha2-source/gfx/` — pull from
+[iopred/heliattack](https://github.com/iopred/heliattack) `ha2/assets` when regenerating,
+then run `npm run art:pack`. See [`docs/ART-SPEC.md`](docs/ART-SPEC.md).
 
 CI runs typecheck, lint, format check, tests, and build on every PR.
 
