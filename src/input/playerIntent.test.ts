@@ -4,7 +4,10 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { getActiveWeaponDef } from '../combat/weaponInventory';
+import {
+  createWeaponInventory,
+  getActiveWeaponDef,
+} from '../combat/weaponInventory';
 import { SimSession } from '../core/simSession';
 import {
   createIntentActionBuffer,
@@ -12,6 +15,11 @@ import {
   sampleKeyboardMouseIntent,
 } from './keyboardMouse';
 import { applyPlayerIntent, createPlayerIntent } from './playerIntent';
+
+/** Opt-in full arsenal for weapon-switch intent tests (#92). */
+function grantTestArsenal(session: SimSession): void {
+  session.inventory = createWeaponInventory({ testGrant: true });
+}
 
 describe('playerIntent (issue #29)', () => {
   it('createPlayerIntent starts fully released with the given aim point', () => {
@@ -86,6 +94,7 @@ describe('playerIntent (issue #29)', () => {
 
   it('applyPlayerIntent routes digit / prev / next weapon switch through inventory', () => {
     const session = new SimSession();
+    grantTestArsenal(session);
     expect(getActiveWeaponDef(session.inventory).name).toBe('MachineGun');
 
     // Digit 3 → arsenal index 2 (Shotgun); next → ShotgunRockets; prev back.
@@ -116,6 +125,7 @@ describe('playerIntent (issue #29)', () => {
     // Acceptance: gameplay reads intent, not raw keys. This round-trip is the
     // shipped path GameScene uses after sampling Phaser into abstract slots.
     const session = new SimSession();
+    grantTestArsenal(session);
     const actions = createIntentActionBuffer();
     queueWeaponDigit(actions, 2); // digit 2 → AkimboMac10
 

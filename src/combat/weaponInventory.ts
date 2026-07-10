@@ -26,8 +26,8 @@ export type WeaponInventory = {
 
 export type CreateWeaponInventoryOptions = {
   /**
-   * When true, grant Flash pickup ammo to weapons 1–12 so switching is
-   * playable before the drop system (#21) lands.
+   * Dev/test helper only (#92): grant Flash pickup ammo to weapons 1–12.
+   * Must never be set for normal play / restart — drops unlock those slots.
    */
   testGrant?: boolean;
 };
@@ -43,9 +43,9 @@ export function createWeaponSlot(type: number): WeaponState {
 }
 
 /**
- * Flash `heroSetup` gun array:
- * - slot 0 MachineGun: ∞ ammo
- * - slots 1..12: 0 ammo (or test-granted pickup amounts)
+ * Flash `heroSetup` gun array (#92):
+ * - slot 0 MachineGun: ∞ ammo (only selectable weapon at run start)
+ * - slots 1..12: 0 ammo until a pickup grants ammo (`testGrant` for tests only)
  * - slot 13 ShoulderCannon / predator: ∞ ammo, skipped by cycling
  */
 export function createWeaponInventory(

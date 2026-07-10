@@ -12,10 +12,19 @@ import {
   WORLD,
 } from '../config/constants';
 import { SHOTGUN_SPREAD_DEG } from '../combat/gunFire';
-import { nextWeapon, selectWeaponByDigitKey } from '../combat/weaponInventory';
+import {
+  createWeaponInventory,
+  nextWeapon,
+  selectWeaponByDigitKey,
+} from '../combat/weaponInventory';
 import { PLAYER_SPAWN } from '../player/player';
 import { accuracyPercent } from './highScores';
 import { DEBUG_BOX_SPAWN, SimSession } from './simSession';
+
+/** Opt-in full arsenal for tests that exercise non-MG weapons (#92). */
+function grantTestArsenal(session: SimSession): void {
+  session.inventory = createWeaponInventory({ testGrant: true });
+}
 
 describe('SimSession', () => {
   it('reset restores a fresh run after timeStep / motion mutations (scene switch)', () => {
@@ -352,8 +361,31 @@ describe('SimSession', () => {
     expect(session.score.value).toBe(0);
   });
 
+  it('new game / reset starts with MachineGun only — no pre-granted ammo (#92)', () => {
+    const session = new SimSession();
+    expect(session.inventory.activeIndex).toBe(0);
+    expect(session.weapon.type).toBe(0);
+    expect(session.weapon.bullets).toBe(Number.POSITIVE_INFINITY);
+    for (let i = 1; i < 13; i += 1) {
+      expect(session.inventory.slots[i]!.bullets).toBe(0);
+    }
+    expect(nextWeapon(session.inventory)).toBe(true);
+    expect(session.inventory.activeIndex).toBe(0);
+    expect(selectWeaponByDigitKey(session.inventory, 3)).toBe(false);
+
+    grantTestArsenal(session);
+    expect(session.inventory.slots[1]!.bullets).toBe(50);
+    session.reset();
+    expect(session.inventory.activeIndex).toBe(0);
+    expect(session.weapon.bullets).toBe(Number.POSITIVE_INFINITY);
+    for (let i = 1; i < 13; i += 1) {
+      expect(session.inventory.slots[i]!.bullets).toBe(0);
+    }
+  });
+
   it('switches weapons instantly and keeps per-slot ammo/reload (issue #14)', () => {
     const session = new SimSession();
+    grantTestArsenal(session);
     expect(session.inventory.slots).toHaveLength(14);
     expect(session.inventory.activeIndex).toBe(0);
     expect(session.weapon.type).toBe(0);
@@ -395,11 +427,13 @@ describe('SimSession', () => {
     session.reset();
     expect(session.inventory.activeIndex).toBe(0);
     expect(session.weapon.shots).toBe(0);
-    expect(session.inventory.slots[1]!.bullets).toBe(50);
+    // Normal reset clears test arsenal (#92).
+    expect(session.inventory.slots[1]!.bullets).toBe(0);
   });
 
   it('Shotgun spawns a five-pellet spread; RPG is slower than GrenadeLauncher (#15)', () => {
     const session = new SimSession();
+    grantTestArsenal(session);
     // Aim straight +X so gunAim settles near 0° (player.step overwrites gunAim).
     session.player.mouse = {
       x: session.player.gunPivot.x + 400,
@@ -450,6 +484,7 @@ describe('SimSession', () => {
 
   it('special weapons: flame streams DoT, seeker homes, rail hitscan (#16)', () => {
     const session = new SimSession();
+    grantTestArsenal(session);
     session.player.mouse = {
       x: session.player.gunPivot.x + 400,
       y: session.player.gunPivot.y,
@@ -694,6 +729,7 @@ describe('SimSession', () => {
 
   it('accuracy counts projectiles spawned and first contact only (#25 Lead #78)', () => {
     const session = new SimSession();
+    grantTestArsenal(session);
     session.player.mouse = {
       x: session.player.gunPivot.x + 400,
       y: session.player.gunPivot.y,
@@ -732,6 +768,7 @@ describe('SimSession', () => {
 
     // Flame DoT: many damage ticks, but only one accuracy hit per projectile.
     session.reset();
+    grantTestArsenal(session);
     session.player.mouse = {
       x: session.player.gunPivot.x + 400,
       y: session.player.gunPivot.y,
@@ -952,6 +989,7 @@ describe('SimSession', () => {
 
   it('tags rocket projectiles with Flash smoke-trail intervals (#35)', () => {
     const session = new SimSession();
+    grantTestArsenal(session);
     expect(selectWeaponByDigitKey(session.inventory, 7)).toBe(true); // RocketLauncher
     session.player.gunAim = { rotationDeg: 0, flipY: false };
     session.player.muzzle = { x: 100, y: 100 };
@@ -961,6 +999,7 @@ describe('SimSession', () => {
     expect(rocket!.smokeTrailInterval).toBe(2);
 
     session.reset();
+    grantTestArsenal(session);
     expect(selectWeaponByDigitKey(session.inventory, 4)).toBe(true); // ShotgunRockets
     session.player.gunAim = { rotationDeg: 0, flipY: false };
     session.player.muzzle = { x: 100, y: 100 };
@@ -1006,6 +1045,7 @@ describe('SimSession', () => {
 
     // RocketLauncher (100) — damage in the cue scales shake with weapon size.
     session.reset();
+    grantTestArsenal(session);
     expect(selectWeaponByDigitKey(session.inventory, 7)).toBe(true);
     expect(session.inventory.activeIndex).toBe(6);
     expect(WEAPONS[6].damage).toBe(100);
