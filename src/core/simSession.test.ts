@@ -1012,90 +1012,22 @@ describe('SimSession', () => {
     }
   });
 
-  it('queues camera-feel weaponHit / playerHurt cues with weapon damage (#36)', () => {
+  it('queues a hurt-flash cue when the player takes damage', () => {
     const session = new SimSession();
-
-    // Kill → weaponHit{ killed: true } carrying the damaging shot's damage.
-    const victim = session.helicopters[0]!;
-    victim.health = 1;
-    victim.x = session.player.muzzle.x + 40;
-    victim.y = session.player.muzzle.y;
-    victim.xspeed = 0;
-    victim.yspeed = 0;
-    victim.tx = victim.x;
-    victim.ty = victim.y;
-    session.player.mouse = { x: victim.x, y: victim.y };
-    session.fireHeld = true;
-    session.weapon.reloadTime = Number.POSITIVE_INFINITY;
-    session.drainCameraFeelEvents();
-    for (let i = 0; i < 10 && victim.active; i += 1) {
-      victim.xspeed = 0;
-      victim.yspeed = 0;
-      session.update(1000 / 30);
-    }
-    expect(victim.active).toBe(false);
-    const killFeel = session
-      .drainCameraFeelEvents()
-      .find((e) => e.type === 'weaponHit' && e.killed);
-    expect(killFeel).toEqual({
-      type: 'weaponHit',
-      damage: WEAPONS[0].damage,
-      killed: true,
-    });
-
-    // RocketLauncher (100) — damage in the cue scales shake with weapon size.
-    session.reset();
-    grantTestArsenal(session);
-    expect(selectWeaponByDigitKey(session.inventory, 7)).toBe(true);
-    expect(session.inventory.activeIndex).toBe(6);
-    expect(WEAPONS[6].damage).toBe(100);
-    const tank = session.helicopters[0]!;
-    tank.health = HELI.hp;
-    tank.x = 400;
-    tank.y = 300;
-    tank.xspeed = 0;
-    tank.yspeed = 0;
-    tank.tx = tank.x;
-    tank.ty = tank.y;
-    // Pixel-accurate hit: opaque mask local (22,2), spawn one step before along +X.
-    const hitLocal = { x: 22, y: 2 };
-    const hitX = tank.x - HELI.spriteW / 2 + hitLocal.x;
-    const hitY = tank.y - HELI.spriteH / 2 + hitLocal.y;
-    expect(
-      session.bullets.acquire(
-        hitX - BULLET.defaultSpeed,
-        hitY,
-        0,
-        BULLET.defaultSpeed,
-        WEAPONS[6].damage,
-      ),
-    ).not.toBeNull();
-    session.drainCameraFeelEvents();
-    session.update(1000 / 30);
-    expect(session.drainCameraFeelEvents()).toContainEqual({
-      type: 'weaponHit',
-      damage: 100,
-      killed: false,
-    });
-    expect(tank.health).toBe(HELI.hp - 100);
-
-    // Player hurt → playerHurt with enemy bullet damage.
-    session.reset();
     const px = session.player.body.x + session.player.body.w / 2;
     const py = session.player.body.y + session.player.body.h / 2;
     expect(session.enemyBullets.acquire(px, py, 0, 0)).not.toBeNull();
-    session.drainCameraFeelEvents();
+    expect(session.drainHurtFlash()).toBe(false);
     session.update(1000 / 30);
-    expect(session.drainCameraFeelEvents()).toEqual([
-      { type: 'playerHurt', damage: ENEMY_BULLET.damage },
-    ]);
+    expect(session.drainHurtFlash()).toBe(true);
+    expect(session.drainHurtFlash()).toBe(false);
     expect(ENEMY_BULLET.damage).toBe(10);
 
-    // reset clears pending camera-feel cues.
+    // reset clears a pending hurt-flash cue.
     expect(session.enemyBullets.acquire(px, py, 0, 0)).not.toBeNull();
     session.update(1000 / 30);
     // May be empty if i-frames still active from the previous hurt.
     session.reset();
-    expect(session.drainCameraFeelEvents()).toEqual([]);
+    expect(session.drainHurtFlash()).toBe(false);
   });
 });

@@ -141,7 +141,7 @@ export function runPeakLoadAudit(
     session.update(1000 / 30);
     session.drainParticleFx();
     session.drainAudioEvents();
-    session.drainCameraFeelEvents();
+    session.drainHurtFlash();
     const b = now();
     const tickMs = b - a;
     if (tickMs > maxTickMs) {

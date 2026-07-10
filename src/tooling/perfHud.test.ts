@@ -34,7 +34,11 @@ describe('PerfHud (#37)', () => {
       );
     }
 
-    const hud = new PerfHud({ monitor, parent: document.body });
+    const hud = new PerfHud({
+      monitor,
+      parent: document.body,
+      visible: true,
+    });
     const root = document.querySelector('[data-perf-hud="true"]');
     expect(root).not.toBeNull();
     expect(hud.visible).toBe(true);
@@ -58,5 +62,15 @@ describe('PerfHud (#37)', () => {
 
     hud.destroy();
     expect(document.querySelector('[data-perf-hud="true"]')).toBeNull();
+  });
+
+  it('defaults hidden as part of End-toggled debug info (#107)', () => {
+    const hud = new PerfHud({
+      monitor: new PerfMonitor(),
+      parent: document.body,
+    });
+    expect(hud.visible).toBe(false);
+    expect(PERF.defaultHudVisible).toBe(false);
+    hud.destroy();
   });
 });

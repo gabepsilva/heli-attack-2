@@ -94,6 +94,7 @@ describe('ART-SPEC.md (issue #32/#33/#34 — documented working process)', () =>
     expect(md).toContain('explosion');
     expect(md).toContain('muzzle_flash');
     expect(md).toContain('public/art/bg.png');
+    expect(md).toContain('public/art/title.png');
     expect(md).toMatch(/temporary original Flash/i);
   });
 });

@@ -146,6 +146,7 @@ def main() -> None:
         ("powershouldercannon.png", "powershouldercannon.png"),
         ("Floor.png", "Floor.png"),
         ("bg.png", "bg.png"),
+        ("title.png", "title.png"),
     ]
     for src_name, dest_name in world_map:
         write_scaled(load_rgba(src_name), WORLD_OUT / dest_name, WORLD_SCALE)

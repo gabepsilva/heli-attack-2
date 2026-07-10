@@ -141,9 +141,9 @@ export function applyTunablesFromSearch(
 }
 
 /**
- * Parse whether the debug overlay should start visible.
- * `?debug=0` / `false` / `off` → hidden; absent or any other value → shown
- * (dev default on so the harness is immediately usable).
+ * Parse whether debug info should start visible.
+ * Absent → hidden (clean play); `?debug` / `1` / `true` / `on` → shown;
+ * `?debug=0` / `false` / `off` / `no` → hidden.
  */
 export function parseDebugOverlayVisible(
   search: string | URLSearchParams,
@@ -154,7 +154,7 @@ export function parseDebugOverlayVisible(
       : search;
   const raw = params.get('debug');
   if (raw === null) {
-    return true;
+    return false;
   }
   const normalized = raw.trim().toLowerCase();
   return !(

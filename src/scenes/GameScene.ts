@@ -14,8 +14,7 @@ import {
 import { getGameAudio } from '../audio/gameAudio';
 import { GameSfx } from '../audio/gameSfx';
 import { GameParticles } from '../fx/gameParticles';
-import { GameCameraFeel } from '../fx/gameCameraFeel';
-import { CameraFeelHud } from '../fx/cameraFeelHud';
+import { HurtFlash } from '../fx/hurtFlash';
 import { ATLAS_KEY, BG_IMAGE_KEY } from '../config/art';
 import { isPlayerHurtFlashing } from '../combat/playerHealth';
 import { playerPowerupAlpha } from '../combat/powerupEffects';
@@ -75,6 +74,7 @@ import {
 } from '../input/gamepadControls';
 import { DEFAULT_GAMEPAD_BINDINGS } from '../config/gamepad';
 import { PERF, parsePerfHudVisible } from '../config/perf';
+import { parseDebugOverlayVisible } from '../config/physicsTuning';
 import { DebugOverlay } from '../tooling/debugOverlay';
 import { PerfHud } from '../tooling/perfHud';
 import { PerfMonitor } from '../tooling/perfMonitor';
@@ -127,14 +127,15 @@ const TILE_FRAME = 'tile_floor';
  * Particles (#35): pooled Phaser emitters for explosions, impacts, smoke,
  * debris, muzzle flashes, and blood — drained from sim FX events each frame.
  *
- * Camera feel (#36): damage-scaled screen shake, hit flash, hit-stop, damage
- * vignette, and subtle aim/velocity lead — intensity toggle in the DOM HUD.
+ * Hurt flash: hard 33 ms full-screen red blink when the player takes damage
+ * (one Flash stage frame — not a fade).
  *
- * Perf (#37): rolling FPS / frame-budget HUD (F3), fixed pool audit, single
- * atlas batching, and a measured peak-load report under the mobile frame budget.
+ * Perf (#37): rolling FPS / frame-budget HUD, fixed pool audit, single atlas
+ * batching, and a measured peak-load report under the mobile frame budget.
  *
- * The debug overlay (#8/#107) is a DOM panel outside Phaser so it can host real
- * `<input>` controls for live physics tuning; End toggles it for clean demos.
+ * Debug info (#8/#107): physics overlay, key-help text, and perf HUD start
+ * hidden; End toggles them together for clean play. F3 still toggles the
+ * perf HUD alone.
  */
 export class GameScene extends Phaser.Scene {
   private readonly session = new SimSession();
@@ -199,11 +200,13 @@ export class GameScene extends Phaser.Scene {
   private duckKey!: Phaser.Input.Keyboard.Key;
   private gameSfx: GameSfx | null = null;
   private gameParticles: GameParticles | null = null;
-  private gameCameraFeel: GameCameraFeel | null = null;
-  private cameraFeelHud: CameraFeelHud | null = null;
+  private hurtFlash: HurtFlash | null = null;
   /** Rolling FPS / pool sampler for the perf HUD (#37). */
   private readonly perfMonitor = new PerfMonitor();
   private perfHud: PerfHud | null = null;
+  /** On-screen control hints — part of End-toggled debug info (#107). */
+  private controlsHelpTop: Phaser.GameObjects.Text | null = null;
+  private controlsHelpBottom: Phaser.GameObjects.Text | null = null;
   private boostKey!: Phaser.Input.Keyboard.Key;
   private bulletTimeKey!: Phaser.Input.Keyboard.Key;
   private pauseKey!: Phaser.Input.Keyboard.Key;
@@ -228,21 +231,21 @@ export class GameScene extends Phaser.Scene {
     drainIntentActions(this.intentActions);
     this.gameParticles?.destroy();
     this.gameParticles = null;
-    this.gameCameraFeel?.destroy();
-    this.gameCameraFeel = null;
-    this.cameraFeelHud?.destroy();
-    this.cameraFeelHud = null;
+    this.hurtFlash?.destroy();
+    this.hurtFlash = null;
     this.perfHud?.destroy();
     this.perfHud = null;
     this.perfMonitor.reset();
     this.gameSfx?.destroy();
     this.gameSfx = null;
     this.overlay?.destroy();
+    this.controlsHelpTop = null;
+    this.controlsHelpBottom = null;
     const search =
       typeof window !== 'undefined' ? window.location.search : undefined;
-    this.overlay = new DebugOverlay({ search });
-    const perfVisible =
-      parsePerfHudVisible(search ?? '') ?? PERF.defaultHudVisible;
+    const debugVisible = parseDebugOverlayVisible(search ?? '');
+    this.overlay = new DebugOverlay({ search, visible: debugVisible });
+    const perfVisible = parsePerfHudVisible(search ?? '') ?? debugVisible;
     this.perfHud = new PerfHud({
       monitor: this.perfMonitor,
       visible: perfVisible,
@@ -270,10 +273,7 @@ export class GameScene extends Phaser.Scene {
       originX: this.arenaOriginX,
       originY: this.arenaOriginY,
     });
-    this.gameCameraFeel = new GameCameraFeel({ scene: this });
-    this.cameraFeelHud = new CameraFeelHud({
-      cameraFeel: this.gameCameraFeel,
-    });
+    this.hurtFlash = new HurtFlash({ scene: this });
     this.gameHud = new GameHud(this);
     this.createDebugBoxVisual();
     this.setupGameAudio();
@@ -288,7 +288,8 @@ export class GameScene extends Phaser.Scene {
     this.boostKey = kb.addKey(bind.boost.code);
     this.bulletTimeKey = kb.addKey(bind.bulletTime.code);
 
-    this.add
+    // Control hints are debug-only (#107) — End toggles with the other panels.
+    this.controlsHelpTop = this.add
       .text(
         GAME_WIDTH / 2,
         28,
@@ -299,18 +300,21 @@ export class GameScene extends Phaser.Scene {
           color: '#f5f5f5',
         },
       )
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setVisible(debugVisible);
 
-    this.add.text(
-      40,
-      GAME_HEIGHT - 60,
-      '←/→ walk · ↑ jump · Ctrl boost · Shift slow-mo · ↓ duck · mouse/pad aim · hold fire/RT · 1–0 / Q–E / wheel / LB–RB weapons · -/= timeStep · drag box · End debug · P/Esc pause',
-      {
-        fontFamily: 'monospace',
-        fontSize: '20px',
-        color: '#9ab',
-      },
-    );
+    this.controlsHelpBottom = this.add
+      .text(
+        40,
+        GAME_HEIGHT - 60,
+        '←/→ walk · ↑ jump · Ctrl boost · Shift slow-mo · ↓ duck · mouse/pad aim · hold fire/RT · 1–0 / Q–E / wheel / LB–RB weapons · -/= timeStep · drag box · End debug · F fullscreen · P/Esc pause',
+        {
+          fontFamily: 'monospace',
+          fontSize: '20px',
+          color: '#9ab',
+        },
+      )
+      .setVisible(debugVisible);
 
     this.input.keyboard?.on('keydown-MINUS', () => {
       this.session.timeScale.setTimeStep(1);
@@ -348,11 +352,11 @@ export class GameScene extends Phaser.Scene {
     this.escKey.on('down', () => {
       this.enterPause();
     });
-    // End — toggle physics debug overlay (#107; was backtick in #8).
+    // End — toggle all debug info (#107; was backtick in #8).
     this.input.keyboard?.on(`keydown-${bind.debugOverlay.event}`, () => {
-      this.overlay?.toggle();
+      this.toggleDebugInfo();
     });
-    // F3 — toggle perf HUD (issue #37).
+    // F3 — toggle perf HUD alone (issue #37).
     this.input.keyboard?.on('keydown-F3', () => {
       this.perfHud?.toggle();
     });
@@ -383,17 +387,32 @@ export class GameScene extends Phaser.Scene {
       }
       this.gameParticles?.destroy();
       this.gameParticles = null;
-      this.gameCameraFeel?.destroy();
-      this.gameCameraFeel = null;
-      this.cameraFeelHud?.destroy();
-      this.cameraFeelHud = null;
+      this.hurtFlash?.destroy();
+      this.hurtFlash = null;
       this.perfHud?.destroy();
       this.perfHud = null;
       this.gameSfx?.destroy();
       this.gameSfx = null;
       this.overlay?.destroy();
       this.overlay = null;
+      this.controlsHelpTop = null;
+      this.controlsHelpBottom = null;
     });
+  }
+
+  /**
+   * Show/hide physics overlay, key hints, and perf HUD together (#107).
+   */
+  private toggleDebugInfo(): void {
+    const next = !(this.overlay?.visible ?? false);
+    this.setDebugInfoVisible(next);
+  }
+
+  private setDebugInfoVisible(visible: boolean): void {
+    this.overlay?.setVisible(visible);
+    this.perfHud?.setVisible(visible);
+    this.controlsHelpTop?.setVisible(visible);
+    this.controlsHelpBottom?.setVisible(visible);
   }
 
   /** Pause gameplay and launch the pause overlay (#24). */
@@ -532,57 +551,51 @@ export class GameScene extends Phaser.Scene {
 
     const wasDying = this.flow.phase === 'dying';
     const ticksBefore = this.session.simTickCount;
-    // Hit-stop freezes the sim briefly on big hits (#36).
-    if (!this.gameCameraFeel?.isHitStopping()) {
-      this.session.update(delta);
-      const simSteps = this.session.simTickCount - ticksBefore;
-      // Advance walk cycle once per sim move tick while horizontally moving
-      // (Flash `gfx.gfx.nextFrame()` under walk parent frame 4).
-      if (simSteps > 0) {
-        const moving = playerAnimMoving(this.session.player.body.vx);
-        for (let i = 0; i < simSteps; i += 1) {
-          this.playerWalkPhase = advanceWalkPhase(
-            this.playerWalkPhase,
-            moving,
-            true,
-          );
-        }
+    this.session.update(delta);
+    const simSteps = this.session.simTickCount - ticksBefore;
+    // Advance walk cycle once per sim move tick while horizontally moving
+    // (Flash `gfx.gfx.nextFrame()` under walk parent frame 4).
+    if (simSteps > 0) {
+      const moving = playerAnimMoving(this.session.player.body.vx);
+      for (let i = 0; i < simSteps; i += 1) {
+        this.playerWalkPhase = advanceWalkPhase(
+          this.playerWalkPhase,
+          moving,
+          true,
+        );
       }
-      this.gameSfx?.drainAndPlay(this.session.drainAudioEvents(), {
-        simTicks: simSteps,
-      });
-      this.gameParticles?.drainAndExplode(this.session.drainParticleFx());
-      this.gameCameraFeel?.consume(this.session.drainCameraFeelEvents());
+    }
+    this.gameSfx?.drainAndPlay(this.session.drainAudioEvents(), {
+      simTicks: simSteps,
+    });
+    this.gameParticles?.drainAndExplode(this.session.drainParticleFx());
+    if (this.session.drainHurtFlash()) {
+      this.hurtFlash?.trigger();
+    }
 
-      if (!this.session.playerHealth.alive) {
-        if (this.flow.phase === 'playing') {
-          beginDeath(this.flow, this.session.score.value);
-        }
-        if (this.flow.phase === 'dying') {
-          // Count only steps while already dead; on the death frame count one
-          // (sim steps before the killing blow were still alive).
-          const deathTicks = wasDying ? simSteps : simSteps > 0 ? 1 : 0;
-          for (let i = 0; i < deathTicks; i += 1) {
-            if (tickDeath(this.flow)) {
-              this.scene.start(SCENE_KEYS.GameOver, {
-                finalScore: this.flow.finalScore,
-                helisKilled: this.session.heliSpawn.kills,
-                shots: this.session.runShots,
-                hits: this.session.runHits,
-              });
-              return;
-            }
+    if (!this.session.playerHealth.alive) {
+      if (this.flow.phase === 'playing') {
+        beginDeath(this.flow, this.session.score.value);
+      }
+      if (this.flow.phase === 'dying') {
+        // Count only steps while already dead; on the death frame count one
+        // (sim steps before the killing blow were still alive).
+        const deathTicks = wasDying ? simSteps : simSteps > 0 ? 1 : 0;
+        for (let i = 0; i < deathTicks; i += 1) {
+          if (tickDeath(this.flow)) {
+            this.scene.start(SCENE_KEYS.GameOver, {
+              finalScore: this.flow.finalScore,
+              helisKilled: this.session.heliSpawn.kills,
+              shots: this.session.runShots,
+              hits: this.session.runHits,
+            });
+            return;
           }
         }
       }
     }
 
-    this.gameCameraFeel?.update(
-      delta,
-      this.session.player.gunAim.rotationDeg,
-      this.session.player.body.vx,
-      this.session.player.body.vy,
-    );
+    this.hurtFlash?.update(delta);
 
     const p = this.session.player.body;
     const pl = this.session.player;

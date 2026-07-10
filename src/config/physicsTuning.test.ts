@@ -145,10 +145,12 @@ describe('physicsTuning (issue #8)', () => {
     expect(PLAYER.boostChargeFrames).toBe(150);
   });
 
-  it('parseDebugOverlayVisible defaults on; debug=0/false/off hides', () => {
-    expect(parseDebugOverlayVisible('')).toBe(true);
-    expect(parseDebugOverlayVisible('?foo=1')).toBe(true);
+  it('parseDebugOverlayVisible defaults off; debug=1/true/on shows', () => {
+    expect(parseDebugOverlayVisible('')).toBe(false);
+    expect(parseDebugOverlayVisible('?foo=1')).toBe(false);
+    expect(parseDebugOverlayVisible('?debug')).toBe(true);
     expect(parseDebugOverlayVisible('?debug=1')).toBe(true);
+    expect(parseDebugOverlayVisible('?debug=true')).toBe(true);
     expect(parseDebugOverlayVisible('?debug=0')).toBe(false);
     expect(parseDebugOverlayVisible('?debug=false')).toBe(false);
     expect(parseDebugOverlayVisible('?debug=OFF')).toBe(false);

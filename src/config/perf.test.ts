@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { ATLAS_KEY, BG_IMAGE_KEY } from './art';
+import { ATLAS_KEY, BG_IMAGE_KEY, TITLE_IMAGE_KEY } from './art';
 import { BULLET, ENEMY_BULLET, HELI_SPAWN } from './constants';
 import { particleBudgetCap, PARTICLE_FX } from './particles';
 import {
@@ -62,8 +62,8 @@ describe('config/perf (#37)', () => {
   it('batches gameplay draw calls through a single atlas key', () => {
     expect(PERF.gameplayAtlasKey).toBe(ATLAS_KEY);
     expect(PERF.gameplayAtlasKey).toBe('game-atlas');
-    expect(PERF.nonAtlasTextureKeys).toEqual([BG_IMAGE_KEY]);
-    expect(PERF.nonAtlasTextureKeys).toEqual(['game-bg']);
+    expect(PERF.nonAtlasTextureKeys).toEqual([BG_IMAGE_KEY, TITLE_IMAGE_KEY]);
+    expect(PERF.nonAtlasTextureKeys).toEqual(['game-bg', 'game-title']);
   });
 
   it('evaluates frame / tick budgets against the locked thresholds', () => {
@@ -100,6 +100,6 @@ describe('config/perf (#37)', () => {
     expect(parsePerfHudVisible('?perf=0')).toBe(false);
     expect(parsePerfHudVisible('?perf=false')).toBe(false);
     expect(PERF.storageKey).toBe('heli-attack-2.perfHudVisible');
-    expect(PERF.defaultHudVisible).toBe(true);
+    expect(PERF.defaultHudVisible).toBe(false);
   });
 });

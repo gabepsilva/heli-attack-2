@@ -209,7 +209,7 @@ def make_heli_destroyed() -> None:
 
 
 def make_enemy_guy() -> None:
-    w, h = 25, 50
+    w, h = 25, 48
     img = blank(w, h)
     draw = ImageDraw.Draw(img)
     cx = w / 2

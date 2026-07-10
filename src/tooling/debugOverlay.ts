@@ -54,7 +54,7 @@ export type DebugOverlaySnapshot = {
 export type DebugOverlayOptions = {
   /** Parent element (defaults to `document.body`). */
   parent?: HTMLElement;
-  /** Initial visibility (defaults to true). */
+  /** Initial visibility (defaults to hidden — clean play / #107). */
   visible?: boolean;
   /** Query string / URLSearchParams applied once at mount. */
   search?: string | URLSearchParams;
@@ -110,9 +110,7 @@ export class DebugOverlay {
       applyTunablesFromSearch(search);
     }
 
-    this._visible =
-      options.visible ??
-      (search !== '' ? parseDebugOverlayVisible(search) : true);
+    this._visible = options.visible ?? parseDebugOverlayVisible(search);
 
     const doc = options.parent?.ownerDocument ?? document;
     const existing = doc.getElementById(PANEL_ID);

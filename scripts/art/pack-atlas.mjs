@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 /**
- * Pack Phaser hash atlas + write ART-SPEC.md + copy background plate.
+ * Pack Phaser hash atlas + write ART-SPEC.md + copy stage plates.
  *
  * - Player frames: committed PNGs under art/player/ (8× Flash size; #95 originals).
  * - World frames: committed PNGs under art/world/ (4× Flash size; #95 originals).
  * - Background: art/world/bg.png → public/art/bg.png (not packed).
+ * - Title plate: art/world/title.png → public/art/title.png (not packed).
  *
  * Outputs (committed): public/atlas/game-atlas.{png,json}, public/art/bg.png,
- * docs/ART-SPEC.md
+ * public/art/title.png, docs/ART-SPEC.md
  *
  * Catalog numbers here must match src/art/catalog.ts — Vitest asserts parity.
  *
@@ -154,7 +155,7 @@ export const SPRITE_DEFS = [
     id: 'enemy_guy',
     sourceFile: 'enemyguy.png',
     originalW: 25,
-    originalH: 50,
+    originalH: 48,
     pivot: { x: 0.5, y: 1 },
     role: 'Paratrooper / ground enemy (temp Flash enemyguy.png)',
     final: true,
@@ -524,6 +525,7 @@ export function renderArtSpecMarkdown(
 | World final scale | **${worldScale}×** Flash original size (committed under \`art/world/\`) |
 | Phaser atlas key | \`${ATLAS_KEY}\` |
 | Background plate | \`public/art/bg.png\` (not packed; 452×322 @ ${worldScale}×) |
+| Title plate | \`public/art/title.png\` (not packed; 452×322 @ ${worldScale}×) |
 
 Shipped art is **temporary original Flash** sprites from iopred \`ha2/assets\`
 (#95), nearest-neighbor upscaled into the atlas pipeline. Hi-res redraws TBD.
@@ -581,7 +583,7 @@ ${rows}
    \`originalW\` / \`originalH\`, pivot, and role.
 3. Mirror the entry in \`scripts/art/pack-atlas.mjs\`.
 4. Run \`npm run art:pack\` — packs \`public/atlas/game-atlas.{png,json}\`,
-   copies \`public/art/bg.png\`, and regenerates this file.
+   copies \`public/art/bg.png\` + \`public/art/title.png\`, and regenerates this file.
 5. Use the frame via \`ATLAS_KEY\` + frame id (see \`selectPlayerAnimFrame\`,
    \`heliFrameForLook\`).
 6. Add / update unit tests in \`src/art/*.test.ts\` if sizes, pivots, or
@@ -600,10 +602,11 @@ npm run art:pack
 Outputs (committed):
 
 - \`art/player/player_*.png\` (player sources — temp Flash #95)
-- \`art/world/*.png\` (world sources + bg plate — temp Flash #95)
+- \`art/world/*.png\` (world sources + bg / title plates — temp Flash #95)
 - \`public/atlas/game-atlas.png\`
 - \`public/atlas/game-atlas.json\`
 - \`public/art/bg.png\`
+- \`public/art/title.png\`
 - \`docs/ART-SPEC.md\` (this file)
 `;
 }
@@ -693,28 +696,35 @@ function main() {
   };
   writeFileSync(atlasJson, JSON.stringify(json, null, 2) + '\n');
 
-  // Background plate (not packed).
-  const bgSrc = join(worldFinalDir, 'bg.png');
-  const bgDst = join(publicArtDir, 'bg.png');
-  if (!existsSync(bgSrc)) {
-    console.error(
-      `Missing background plate: ${bgSrc}\nRun: npm run art:import-original`,
-    );
-    process.exit(1);
-  }
-  const bgExpected = {
+  // Stage plates (not packed) — Flash bg.png + title.png @ world scale.
+  const stagePlateExpected = {
     w: 452 * WORLD_FINAL_SCALE,
     h: 322 * WORLD_FINAL_SCALE,
   };
-  const bgMeasured = identifySize(bgSrc);
-  if (bgMeasured.w !== bgExpected.w || bgMeasured.h !== bgExpected.h) {
-    console.error(
-      `Size mismatch for bg.png: file ${bgMeasured.w}×${bgMeasured.h}, expected ${bgExpected.w}×${bgExpected.h}`,
+  for (const name of ['bg.png', 'title.png']) {
+    const src = join(worldFinalDir, name);
+    const dst = join(publicArtDir, name);
+    if (!existsSync(src)) {
+      console.error(
+        `Missing stage plate: ${src}\nRun: npm run art:import-original`,
+      );
+      process.exit(1);
+    }
+    const measured = identifySize(src);
+    if (
+      measured.w !== stagePlateExpected.w ||
+      measured.h !== stagePlateExpected.h
+    ) {
+      console.error(
+        `Size mismatch for ${name}: file ${measured.w}×${measured.h}, expected ${stagePlateExpected.w}×${stagePlateExpected.h}`,
+      );
+      process.exit(1);
+    }
+    copyFileSync(src, dst);
+    console.log(
+      `${name.replace('.png', '')} ${stagePlateExpected.w}×${stagePlateExpected.h} → public/art/${name}`,
     );
-    process.exit(1);
   }
-  copyFileSync(bgSrc, bgDst);
-  console.log(`bg ${bgExpected.w}×${bgExpected.h} → public/art/bg.png`);
 
   writeFileSync(
     artSpecPath,
@@ -731,7 +741,8 @@ function main() {
 
   console.log(`Done → ${atlasPng}`);
   console.log(`Done → ${atlasJson}`);
-  console.log(`Done → ${bgDst}`);
+  console.log(`Done → ${join(publicArtDir, 'bg.png')}`);
+  console.log(`Done → ${join(publicArtDir, 'title.png')}`);
   console.log(`Done → ${artSpecPath}`);
 }
 

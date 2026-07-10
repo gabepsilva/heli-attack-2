@@ -12,6 +12,9 @@ import {
   BG_IMAGE_PATH,
   BG_ORIGINAL_H,
   BG_ORIGINAL_W,
+  TITLE_IMAGE_PATH,
+  TITLE_ORIGINAL_H,
+  TITLE_ORIGINAL_W,
 } from '../config/art';
 import { PLAYER, WORLD } from '../config/constants';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/game';
@@ -52,6 +55,7 @@ export function renderArtSpecMarkdown(): string {
 | World final scale | **${ART_WORLD_FINAL_SCALE}×** Flash original size (committed under \`${ART_WORLD_FINAL_DIR}/\`) |
 | Phaser atlas key | \`${ATLAS_KEY}\` |
 | Background plate | \`public/${BG_IMAGE_PATH}\` (not packed; ${BG_ORIGINAL_W}×${BG_ORIGINAL_H} @ ${ART_WORLD_FINAL_SCALE}×) |
+| Title plate | \`public/${TITLE_IMAGE_PATH}\` (not packed; ${TITLE_ORIGINAL_W}×${TITLE_ORIGINAL_H} @ ${ART_WORLD_FINAL_SCALE}×) |
 
 Shipped art is **temporary original Flash** sprites from iopred \`ha2/assets\`
 (#95), nearest-neighbor upscaled into the atlas pipeline. Hi-res redraws TBD.
@@ -109,7 +113,7 @@ ${rows}
    \`originalW\` / \`originalH\`, pivot, and role.
 3. Mirror the entry in \`scripts/art/pack-atlas.mjs\`.
 4. Run \`npm run art:pack\` — packs \`public/atlas/game-atlas.{png,json}\`,
-   copies \`public/${BG_IMAGE_PATH}\`, and regenerates this file.
+   copies \`public/${BG_IMAGE_PATH}\` + \`public/${TITLE_IMAGE_PATH}\`, and regenerates this file.
 5. Use the frame via \`ATLAS_KEY\` + frame id (see \`selectPlayerAnimFrame\`,
    \`heliFrameForLook\`).
 6. Add / update unit tests in \`src/art/*.test.ts\` if sizes, pivots, or
@@ -128,10 +132,11 @@ npm run art:pack
 Outputs (committed):
 
 - \`${ART_PLAYER_FINAL_DIR}/player_*.png\` (player sources — temp Flash #95)
-- \`${ART_WORLD_FINAL_DIR}/*.png\` (world sources + bg plate — temp Flash #95)
+- \`${ART_WORLD_FINAL_DIR}/*.png\` (world sources + bg / title plates — temp Flash #95)
 - \`public/atlas/game-atlas.png\`
 - \`public/atlas/game-atlas.json\`
 - \`public/${BG_IMAGE_PATH}\`
+- \`public/${TITLE_IMAGE_PATH}\`
 - \`docs/ART-SPEC.md\` (this file)
 `;
 }

@@ -49,6 +49,15 @@ export const BG_IMAGE_PATH = 'art/bg.png';
 export const BG_ORIGINAL_W = 452;
 export const BG_ORIGINAL_H = 322;
 
+/**
+ * Main-menu title plate (Flash `title.png`) — same stage size as {@link BG_ORIGINAL_W}×{@link BG_ORIGINAL_H}.
+ * Not packed; imported + copied like the background.
+ */
+export const TITLE_IMAGE_KEY = 'game-title';
+export const TITLE_IMAGE_PATH = 'art/title.png';
+export const TITLE_ORIGINAL_W = BG_ORIGINAL_W;
+export const TITLE_ORIGINAL_H = BG_ORIGINAL_H;
+
 /** Max atlas edge length (power-of-two friendly ceiling for the packer). */
 export const ATLAS_MAX_SIZE = 4096;
 

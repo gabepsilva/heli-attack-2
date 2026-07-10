@@ -64,22 +64,22 @@ describe('DebugOverlay (issue #8)', () => {
     expect(line).toContain('pool 4/64 fired 12 rc 8');
   });
 
-  it('mounts visible by default and toggles off for clean demos (AC)', () => {
+  it('mounts hidden by default and toggles on for debug (#107 AC)', () => {
     const overlay = new DebugOverlay({ parent: document.body });
-    expect(overlay.visible).toBe(true);
-    expect(overlay.root.style.display).toBe('block');
-    expect(overlay.root.getAttribute('aria-hidden')).toBe('false');
+    expect(overlay.visible).toBe(false);
+    expect(overlay.root.style.display).toBe('none');
+    expect(overlay.root.getAttribute('aria-hidden')).toBe('true');
     // #107: End is the documented toggle (GameScene binds DEFAULT_KEY_BINDINGS.debugOverlay).
     expect(overlay.root.textContent).toContain('End toggle');
 
     overlay.toggle();
-    expect(overlay.visible).toBe(false);
-    expect(overlay.root.style.display).toBe('none');
-    expect(overlay.root.getAttribute('aria-hidden')).toBe('true');
-
-    overlay.setVisible(true);
     expect(overlay.visible).toBe(true);
     expect(overlay.root.style.display).toBe('block');
+    expect(overlay.root.getAttribute('aria-hidden')).toBe('false');
+
+    overlay.setVisible(false);
+    expect(overlay.visible).toBe(false);
+    expect(overlay.root.style.display).toBe('none');
 
     overlay.destroy();
     expect(document.getElementById('ha2-debug-overlay')).toBeNull();
@@ -94,6 +94,16 @@ describe('DebugOverlay (issue #8)', () => {
     expect(`keydown-${DEFAULT_KEY_BINDINGS.debugOverlay.event}`).toBe(
       'keydown-END',
     );
+  });
+
+  it('honors ?debug=1 so demos can start with the overlay visible', () => {
+    const overlay = new DebugOverlay({
+      parent: document.body,
+      search: '?debug=1',
+    });
+    expect(overlay.visible).toBe(true);
+    expect(overlay.root.style.display).toBe('block');
+    overlay.destroy();
   });
 
   it('honors ?debug=0 so demos start with the overlay hidden', () => {

@@ -156,7 +156,7 @@ export const SPRITE_DEFS = [
     id: 'enemy_guy',
     sourceFile: 'enemyguy.png',
     originalW: 25,
-    originalH: 50,
+    originalH: 48,
     pivot: { x: 0.5, y: 1 },
     role: 'Paratrooper / ground enemy (temp Flash enemyguy.png)',
     final: true,

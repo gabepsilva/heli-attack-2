@@ -6,7 +6,7 @@
  * the audited ceilings the perf HUD and peak-load harness assert against.
  */
 
-import { ATLAS_KEY, BG_IMAGE_KEY } from './art';
+import { ATLAS_KEY, BG_IMAGE_KEY, TITLE_IMAGE_KEY } from './art';
 import { BULLET, ENEMY_BULLET, HELI_SPAWN } from './constants';
 import { particleBudgetCap, PARTICLE_FX } from './particles';
 
@@ -69,12 +69,12 @@ export const PERF = {
    */
   gameplayAtlasKey: ATLAS_KEY,
   /** Only the full-bleed backdrop is allowed outside the atlas. */
-  nonAtlasTextureKeys: [BG_IMAGE_KEY] as const,
+  nonAtlasTextureKeys: [BG_IMAGE_KEY, TITLE_IMAGE_KEY] as const,
 
   /** localStorage / query visibility for the perf HUD. */
   storageKey: 'heli-attack-2.perfHudVisible',
-  /** Default: show the HUD so frame targets are visible during demos. */
-  defaultHudVisible: true,
+  /** Default: hidden — part of End-toggled debug info (#107). */
+  defaultHudVisible: false,
 } as const;
 
 /** True when average frame time fits the desktop 60fps budget. */

@@ -17,6 +17,7 @@
 | World final scale | **4×** Flash original size (committed under `art/world/`) |
 | Phaser atlas key | `game-atlas` |
 | Background plate | `public/art/bg.png` (not packed; 452×322 @ 4×) |
+| Title plate | `public/art/title.png` (not packed; 452×322 @ 4×) |
 
 Shipped art is **temporary original Flash** sprites from iopred `ha2/assets`
 (#95), nearest-neighbor upscaled into the atlas pipeline. Hi-res redraws TBD.
@@ -75,7 +76,7 @@ origin  = (pivot.x, pivot.y)   // usually (0.5, 1)
 | `heli_strafe` | `heli_strafe.png` | 212×106 | 848×424 (final) | 212×106 | (0.5, 0.5) | Enemy helicopter look 1 / strafe (stub: reuse heli.png) |
 | `heli_hit` | `heli_hit.png` | 212×106 | 848×424 (final) | 212×106 | (0.5, 0.5) | Helicopter damaged flash (temp Flash heli_hit.png) |
 | `heli_destroyed` | `heliDestroyed.png` | 173×89 | 692×356 (final) | 173×89 | (0.5, 0.5) | Helicopter wreck (temp Flash heliDestroyed.png) |
-| `enemy_guy` | `enemyguy.png` | 25×50 | 100×200 (final) | 25×50 | (0.5, 1) | Paratrooper / ground enemy (temp Flash enemyguy.png) |
+| `enemy_guy` | `enemyguy.png` | 25×48 | 100×192 (final) | 25×48 | (0.5, 1) | Paratrooper / ground enemy (temp Flash enemyguy.png) |
 | `bullet_player` | `bullett.png` | 10×9 | 40×36 (final) | 10×9 | (0.5, 0.5) | Player projectile (temp Flash bullett.png) |
 | `bullet_enemy` | `enemybullet.png` | 10×9 | 40×36 (final) | 10×9 | (0.5, 0.5) | Enemy projectile (temp Flash enemybullet.png) |
 | `weapon_machinegun` | `machineGun.png` | 29×16 | 116×64 (final) | 29×16 | (0.2, 0.5) | Starting machine gun (temp Flash machineGun.png) |
@@ -111,7 +112,7 @@ origin  = (pivot.x, pivot.y)   // usually (0.5, 1)
    `originalW` / `originalH`, pivot, and role.
 3. Mirror the entry in `scripts/art/pack-atlas.mjs`.
 4. Run `npm run art:pack` — packs `public/atlas/game-atlas.{png,json}`,
-   copies `public/art/bg.png`, and regenerates this file.
+   copies `public/art/bg.png` + `public/art/title.png`, and regenerates this file.
 5. Use the frame via `ATLAS_KEY` + frame id (see `selectPlayerAnimFrame`,
    `heliFrameForLook`).
 6. Add / update unit tests in `src/art/*.test.ts` if sizes, pivots, or
@@ -130,8 +131,9 @@ npm run art:pack
 Outputs (committed):
 
 - `art/player/player_*.png` (player sources — temp Flash #95)
-- `art/world/*.png` (world sources + bg plate — temp Flash #95)
+- `art/world/*.png` (world sources + bg / title plates — temp Flash #95)
 - `public/atlas/game-atlas.png`
 - `public/atlas/game-atlas.json`
 - `public/art/bg.png`
+- `public/art/title.png`
 - `docs/ART-SPEC.md` (this file)

@@ -57,7 +57,7 @@ describe('keyboardMouse source (issue #29)', () => {
     });
     expect(DEFAULT_KEY_BINDINGS.prevWeapon).toEqual({ code: 81, event: 'Q' });
     expect(DEFAULT_KEY_BINDINGS.nextWeapon).toEqual({ code: 69, event: 'E' });
-    // #107: End toggles physics debug overlay (replaces backtick).
+    // #107: End toggles debug info (physics overlay + key hints + camera/perf panels).
     expect(DEFAULT_KEY_BINDINGS.debugOverlay).toEqual({
       code: 35,
       event: 'END',

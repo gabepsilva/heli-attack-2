@@ -78,11 +78,6 @@ import {
 } from '../fx/particleEvents';
 import { ParticleFxQueue } from '../fx/particleQueue';
 import { shouldEmitSmokeTrail } from '../fx/smokeTrail';
-import {
-  buildPlayerHurtFeel,
-  buildWeaponHitFeel,
-  type CameraFeelEvent,
-} from '../fx/cameraFeelEvents';
 import { PLAYER_SPAWN, Player } from '../player/player';
 import { BULLET, HELI, POWERUP } from '../config/constants';
 import { DebugBox } from '../world/debugBox';
@@ -103,7 +98,7 @@ export const DEBUG_BOX_SPAWN = { x: 200, y: 200 } as const;
  * replacement spawn treadmill + difficulty ramp (#19), parachuting powerup
  * drops (#21), timed state powerup effects (#22), manual bullet-time meter
  * (#42), event-driven SFX cues (#27), pooled particle FX cues (#35),
- * camera-feel juice cues (#36), and the debug box.
+ * player-hurt flash cue, and the debug box.
  * Lives outside Phaser so scene restarts and the update loop are
  * unit-testable (Phaser reuses the scene instance; only create() re-runs).
  *
@@ -130,10 +125,10 @@ export class SimSession {
   readonly particleFx = new ParticleFxQueue();
 
   /**
-   * Camera-feel cues (issue #36): shake / hit-flash / hit-stop / vignette.
-   * GameScene drains via {@link drainCameraFeelEvents} after each render update.
+   * Player took damage since the last drain — GameScene triggers a hard
+   * 33 ms full-screen flash (not a fade).
    */
-  private readonly cameraFeelEvents: CameraFeelEvent[] = [];
+  private hurtFlashPending = false;
 
   /** Jetpack smoke frame counter (Flash `smok++`). */
   private jetpackSmokeCounter = 0;
@@ -285,7 +280,7 @@ export class SimSession {
     this.predatorFlicker = 0;
     this.audioEvents.length = 0;
     this.particleFx.reset();
-    this.cameraFeelEvents.length = 0;
+    this.hurtFlashPending = false;
     this.jetpackSmokeCounter = 0;
     this.debugBox.dragging = false;
     this.debugBox.placeAt(DEBUG_BOX_SPAWN.x, DEBUG_BOX_SPAWN.y);
@@ -311,14 +306,13 @@ export class SimSession {
   }
 
   /**
-   * Take ownership of every camera-feel cue queued since the last drain
-   * (issue #36). Call once per render frame after {@link update}.
+   * True when the player took damage since the last drain. Call once per
+   * render frame after {@link update}; clears the pending flag.
    */
-  drainCameraFeelEvents(): CameraFeelEvent[] {
-    if (this.cameraFeelEvents.length === 0) {
-      return [];
-    }
-    return this.cameraFeelEvents.splice(0, this.cameraFeelEvents.length);
+  drainHurtFlash(): boolean {
+    const pending = this.hurtFlashPending;
+    this.hurtFlashPending = false;
+    return pending;
   }
 
   /**
@@ -497,12 +491,6 @@ export class SimSession {
           // Distinct non-fatal impact FX (not the kill boom).
           this.particleFx.pushAll(buildImpactFx(event.heli.x, event.heli.y));
         }
-        // Camera juice on first contact / kill (#36) — scales with weapon size.
-        if (event.damage > 0 && (event.firstContact || event.killed)) {
-          this.cameraFeelEvents.push(
-            buildWeaponHitFeel(event.damage, event.killed),
-          );
-        }
       },
       this.map,
       playerBody,
@@ -528,7 +516,7 @@ export class SimSession {
       this.enemyBulletCullBounds,
       this.timeScale.timeStep,
       this.map,
-      (hit) => {
+      () => {
         this.audioEvents.push({ type: 'hurt' });
         this.particleFx.pushAll(
           buildBloodFx(
@@ -536,7 +524,7 @@ export class SimSession {
             playerBody.y + playerBody.h / 2,
           ),
         );
-        this.cameraFeelEvents.push(buildPlayerHurtFeel(hit.damage));
+        this.hurtFlashPending = true;
       },
       this.playerPowerup.powerupOn,
     );

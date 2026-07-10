@@ -238,6 +238,24 @@ export const PLAYER_COMBAT = {
 } as const;
 
 /**
+ * Full-screen hurt flash when the player takes damage.
+ * Flash `heroAction` applies `hitColor` for exactly one stage frame when
+ * `lasthealth > health`, then restores `normalColor` — hard on/off, not a fade.
+ * One frame at {@link SIM_HZ} is {@link SIM_DT_MS} ms.
+ */
+export const HURT_FLASH = {
+  /** Hard flash duration in ms (one sim / Flash stage frame). */
+  durationMs: Math.round(SIM_DT_MS),
+  /**
+   * Phaser fill RGB approximating Flash `hitColor`
+   * `{ ra:100, rb:150, ga:100, gb:0, ba:100, bb:0 }` (red offset +150).
+   */
+  red: 150,
+  green: 0,
+  blue: 0,
+} as const;
+
+/**
  * Score display (#13). Internal score accumulates damage dealt; the HUD
  * multiplies by {@link SCORE.displayScale} (Flash `Math.floor(score)*100`).
  */

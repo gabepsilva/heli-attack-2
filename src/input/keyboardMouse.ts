@@ -74,6 +74,8 @@ export const DEFAULT_KEY_BINDINGS = {
   bulletTime: { code: PHASER.SHIFT, event: 'SHIFT' } satisfies KeyBinding,
   prevWeapon: { code: PHASER.Q, event: 'Q' } satisfies KeyBinding,
   nextWeapon: { code: PHASER.E, event: 'E' } satisfies KeyBinding,
+  // Fullscreen (#28) is bound on `document` in main.ts (see bindFullscreenKey)
+  // so it works from the menu too — no Phaser key slot needed here.
   /**
    * Toggle physics debug overlay (#107).
    * Phaser `keydown-END` — replaces the old backtick/tilde binding (#8).

@@ -15,6 +15,9 @@ import {
   BG_IMAGE_PATH,
   BG_ORIGINAL_H,
   BG_ORIGINAL_W,
+  TITLE_IMAGE_PATH,
+  TITLE_ORIGINAL_H,
+  TITLE_ORIGINAL_W,
 } from '../config/art';
 import { PLAYER, WORLD } from '../config/constants';
 import {
@@ -150,6 +153,33 @@ describe('art catalog (issue #32 / #33 / #34 acceptance)', () => {
     const expected = {
       w: BG_ORIGINAL_W * ART_WORLD_FINAL_SCALE,
       h: BG_ORIGINAL_H * ART_WORLD_FINAL_SCALE,
+    };
+    expect(pngSize(src)).toEqual(expected);
+    expect(pngSize(pub)).toEqual(expected);
+  });
+
+  it('ships committed title plate at Flash title.png × world final scale', () => {
+    expect(TITLE_ORIGINAL_W).toBe(452);
+    expect(TITLE_ORIGINAL_H).toBe(322);
+    const src = resolve(
+      import.meta.dirname,
+      '../..',
+      ART_WORLD_FINAL_DIR,
+      'title.png',
+    );
+    const pub = resolve(
+      import.meta.dirname,
+      '../..',
+      'public',
+      TITLE_IMAGE_PATH,
+    );
+    expect(existsSync(src), `missing ${ART_WORLD_FINAL_DIR}/title.png`).toBe(
+      true,
+    );
+    expect(existsSync(pub), `missing public/${TITLE_IMAGE_PATH}`).toBe(true);
+    const expected = {
+      w: TITLE_ORIGINAL_W * ART_WORLD_FINAL_SCALE,
+      h: TITLE_ORIGINAL_H * ART_WORLD_FINAL_SCALE,
     };
     expect(pngSize(src)).toEqual(expected);
     expect(pngSize(pub)).toEqual(expected);

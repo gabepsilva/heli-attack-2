@@ -1,8 +1,7 @@
 import Phaser from 'phaser';
+import { TITLE_IMAGE_KEY } from '../config/art';
 import {
   BOOT_BACKGROUND_COLOR,
-  BOOT_TITLE,
-  BOOT_TITLE_STYLE,
   GAME_HEIGHT,
   GAME_WIDTH,
 } from '../config/game';
@@ -18,7 +17,7 @@ import {
  * Main menu — issues #24 / #25 / #27.
  * Boot loads assets then lands here; Space / click starts a fresh run,
  * unlocks audio, and preloads the full SFX/music catalog. Shows the
- * persisted local high-score table.
+ * Flash `title.png` plate plus the persisted local high-score table.
  */
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -30,9 +29,11 @@ export class MenuScene extends Phaser.Scene {
 
     const table = loadHighScores();
 
+    // Flash menu title plate (same stage size as bg.png).
     this.add
-      .text(GAME_WIDTH / 2, 160, BOOT_TITLE, BOOT_TITLE_STYLE)
-      .setOrigin(0.5);
+      .image(GAME_WIDTH / 2, GAME_HEIGHT / 2, TITLE_IMAGE_KEY)
+      .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
+      .setDepth(-10);
 
     this.add
       .text(GAME_WIDTH / 2, 280, 'START', {
@@ -82,7 +83,7 @@ export class MenuScene extends Phaser.Scene {
       .text(
         GAME_WIDTH / 2,
         GAME_HEIGHT - 80,
-        'Fullscreen (top-left) · Phone: landscape + on-screen sticks · P / Esc pause',
+        'F fullscreen · Phone: landscape + on-screen sticks · P / Esc pause',
         {
           fontFamily: 'monospace',
           fontSize: '22px',

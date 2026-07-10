@@ -8,6 +8,7 @@ import {
   HELI,
   HELI_LOOK_TINT,
   HELI_SPAWN,
+  HURT_FLASH,
   PLAYER,
   PLAYER_COMBAT,
   PLAYER_DEFAULTS,
@@ -201,5 +202,15 @@ describe('config/constants (spec seed)', () => {
     });
     expect(ENEMY_BULLET.speed).toBe(HELI.bulletSpeed);
     expect(PLAYER_COMBAT.maxHealth).toBe(PLAYER_DEFAULTS.health);
+  });
+
+  it('defines a hard 33 ms player-hurt flash (not a fade)', () => {
+    expect(HURT_FLASH).toEqual({
+      durationMs: 33,
+      red: 150,
+      green: 0,
+      blue: 0,
+    });
+    expect(HURT_FLASH.durationMs).toBe(Math.round(1000 / SIM_HZ));
   });
 });

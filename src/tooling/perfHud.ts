@@ -1,6 +1,6 @@
 /**
  * Thin DOM panel for live FPS / frame budget / pool occupancy (issue #37).
- * Lives outside Phaser next to the audio / camera-feel HUDs.
+ * Lives outside Phaser next to the debug overlay.
  */
 
 import { PERF } from '../config/perf';
@@ -19,7 +19,8 @@ export type PerfHudOptions = {
 
 /**
  * On-screen perf HUD: FPS, frame ms, 60/30 budget pass, pool counters.
- * Toggle with {@link setVisible} / {@link toggle} (GameScene binds F3).
+ * Toggle with {@link setVisible} / {@link toggle} (GameScene binds F3; also
+ * End with the rest of debug info — #107).
  */
 export class PerfHud {
   private readonly root: HTMLDivElement;
