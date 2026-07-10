@@ -4,8 +4,9 @@
  */
 
 import { HELI, WORLD } from '../config/constants';
-import { bulletHitsHeli } from './heliHit';
-import { isOutsideCullBounds, type Bullet, type BulletPool } from './bullet';
+import type { BulletPool } from './bullet';
+import { stepSpecialBullet } from './specialProjectile';
+import type { TileMap } from '../world/tileMap';
 
 export type Helicopter = {
   active: boolean;
@@ -241,8 +242,10 @@ export function stepHeliExplosion(
 
 /**
  * Advance bullets, pixel-test against active helis, apply damage, recycle on hit.
- * Mirrors Flash `bulletFrame` enemy loop (point vs `hit` clip).
+ * Mirrors Flash `bulletFrame` enemy loop (point vs `hit` clip), plus #16
+ * special behaviors (flame DoT, mines, rail hitscan, seeker homing).
  * {@link onHit} receives damage dealt so callers can add score (#13).
+ * {@link map} enables FireMines tile landing; optional for ballistic-only tests.
  */
 export function stepBulletsVsHelis(
   pool: BulletPool,
@@ -250,6 +253,7 @@ export function stepBulletsVsHelis(
   bounds: Parameters<BulletPool['stepAll']>[1],
   timeStep: number,
   onHit?: (event: HeliHitEvent) => void,
+  map?: TileMap,
 ): void {
   for (let i = 0; i < pool.slots.length; i += 1) {
     const bullet = pool.slots[i]!;
@@ -257,54 +261,16 @@ export function stepBulletsVsHelis(
       continue;
     }
 
-    const shouldCull = stepBulletWithHit(
+    const shouldCull = stepSpecialBullet(
       bullet,
       helis,
       timeStep,
       bounds,
+      map,
       onHit,
     );
     if (shouldCull) {
       pool.release(bullet);
     }
   }
-}
-
-function stepBulletWithHit(
-  bullet: Bullet,
-  helis: readonly Helicopter[],
-  timeStep: number,
-  bounds: Parameters<BulletPool['stepAll']>[1],
-  onHit?: (event: HeliHitEvent) => void,
-): boolean {
-  bullet.x += bullet.vx * timeStep;
-  bullet.y += bullet.vy * timeStep;
-  bullet.age += timeStep;
-
-  for (let h = 0; h < helis.length; h += 1) {
-    const heli = helis[h]!;
-    if (!heli.active) {
-      continue;
-    }
-    if (
-      bulletHitsHeli(bullet.x, bullet.y, {
-        x: heli.x,
-        y: heli.y,
-        spriteW: HELI.spriteW,
-        spriteH: HELI.spriteH,
-      })
-    ) {
-      const damage = bullet.damage;
-      const killed = damageHelicopter(heli, damage);
-      if (onHit) {
-        onHit({ heli, damage, killed });
-      }
-      return true;
-    }
-  }
-
-  if (bullet.age >= bullet.maxLifetime) {
-    return true;
-  }
-  return isOutsideCullBounds(bullet.x, bullet.y, bounds);
 }
