@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { SIM_DT, SIM_HZ, WORLD } from '../config/constants';
+import { PLAYER, SIM_DT, SIM_HZ, WORLD } from '../config/constants';
+import { PLAYER_SPAWN } from '../player/player';
 import { DEBUG_BOX_SPAWN, SimSession } from './simSession';
 
 describe('SimSession', () => {
@@ -11,9 +12,12 @@ describe('SimSession', () => {
     session.update(1000 / 30); // one sim tick at half speed
     expect(session.timeScale.timeStep).toBe(0.5);
     expect(session.debugBox.body.vy).toBeGreaterThan(0);
+    expect(session.player.body.vy).toBeGreaterThan(0);
     expect(session.simTickCount).toBeGreaterThan(0);
     expect(session.accumulator.leftoverSeconds).toBeCloseTo(SIM_DT / 2);
 
+    session.player.input = { left: false, right: true };
+    session.player.placeAt(400, 50);
     session.debugBox.placeAt(400, 50);
     session.debugBox.dragging = true;
 
@@ -21,6 +25,11 @@ describe('SimSession', () => {
     session.reset();
 
     expect(session.timeScale.timeStep).toBe(1);
+    expect(session.player.body.x).toBe(PLAYER_SPAWN.x);
+    expect(session.player.body.y).toBe(PLAYER_SPAWN.y);
+    expect(session.player.body.vx).toBe(0);
+    expect(session.player.body.vy).toBe(0);
+    expect(session.player.input).toEqual({ left: false, right: false });
     expect(session.debugBox.body.x).toBe(DEBUG_BOX_SPAWN.x);
     expect(session.debugBox.body.y).toBe(DEBUG_BOX_SPAWN.y);
     expect(session.debugBox.body.vx).toBe(0);
@@ -31,6 +40,33 @@ describe('SimSession', () => {
     expect(session.secondTimerMs).toBe(0);
     expect(session.displayedSimRate).toBe(0);
     expect(session.accumulator.leftoverSeconds).toBe(0);
+  });
+
+  it('steps the player walk curve through the fixed sim (ramp to cap, decay to 0)', () => {
+    const session = new SimSession();
+    // Settle onto the floor.
+    for (let i = 0; i < 40; i += 1) {
+      session.update(1000 / 30);
+    }
+    expect(session.player.body.onGround).toBe(true);
+
+    session.player.input = { left: false, right: true };
+    const ramp: number[] = [];
+    for (let i = 0; i < 8; i += 1) {
+      session.update(1000 / 30);
+      ramp.push(session.player.body.vx);
+    }
+    expect(ramp).toEqual([1, 2, 3, 4, 5, 5, 5, 5]);
+    expect(session.player.body.vx).toBe(PLAYER.walkCap);
+
+    session.player.input = { left: false, right: false };
+    const decay: number[] = [];
+    for (let i = 0; i < 6; i += 1) {
+      session.update(1000 / 30);
+      decay.push(session.player.body.vx);
+    }
+    expect(decay).toEqual([4, 3, 2, 1, 0, 0]);
+    expect(session.player.body.vx).toBe(0);
   });
 
   it('ignores NaN deltas so the HUD rate timer cannot freeze', () => {

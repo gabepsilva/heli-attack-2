@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { SIM_HZ, WORLD } from '../config/constants';
+import { PLAYER, SIM_HZ, WORLD } from '../config/constants';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/game';
 import { SCENE_KEYS } from '../config/scenes';
 import { SimSession } from '../core/simSession';
@@ -19,19 +19,24 @@ const HUD_STYLE: Phaser.Types.GameObjects.Text.TextStyle = {
 const TILE_COLOR = 0x3d5a80;
 const BOX_COLOR = 0xe09f3e;
 const BOX_DRAG_COLOR = 0xf4a261;
+const PLAYER_COLOR = 0x90be6d;
+const PLAYER_STROKE = 0xd8f3dc;
 
 /**
  * Thin Phaser shell: banks render deltas into a 30 Hz fixed sim, draws the
- * hand-authored tile arena, and hosts a draggable debug box that collides
- * via the plain-module AABB resolver.
+ * hand-authored tile arena, hosts a controllable player (←/→ walk), and a
+ * draggable debug box. Game logic lives in plain modules under src/.
  */
 export class GameScene extends Phaser.Scene {
   private readonly session = new SimSession();
 
   private rateText!: Phaser.GameObjects.Text;
   private timeStepText!: Phaser.GameObjects.Text;
+  private playerText!: Phaser.GameObjects.Text;
   private boxText!: Phaser.GameObjects.Text;
   private boxRect!: Phaser.GameObjects.Rectangle;
+  private playerRect!: Phaser.GameObjects.Rectangle;
+  private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private arenaOriginX = 0;
   private arenaOriginY = 0;
 
@@ -50,10 +55,13 @@ export class GameScene extends Phaser.Scene {
       Math.floor((GAME_HEIGHT - TEST_ARENA_HEIGHT_PX) / 2) - 40;
 
     this.drawArena();
+    this.createPlayerVisual();
     this.createDebugBoxVisual();
 
+    this.cursors = this.input.keyboard!.createCursorKeys();
+
     this.add
-      .text(GAME_WIDTH / 2, 28, 'Tile arena — drag the box, drop to collide', {
+      .text(GAME_WIDTH / 2, 28, 'Walk ←/→ — watch vx ramp & decay', {
         fontFamily: 'Arial, Helvetica, sans-serif',
         fontSize: '36px',
         color: '#f5f5f5',
@@ -62,12 +70,13 @@ export class GameScene extends Phaser.Scene {
 
     this.rateText = this.add.text(40, 70, '', HUD_STYLE);
     this.timeStepText = this.add.text(40, 98, '', HUD_STYLE);
-    this.boxText = this.add.text(40, 126, '', HUD_STYLE);
+    this.playerText = this.add.text(40, 126, '', HUD_STYLE);
+    this.boxText = this.add.text(40, 154, '', HUD_STYLE);
 
     this.add.text(
       40,
       GAME_HEIGHT - 60,
-      'Drag box to place · 1/2 = timeStep 1.0/0.5 · Esc → BootScene',
+      '←/→ walk · drag box · 1/2 = timeStep 1.0/0.5 · Esc → BootScene',
       { ...HUD_STYLE, fontSize: '20px', color: '#9ab' },
     );
 
@@ -83,6 +92,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
+    this.session.player.input = {
+      left: this.cursors.left.isDown,
+      right: this.cursors.right.isDown,
+    };
+
     this.session.update(delta);
 
     this.rateText.setText(
@@ -91,11 +105,19 @@ export class GameScene extends Phaser.Scene {
     this.timeStepText.setText(
       `timeStep: ${this.session.timeScale.timeStep.toFixed(2)}`,
     );
+    const p = this.session.player.body;
+    this.playerText.setText(
+      `player vx=${p.vx.toFixed(0)}  vy=${p.vy.toFixed(1)}  ` +
+        `(${p.x.toFixed(0)}, ${p.y.toFixed(0)})  ` +
+        `${p.onGround ? 'grounded' : 'air'}  ` +
+        `cap±${PLAYER.walkCap}/hard±${PLAYER.hardCap}`,
+    );
     const b = this.session.debugBox.body;
     this.boxText.setText(
       `box (${b.x.toFixed(0)}, ${b.y.toFixed(0)})  vy=${b.vy.toFixed(1)}  ${b.onGround ? 'grounded' : 'air'}`,
     );
 
+    this.syncPlayerVisual();
     this.syncBoxVisual();
   }
 
@@ -133,6 +155,27 @@ export class GameScene extends Phaser.Scene {
         );
       }
     }
+  }
+
+  private createPlayerVisual(): void {
+    const p = this.session.player.body;
+    this.playerRect = this.add
+      .rectangle(
+        this.arenaOriginX + p.x + p.w / 2,
+        this.arenaOriginY + p.y + p.h / 2,
+        PLAYER.boxW,
+        PLAYER.boxH,
+        PLAYER_COLOR,
+      )
+      .setStrokeStyle(2, PLAYER_STROKE);
+  }
+
+  private syncPlayerVisual(): void {
+    const p = this.session.player.body;
+    this.playerRect.setPosition(
+      this.arenaOriginX + p.x + p.w / 2,
+      this.arenaOriginY + p.y + p.h / 2,
+    );
   }
 
   private createDebugBoxVisual(): void {

@@ -1,17 +1,18 @@
 import { FixedTimestepAccumulator } from './fixedTimestep';
 import { TimeScale } from './timeScale';
+import { PLAYER_SPAWN, Player } from '../player/player';
 import { DebugBox } from '../world/debugBox';
 import { createTestArena } from '../world/testArena';
 import type { TileMap } from '../world/tileMap';
 
-/** Spawn point above the left floor shoulder of the test arena. */
-export const DEBUG_BOX_SPAWN = { x: 100, y: 200 } as const;
+/** Spawn point above the left floor shoulder (offset from the player). */
+export const DEBUG_BOX_SPAWN = { x: 200, y: 200 } as const;
 
 /**
  * Per-run sim state for GameScene: fixed-step accumulator, timeStep, HUD
- * counters, tile arena, and the debug box. Lives outside Phaser so scene
- * restarts and the update loop are unit-testable (Phaser reuses the scene
- * instance; only create() re-runs).
+ * counters, tile arena, player, and the debug box. Lives outside Phaser so
+ * scene restarts and the update loop are unit-testable (Phaser reuses the
+ * scene instance; only create() re-runs).
  */
 export class SimSession {
   readonly accumulator = new FixedTimestepAccumulator();
@@ -25,6 +26,9 @@ export class SimSession {
   /** Static test arena — rebuilt on reset so callers always see a fresh map. */
   map: TileMap = createTestArena();
 
+  /** Controllable player (walk accel/cap/friction + gravity + tile resolve). */
+  readonly player = new Player(PLAYER_SPAWN.x, PLAYER_SPAWN.y);
+
   /** Draggable/droppable AABB that collides with {@link map}. */
   readonly debugBox = new DebugBox(DEBUG_BOX_SPAWN.x, DEBUG_BOX_SPAWN.y);
 
@@ -37,6 +41,8 @@ export class SimSession {
     this.secondTimerMs = 0;
     this.displayedSimRate = 0;
     this.map = createTestArena();
+    this.player.input = { left: false, right: false };
+    this.player.placeAt(PLAYER_SPAWN.x, PLAYER_SPAWN.y);
     this.debugBox.dragging = false;
     this.debugBox.placeAt(DEBUG_BOX_SPAWN.x, DEBUG_BOX_SPAWN.y);
   }
@@ -69,6 +75,7 @@ export class SimSession {
   private simTick(): void {
     this.simTickCount += 1;
     this.ticksThisSecond += 1;
+    this.player.step(this.map, this.timeScale.timeStep);
     this.debugBox.step(this.map, this.timeScale.timeStep);
   }
 }
