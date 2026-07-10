@@ -20,7 +20,7 @@ import {
 import {
   createHeliSpawnState,
   ensureHeliPopulation,
-  onHeliKilled,
+  recordHeliKill,
   stepDifficultyFromScore,
   type HeliSpawnState,
 } from '../combat/heliSpawn';
@@ -285,6 +285,7 @@ export class SimSession {
       }
     }
 
+    let killsThisTick = 0;
     stepBulletsVsHelis(
       this.bullets,
       this.helicopters,
@@ -294,19 +295,25 @@ export class SimSession {
         addDamageScore(this.score, event.damage);
         if (event.killed) {
           this.explosions.push(createHeliExplosion(event.heli.x, event.heli.y));
-          onHeliKilled(
-            this.helicopters,
-            this.heliSpawn,
-            this.score.value,
-            LEVEL1_WIDTH_PX,
-            LEVEL1_HEIGHT_PX,
-            this.spawnRng,
-          );
+          // State only — never splice/push helis here. Rail + A-Bomb keep
+          // iterating the same array after a kill (#19 Lead review).
+          recordHeliKill(this.heliSpawn, this.score.value);
+          killsThisTick += 1;
         }
       },
       this.map,
       playerBody,
     );
+
+    if (killsThisTick > 0) {
+      ensureHeliPopulation(
+        this.helicopters,
+        this.heliSpawn,
+        LEVEL1_WIDTH_PX,
+        LEVEL1_HEIGHT_PX,
+        this.spawnRng,
+      );
+    }
 
     // Flash checks `score > nextLevel` every frame (not only on kill).
     stepDifficultyFromScore(this.heliSpawn, this.score.value);

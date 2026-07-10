@@ -9,7 +9,12 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { HELI, HELI_SPAWN, WEAPONS } from '../config/constants';
+import {
+  HELI,
+  HELI_SPAWN,
+  HEAVY_PROJECTILE,
+  WEAPONS,
+} from '../config/constants';
 import { SimSession } from '../core/simSession';
 import { LEVEL1_HEIGHT_PX, LEVEL1_WIDTH_PX } from '../world/level1';
 import {
@@ -24,9 +29,11 @@ import {
   heliFireInterval,
   heliGunTurnDivisor,
   onHeliKilled,
+  recordHeliKill,
   stepDifficultyFromScore,
   targetConcurrent,
 } from './heliSpawn';
+import { applyAbombBlastDamage } from './specialProjectile';
 
 describe('heli spawn treadmill (issue #19)', () => {
   it('locks HELI_SPAWN and Flash difficulty thresholds to exact spec values', () => {
@@ -195,20 +202,59 @@ describe('heli spawn treadmill (issue #19)', () => {
     for (let k = 0; k < HELI_SPAWN.killsPerExtraHeli; k += 1) {
       const victim = session.helicopters.find((h) => h.active)!;
       damageHelicopter(victim, HELI.hp);
-      onHeliKilled(
+      // Match SimSession: record during "hit", refill after the loop.
+      recordHeliKill(session.heliSpawn, session.score.value + HELI.hp);
+      session.score.value += HELI.hp;
+      ensureHeliPopulation(
         session.helicopters,
         session.heliSpawn,
-        session.score.value + HELI.hp,
         LEVEL1_WIDTH_PX,
         LEVEL1_HEIGHT_PX,
         rng,
       );
-      // Keep score in sync for level checks (onHeliKilled reads it).
-      session.score.value += HELI.hp;
     }
 
     expect(session.heliSpawn.kills).toBe(3);
     expect(activeHeliCount(session.helicopters)).toBe(2);
     expect(targetConcurrent(session.heliSpawn.kills)).toBe(2);
+  });
+
+  it('deferred refill does not skip multi-heli A-Bomb victims (Lead #71)', () => {
+    // Regression: splicing helis inside onHit skipped survivors in the same
+    // blast. recordHeliKill is state-only; ensureHeliPopulation runs after.
+    const helis = [
+      createHelicopter(100, 100, HELI.hp),
+      createHelicopter(150, 100, HELI.hp),
+      createHelicopter(200, 100, HELI.hp),
+    ];
+    expect(HEAVY_PROJECTILE.abombBlastRadius).toBe(300);
+    const state = createHeliSpawnState();
+    const rng = createSpawnRng(71);
+    let killEvents = 0;
+
+    const hits = applyAbombBlastDamage(
+      100,
+      100,
+      WEAPONS[10].damage,
+      helis,
+      (event) => {
+        if (event.killed) {
+          killEvents += 1;
+          recordHeliKill(state, killEvents * HELI.hp);
+        }
+      },
+    );
+
+    expect(WEAPONS[10].damage).toBe(HELI.hp);
+    expect(hits).toBe(3);
+    expect(killEvents).toBe(3);
+    expect(helis.every((h) => !h.active)).toBe(true);
+    expect(state.kills).toBe(3);
+    // Array still holds the three dead hulls — no mid-loop splice.
+    expect(helis).toHaveLength(3);
+
+    ensureHeliPopulation(helis, state, LEVEL1_WIDTH_PX, LEVEL1_HEIGHT_PX, rng);
+    expect(activeHeliCount(helis)).toBe(targetConcurrent(3));
+    expect(targetConcurrent(3)).toBe(2);
   });
 });

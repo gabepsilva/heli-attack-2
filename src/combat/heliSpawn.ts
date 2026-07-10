@@ -131,9 +131,21 @@ export function ensureHeliPopulation(
 }
 
 /**
- * Record a kill (Flash `rthelis++`), bump difficulty from score, then refill
- * the sky to the new target concurrent. Always leaves ≥1 living heli mid-game
- * once the run has started (target is at least {@link HELI_SPAWN.initialConcurrent}).
+ * Record a kill (Flash `rthelis++`) and bump difficulty from score.
+ * Does **not** mutate the heli array — call {@link ensureHeliPopulation}
+ * after the hit-iteration that caused the kill finishes (#19 Lead review:
+ * splicing mid-loop skips survivors in rail / A-Bomb multi-heli hits).
+ */
+export function recordHeliKill(state: HeliSpawnState, score: number): number {
+  state.kills += 1;
+  return stepDifficultyFromScore(state, score);
+}
+
+/**
+ * Record a kill then refill the sky to the new target concurrent.
+ * Safe only when **not** inside a heli hit loop — prefer
+ * {@link recordHeliKill} + deferred {@link ensureHeliPopulation} from
+ * combat tick code.
  */
 export function onHeliKilled(
   helis: Helicopter[],
@@ -143,8 +155,7 @@ export function onHeliKilled(
   arenaH: number,
   rng: SpawnRng,
 ): { added: number; levelsGained: number } {
-  state.kills += 1;
-  const levelsGained = stepDifficultyFromScore(state, score);
+  const levelsGained = recordHeliKill(state, score);
   const added = ensureHeliPopulation(helis, state, arenaW, arenaH, rng);
   return { added, levelsGained };
 }
