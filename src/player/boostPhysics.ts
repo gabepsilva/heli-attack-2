@@ -50,8 +50,16 @@ export function resetBoostOnLand(state: BoostState): void {
   state.hjump = false;
 }
 
+/** Result of one boost charge/fire step. */
+export type BoostApplyResult = {
+  vy: number;
+  /** True when a hyper-jump burst fired this frame (Flash `shjump`). */
+  fired: boolean;
+};
+
 /**
- * One frame of boost charge + fire. Returns the possibly updated `vy`.
+ * One frame of boost charge + fire. Returns the possibly updated `vy` and
+ * whether a hyper-jump burst fired (for SFX #27).
  *
  * Call after airborne mark and before the regular jump hold (original order:
  * charge/fire → jump key). Mutates {@link BoostJumpFlags} when the boost
@@ -62,7 +70,7 @@ export function applyBoostInput(
   state: BoostState,
   jumpFlags: BoostJumpFlags,
   input: BoostInput,
-): number {
+): BoostApplyResult {
   // Charge +1/frame while below cap (original: `if (move && hyperjump < 150)`).
   if (state.charge < PLAYER.boostChargeFrames) {
     state.charge += 1;
@@ -74,6 +82,7 @@ export function applyBoostInput(
     (!jumpFlags.jump || !jumpFlags.jump2) &&
     !state.hjump;
 
+  let fired = false;
   if (canFire) {
     if (!state.boostHeld) {
       vy = PLAYER.boostVel;
@@ -83,11 +92,12 @@ export function applyBoostInput(
       jumpFlags.jump = true;
       state.hjump = true;
       state.charge = 0;
+      fired = true;
     }
     state.boostHeld = true;
   } else {
     state.boostHeld = false;
   }
 
-  return vy;
+  return { vy, fired };
 }

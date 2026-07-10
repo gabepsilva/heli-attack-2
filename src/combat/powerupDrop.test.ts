@@ -192,6 +192,9 @@ describe('powerup drop & pickup (issue #21)', () => {
     );
     expect(weaponResult.kind).toBe('weapon');
     expect(weaponResult.amount).toBe(WEAPON_PICKUP_AMMO[2]);
+    if (weaponResult.kind === 'weapon') {
+      expect(weaponResult.weaponIndex).toBe(2);
+    }
     expect(inventory.slots[2]!.bullets).toBe(before + WEAPON_PICKUP_AMMO[2]!);
   });
 

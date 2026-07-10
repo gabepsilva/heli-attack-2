@@ -67,11 +67,16 @@ export type KillDropDecision =
   | { kind: 'state' }
   | null;
 
-export type PowerupCollectResult = {
-  kind: PowerupKind;
-  /** Health healed, ammo granted, or state id rolled. */
-  amount: number;
-};
+export type PowerupCollectResult =
+  | { kind: 'health'; amount: number }
+  | {
+      kind: 'weapon';
+      /** Ammo granted (Flash `bullets = N`). */
+      amount: number;
+      /** Arsenal index 1..12 — used for pickup VO (#27). */
+      weaponIndex: number;
+    }
+  | { kind: 'state'; amount: number };
 
 export function createPowerupDropState(
   firstThreshold: number = HEALTH_PICKUP.firstThreshold,
@@ -203,7 +208,11 @@ export function applyPowerupCollect(
   if (pickup.kind === 'weapon') {
     const ammo = WEAPON_PICKUP_AMMO[pickup.weaponIndex] ?? 0;
     grantWeaponAmmo(inventory, pickup.weaponIndex, ammo);
-    return { kind: 'weapon', amount: ammo };
+    return {
+      kind: 'weapon',
+      amount: ammo,
+      weaponIndex: pickup.weaponIndex,
+    };
   }
   // Flash: `p = 1+random(5)` → TriDamage..Jetpack.
   const p = 1 + randomInt(rng, 5);

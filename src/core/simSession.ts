@@ -66,6 +66,7 @@ import {
   getActiveWeaponDef,
   type WeaponInventory,
 } from '../combat/weaponInventory';
+import type { GameAudioEvent } from '../audio/eventMap';
 import { PLAYER_SPAWN, Player } from '../player/player';
 import { BULLET, HELI, POWERUP } from '../config/constants';
 import { DebugBox } from '../world/debugBox';
@@ -85,7 +86,7 @@ export const DEBUG_BOX_SPAWN = { x: 200, y: 200 } as const;
  * helicopter combat (#12/#13), enemy return fire + player health (#18),
  * replacement spawn treadmill + difficulty ramp (#19), parachuting powerup
  * drops (#21), timed state powerup effects (#22), manual bullet-time meter
- * (#42), and the debug box.
+ * (#42), event-driven SFX cues (#27), and the debug box.
  * Lives outside Phaser so scene restarts and the update loop are
  * unit-testable (Phaser reuses the scene instance; only create() re-runs).
  *
@@ -98,6 +99,12 @@ export class SimSession {
 
   /** Manual slow-mo meter (Flash `player.bullettime`) — HUD (#23) reads this. */
   bulletTime: BulletTimeState = createBulletTimeState();
+
+  /**
+   * SFX cues queued during the last drained window (issue #27).
+   * GameScene drains via {@link drainAudioEvents} after each render update.
+   */
+  private readonly audioEvents: GameAudioEvent[] = [];
 
   simTickCount = 0;
   ticksThisSecond = 0;
@@ -243,8 +250,20 @@ export class SimSession {
     this.powerups = [];
     this.playerPowerup = createPlayerPowerupState();
     this.predatorFlicker = 0;
+    this.audioEvents.length = 0;
     this.debugBox.dragging = false;
     this.debugBox.placeAt(DEBUG_BOX_SPAWN.x, DEBUG_BOX_SPAWN.y);
+  }
+
+  /**
+   * Take ownership of every SFX cue queued since the last drain (issue #27).
+   * Call once per render frame after {@link update}.
+   */
+  drainAudioEvents(): GameAudioEvent[] {
+    if (this.audioEvents.length === 0) {
+      return [];
+    }
+    return this.audioEvents.splice(0, this.audioEvents.length);
   }
 
   /**
@@ -309,6 +328,9 @@ export class SimSession {
         this.runShots += 1;
       }
     }
+    if (any) {
+      this.audioEvents.push({ type: 'weaponFire', weaponIndex: weapon.type });
+    }
     return any;
   }
 
@@ -341,6 +363,9 @@ export class SimSession {
         this.playerPowerup.powerupOn,
       );
       this.player.step(this.map, playerStep, this.playerPowerup.powerupOn);
+      if (this.player.hyperJumpFired) {
+        this.audioEvents.push({ type: 'hyperJump' });
+      }
       const def = getActiveWeaponDef(this.inventory);
       if (stepWeaponFire(this.weapon, this.fireHeld, def)) {
         this.tryFire();
@@ -394,6 +419,7 @@ export class SimSession {
         }
         if (event.killed) {
           this.explosions.push(createHeliExplosion(event.heli.x, event.heli.y));
+          this.audioEvents.push({ type: 'heliBoom' });
           // State only — never splice/push helis here. Rail + A-Bomb keep
           // iterating the same array after a kill (#19 Lead review).
           recordHeliKill(this.heliSpawn, this.score.value);
@@ -433,14 +459,16 @@ export class SimSession {
       this.enemyBulletCullBounds,
       this.timeScale.timeStep,
       this.map,
-      undefined,
+      () => {
+        this.audioEvents.push({ type: 'hurt' });
+      },
       this.playerPowerup.powerupOn,
     );
     syncPlayerLastHealth(this.playerHealth);
 
     stepPowerups(this.powerups, this.map, this.timeScale.timeStep);
     if (this.playerHealth.alive) {
-      collectPowerups(
+      const collected = collectPowerups(
         this.powerups,
         playerBody,
         this.playerHealth,
@@ -448,6 +476,9 @@ export class SimSession {
         this.playerPowerup,
         this.spawnRng,
       );
+      for (const collect of collected) {
+        this.audioEvents.push({ type: 'powerup', collect });
+      }
     }
 
     // Flash `powerupTime--` at end of heroAction move frame; clear on 0 (#22).

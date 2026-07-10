@@ -1,5 +1,4 @@
 import Phaser from 'phaser';
-import { AUDIO_TEST_SFX_ID } from '../config/audio';
 import {
   BOOT_BACKGROUND_COLOR,
   BOOT_TITLE,
@@ -16,10 +15,10 @@ import {
 } from '../core/highScores';
 
 /**
- * Main menu — issues #24 / #25.
- * Boot loads assets then lands here; Space / click starts a fresh run
- * and unlocks audio on that user gesture. Shows the persisted local
- * high-score table.
+ * Main menu — issues #24 / #25 / #27.
+ * Boot loads assets then lands here; Space / click starts a fresh run,
+ * unlocks audio, and preloads the full SFX/music catalog. Shows the
+ * persisted local high-score table.
  */
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -96,9 +95,9 @@ export class MenuScene extends Phaser.Scene {
       const audio = getGameAudio();
       void audio.unlock().then(async () => {
         try {
-          await audio.load(AUDIO_TEST_SFX_ID);
+          await audio.loadAll();
         } catch {
-          // Demo still runs if a format fails; GameScene will retry.
+          // GameScene retries; partial loads still unlock the bus.
         }
         this.scene.start(SCENE_KEYS.Game);
       });

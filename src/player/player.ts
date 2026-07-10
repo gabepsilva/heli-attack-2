@@ -113,6 +113,12 @@ export class Player {
   }
 
   /**
+   * Set true for one {@link step} when a charged hyper-jump fires (SFX #27).
+   * Cleared at the start of each step.
+   */
+  hyperJumpFired = false;
+
+  /**
    * One sim tick — order matches `heroAction`:
    * duck hitbox → walk → airborne mark → boost → jump/jetpack → gravity → AABB
    * resolve → land / ceiling jump flags → gun aim.
@@ -121,6 +127,7 @@ export class Player {
    * variable-height jump with `yspeed = max(yspeed-2, -32)`.
    */
   step(map: TileMap, timeStep: number, powerupOn: number = 0): void {
+    this.hyperJumpFired = false;
     this.ducking = applyDuckHitbox(this.body, this.input.duck, this.ducking);
 
     this.body.vx = applyHorizontalWalk(this.body.vx, {
@@ -133,12 +140,14 @@ export class Player {
 
     markAirborneIfMoving(this.jumpState, this.body.vy);
 
-    this.body.vy = applyBoostInput(
+    const boost = applyBoostInput(
       this.body.vy,
       this.boostState,
       this.jumpState,
       { boost: this.input.boost },
     );
+    this.body.vy = boost.vy;
+    this.hyperJumpFired = boost.fired;
 
     if (isJetpackActive(powerupOn, this.input.jump)) {
       // Flash: jump = jump2 = hjump = 1; yspeed = max(yspeed-2, -32).

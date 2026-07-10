@@ -30,9 +30,10 @@ describe('boostPhysics (spec §Player physics — hyper/boost jump)', () => {
     const state = createBoostState();
     const flags: BoostJumpFlags = { jump: false, jump2: false };
 
-    const vy = applyBoostInput(0, state, flags, { boost: true });
+    const result = applyBoostInput(0, state, flags, { boost: true });
 
-    expect(vy).toBe(-32);
+    expect(result.vy).toBe(-32);
+    expect(result.fired).toBe(true);
     expect(state.charge).toBe(0);
     expect(state.hjump).toBe(true);
     expect(flags.jump).toBe(true);
@@ -48,8 +49,9 @@ describe('boostPhysics (spec §Player physics — hyper/boost jump)', () => {
     expect(state.charge).toBe(0);
 
     // Still held next frame — charge ticks 0→1, but no second fire.
-    const vy = applyBoostInput(5, state, flags, { boost: true });
-    expect(vy).toBe(5);
+    const result = applyBoostInput(5, state, flags, { boost: true });
+    expect(result.vy).toBe(5);
+    expect(result.fired).toBe(false);
     expect(state.charge).toBe(1);
     expect(state.hjump).toBe(true);
   });
@@ -83,9 +85,10 @@ describe('boostPhysics (spec §Player physics — hyper/boost jump)', () => {
     flags.jump2 = false;
 
     // One tick: charge 149→150, then same-frame fire is allowed (AS order).
-    const vyReady = applyBoostInput(3, state, flags, { boost: true });
+    const ready = applyBoostInput(3, state, flags, { boost: true });
     expect(state.charge).toBe(0); // fired and dumped
-    expect(vyReady).toBe(-32);
+    expect(ready.vy).toBe(-32);
+    expect(ready.fired).toBe(true);
   });
 
   it('does not fire at charge 149 without the increment reaching 150', () => {
@@ -94,9 +97,10 @@ describe('boostPhysics (spec §Player physics — hyper/boost jump)', () => {
     state.hjump = false;
     const flags: BoostJumpFlags = { jump: false, jump2: false };
 
-    const vy = applyBoostInput(3, state, flags, { boost: true });
+    const result = applyBoostInput(3, state, flags, { boost: true });
     // 148→149, still below threshold → no fire.
-    expect(vy).toBe(3);
+    expect(result.vy).toBe(3);
+    expect(result.fired).toBe(false);
     expect(state.charge).toBe(149);
     expect(state.hjump).toBe(false);
   });
@@ -105,7 +109,8 @@ describe('boostPhysics (spec §Player physics — hyper/boost jump)', () => {
     const state = createBoostState();
     const flags: BoostJumpFlags = { jump: true, jump2: false };
 
-    applyBoostInput(-4, state, flags, { boost: true });
+    const result = applyBoostInput(-4, state, flags, { boost: true });
+    expect(result.fired).toBe(true);
     expect(flags.jump).toBe(true);
     expect(flags.jump2).toBe(true);
     expect(state.hjump).toBe(true);
@@ -115,8 +120,9 @@ describe('boostPhysics (spec §Player physics — hyper/boost jump)', () => {
     const state = createBoostState();
     const flags: BoostJumpFlags = { jump: true, jump2: true };
 
-    const vy = applyBoostInput(10, state, flags, { boost: true });
-    expect(vy).toBe(10);
+    const result = applyBoostInput(10, state, flags, { boost: true });
+    expect(result.vy).toBe(10);
+    expect(result.fired).toBe(false);
     expect(state.charge).toBe(150);
     expect(state.hjump).toBe(false);
   });
@@ -127,8 +133,9 @@ describe('boostPhysics (spec §Player physics — hyper/boost jump)', () => {
     state.charge = 150;
     const flags: BoostJumpFlags = { jump: true, jump2: false };
 
-    const vy = applyBoostInput(10, state, flags, { boost: true });
-    expect(vy).toBe(10);
+    const result = applyBoostInput(10, state, flags, { boost: true });
+    expect(result.vy).toBe(10);
+    expect(result.fired).toBe(false);
     expect(state.charge).toBe(150);
   });
 

@@ -3,8 +3,8 @@ import { getSpriteDef, PLAYER_PLACEHOLDER_FRAME } from '../art/catalog';
 import { placeOnCenter, playerSpritePlacement } from '../art/spritePlacement';
 import { AudioHud } from '../audio/audioHud';
 import { getGameAudio } from '../audio/gameAudio';
+import { GameSfx } from '../audio/gameSfx';
 import { ATLAS_KEY } from '../config/art';
-import { AUDIO_TEST_SFX_ID } from '../config/audio';
 import { playerPowerupAlpha } from '../combat/powerupEffects';
 import {
   getActiveWeaponDef,
@@ -74,8 +74,9 @@ const POWERUP_FRAME = 'powerup';
  * (#23), menu/pause/game-over session loop (#24), and a draggable debug box.
  * Game logic lives in plain modules under src/.
  *
- * Audio (#26): click plays the test SFX after menu unlock; DOM HUD owns
- * master volume + mute. Pooling / gain math lives in {@link AudioManager}.
+ * Audio (#26/#27): menu unlock + catalog load; GameScene starts looping music
+ * and drains sim SFX events (weapon / hurt / hyper-jump / heliboom / powerups).
+ * DOM HUD owns master volume + mute. Pooling / gain math lives in AudioManager.
  *
  * The debug overlay (#8) is a DOM panel outside Phaser so it can host real
  * `<input>` controls for live physics tuning and toggle off for clean demos.
@@ -102,6 +103,7 @@ export class GameScene extends Phaser.Scene {
   private gameHud!: GameHud;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private audioHud: AudioHud | null = null;
+  private gameSfx: GameSfx | null = null;
   private boostKey!: Phaser.Input.Keyboard.Key;
   private bulletTimeKey!: Phaser.Input.Keyboard.Key;
   private pauseKey!: Phaser.Input.Keyboard.Key;
@@ -122,6 +124,8 @@ export class GameScene extends Phaser.Scene {
     // Phaser reuses this instance across scene.start — only create() re-runs.
     this.session.reset();
     startPlaying(this.flow);
+    this.gameSfx?.destroy();
+    this.gameSfx = null;
     this.audioHud?.destroy();
     this.overlay?.destroy();
     this.overlay = new DebugOverlay({
@@ -142,7 +146,7 @@ export class GameScene extends Phaser.Scene {
     this.createPowerupVisuals();
     this.gameHud = new GameHud(this);
     this.createDebugBoxVisual();
-    this.setupAudioDemo();
+    this.setupGameAudio();
 
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.boostKey = this.input.keyboard!.addKey(
@@ -156,7 +160,7 @@ export class GameScene extends Phaser.Scene {
       .text(
         GAME_WIDTH / 2,
         28,
-        '↑ jump · Ctrl boost · Shift slow-mo · ↓ duck · ←/→ walk · mouse aim · hold fire · 1–0 / Q–E weapons · click SFX',
+        '↑ jump · Ctrl boost · Shift slow-mo · ↓ duck · ←/→ walk · mouse aim · hold fire · 1–0 / Q–E weapons',
         {
           fontFamily: 'Arial, Helvetica, sans-serif',
           fontSize: '36px',
@@ -168,7 +172,7 @@ export class GameScene extends Phaser.Scene {
     this.add.text(
       40,
       GAME_HEIGHT - 60,
-      '←/→ walk · ↑ jump · Ctrl boost · Shift slow-mo · ↓ duck · mouse aim · hold fire · 1–0 weapons · Q/E prev/next · -/= timeStep · click SFX · drag box · ` debug · P/Esc pause',
+      '←/→ walk · ↑ jump · Ctrl boost · Shift slow-mo · ↓ duck · mouse aim · hold fire · 1–0 weapons · Q/E prev/next · -/= timeStep · drag box · ` debug · P/Esc pause',
       {
         fontFamily: 'monospace',
         fontSize: '20px',
@@ -234,6 +238,8 @@ export class GameScene extends Phaser.Scene {
       this.events.off(Phaser.Scenes.Events.RESUME, this.onResume);
       this.pauseKey?.off('down');
       this.escKey?.off('down');
+      this.gameSfx?.destroy();
+      this.gameSfx = null;
       this.audioHud?.destroy();
       this.audioHud = null;
       this.overlay?.destroy();
@@ -250,24 +256,24 @@ export class GameScene extends Phaser.Scene {
     this.scene.launch(SCENE_KEYS.Pause);
   }
 
-  private setupAudioDemo(): void {
+  /** Unlock (if needed), load catalog, start looping music, bind SFX (#27). */
+  private setupGameAudio(): void {
     const audio = getGameAudio();
     this.audioHud = new AudioHud({ audio });
+    this.gameSfx = new GameSfx({ audio });
 
     void (async () => {
       if (!audio.isUnlocked()) {
         await audio.unlock();
       }
-      if (!audio.hasBuffer(AUDIO_TEST_SFX_ID)) {
-        await audio.load(AUDIO_TEST_SFX_ID);
+      try {
+        await audio.loadAll();
+      } catch {
+        // Partial catalog still plays whatever decoded.
       }
+      this.gameSfx?.startMusic();
       this.audioHud?.refreshStatus();
     })();
-
-    this.input.on('pointerdown', () => {
-      audio.play(AUDIO_TEST_SFX_ID);
-      this.audioHud?.refreshStatus();
-    });
   }
 
   update(_time: number, delta: number): void {
@@ -296,6 +302,9 @@ export class GameScene extends Phaser.Scene {
     const ticksBefore = this.session.simTickCount;
     this.session.update(delta);
     const simSteps = this.session.simTickCount - ticksBefore;
+    this.gameSfx?.drainAndPlay(this.session.drainAudioEvents(), {
+      simTicks: simSteps,
+    });
 
     if (!this.session.playerHealth.alive) {
       if (this.flow.phase === 'playing') {
