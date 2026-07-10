@@ -63,4 +63,22 @@ describe('FixedTimestepAccumulator', () => {
     const acc = new FixedTimestepAccumulator();
     expect(acc.advance(-0.1)).toBe(0);
   });
+
+  it('ignores NaN / non-finite deltas without poisoning the accumulator', () => {
+    const acc = new FixedTimestepAccumulator();
+    expect(acc.advance(Number.NaN)).toBe(0);
+    expect(acc.leftoverSeconds).toBe(0);
+    expect(acc.advance(Number.POSITIVE_INFINITY)).toBe(0);
+    expect(acc.leftoverSeconds).toBe(0);
+    // Still healthy afterward.
+    expect(acc.advance(SIM_DT)).toBe(1);
+  });
+
+  it('reset clears banked leftover', () => {
+    const acc = new FixedTimestepAccumulator();
+    acc.advance(SIM_DT / 2);
+    expect(acc.leftoverSeconds).toBeCloseTo(SIM_DT / 2);
+    acc.reset();
+    expect(acc.leftoverSeconds).toBe(0);
+  });
 });

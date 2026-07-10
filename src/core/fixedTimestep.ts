@@ -23,7 +23,8 @@ export class FixedTimestepAccumulator {
 
   /** Bank `deltaSeconds` of wall time and return how many sim ticks to run. */
   advance(deltaSeconds: number): number {
-    if (deltaSeconds < 0) {
+    // NaN < 0 is false — reject non-finite so a bad delta cannot poison the bank.
+    if (!Number.isFinite(deltaSeconds) || deltaSeconds < 0) {
       return 0;
     }
 

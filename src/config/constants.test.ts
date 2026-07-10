@@ -43,7 +43,7 @@ describe('config/constants (spec seed)', () => {
     expect(PLAYER.boxH).toBe(42);
     expect(PLAYER.spriteW).toBe(48);
     expect(PLAYER.spriteH).toBe(48);
-    expect(PLAYER.duckScale).toBeCloseTo(2 / 3);
+    expect(PLAYER.duckScale).toBeCloseTo(0.6667, 4);
   });
 
   it('seeds HELI, powerups, health pickup, and bullet-time from the spec', () => {
@@ -58,7 +58,7 @@ describe('config/constants (spec seed)', () => {
     });
     expect(HEALTH_PICKUP).toEqual({ amount: 20, cap: 100, firstThreshold: 15 });
     expect(BULLET_TIME.maxFrames).toBe(250);
-    expect(BULLET_TIME.refillPerKill).toBeCloseTo(250 / 3);
+    expect(BULLET_TIME.refillPerKill).toBeCloseTo(83.333, 3);
     expect(BULLET_TIME.minScale).toBe(0.2);
     expect(BULLET_TIME.easePerFrame).toBe(0.1);
   });
