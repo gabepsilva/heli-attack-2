@@ -51,14 +51,35 @@ def _capture_session_id(state: _State, data: dict) -> None:
 		state.session_id = sid
 
 
+def _session_init_suffix(
+	*,
+	resuming: bool,
+	resume_session_id: str | None,
+	session_id: str | None,
+) -> str:
+	short = (session_id or resume_session_id or "?")[:8]
+	if resuming:
+		return f"resumed session {short}…"
+	return f"new session {short}…"
+
+
 class StreamJsonFormatter:
 	"""Chat-style live view of cursor-agent stream-json events."""
 
-	def __init__(self, output: TextIO | None = None, *, use_colors: bool | None = None):
+	def __init__(
+		self,
+		output: TextIO | None = None,
+		*,
+		use_colors: bool | None = None,
+		resuming: bool = False,
+		resume_session_id: str | None = None,
+	):
 		self.out = output or sys.stdout
 		if use_colors is None:
 			use_colors = bool(getattr(self.out, "isatty", lambda: False)())
 		self.use_colors = use_colors
+		self.resuming = resuming
+		self.resume_session_id = resume_session_id
 		self.state = _State()
 
 	def _paint(self, text: str, *codes: str) -> str:
@@ -113,11 +134,15 @@ class StreamJsonFormatter:
 			return
 		_capture_session_id(self.state, data)
 		model = data.get("model") or "?"
-		session = (self.state.session_id or "")[:8]
+		session_label = _session_init_suffix(
+			resuming=self.resuming,
+			resume_session_id=self.resume_session_id,
+			session_id=self.state.session_id,
+		)
 		self._switch("system")
 		self._write(
 			self._paint(f"model {model}", _C.DIM, _C.CYAN)
-			+ self._paint(f"  session {session}…", _C.DIM, _C.GRAY)
+			+ self._paint(f"  {session_label}", _C.DIM, _C.GRAY)
 			+ "\n"
 		)
 		self.state.section = None
@@ -283,11 +308,20 @@ def _tool_result_summary(tool_call: dict) -> str:
 class ClaudeStreamJsonFormatter:
 	"""Chat-style live view of claude -p --output-format stream-json events."""
 
-	def __init__(self, output: TextIO | None = None, *, use_colors: bool | None = None):
+	def __init__(
+		self,
+		output: TextIO | None = None,
+		*,
+		use_colors: bool | None = None,
+		resuming: bool = False,
+		resume_session_id: str | None = None,
+	):
 		self.out = output or sys.stdout
 		if use_colors is None:
 			use_colors = bool(getattr(self.out, "isatty", lambda: False)())
 		self.use_colors = use_colors
+		self.resuming = resuming
+		self.resume_session_id = resume_session_id
 		self.state = _State()
 		self._seen_tool_starts: set[str] = set()
 		self._tool_labels: dict[str, str] = {}
@@ -343,11 +377,15 @@ class ClaudeStreamJsonFormatter:
 			return
 		_capture_session_id(self.state, data)
 		model = data.get("model") or "?"
-		session = (self.state.session_id or "")[:8]
+		session_label = _session_init_suffix(
+			resuming=self.resuming,
+			resume_session_id=self.resume_session_id,
+			session_id=self.state.session_id,
+		)
 		self._switch("system")
 		self._write(
 			self._paint(f"model {model}", _C.DIM, _C.CYAN)
-			+ self._paint(f"  session {session}…", _C.DIM, _C.GRAY)
+			+ self._paint(f"  {session_label}", _C.DIM, _C.GRAY)
 			+ "\n"
 		)
 		self.state.section = None
@@ -489,6 +527,8 @@ def run_cursor_agent_live(
 	*,
 	cwd: str | Path,
 	timeout: float,
+	resuming: bool = False,
+	resume_session_id: str | None = None,
 ) -> StreamRunResult:
 	"""Run cursor-agent on a PTY so stream-json flushes live (no pipe buffering)."""
 	master, slave = pty.openpty()
@@ -504,7 +544,10 @@ def run_cursor_agent_live(
 	finally:
 		os.close(slave)
 
-	fmt = StreamJsonFormatter()
+	fmt = StreamJsonFormatter(
+		resuming=resuming,
+		resume_session_id=resume_session_id,
+	)
 	buf = b""
 	deadline = time.monotonic() + timeout
 
@@ -564,6 +607,8 @@ def run_claude_live(
 	stdin_text: str,
 	cwd: str | Path,
 	timeout: float,
+	resuming: bool = False,
+	resume_session_id: str | None = None,
 ) -> StreamRunResult:
 	"""Run claude -p with stream-json on a pipe and print live."""
 	proc = subprocess.Popen(
@@ -579,7 +624,10 @@ def run_claude_live(
 	proc.stdin.write(stdin_text)
 	proc.stdin.close()
 
-	fmt = ClaudeStreamJsonFormatter()
+	fmt = ClaudeStreamJsonFormatter(
+		resuming=resuming,
+		resume_session_id=resume_session_id,
+	)
 	deadline = time.monotonic() + timeout
 	assert proc.stdout is not None
 

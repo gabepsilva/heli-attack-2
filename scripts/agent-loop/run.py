@@ -214,6 +214,8 @@ def run_agent(
 	prompt_via_stdin: bool = False,
 	format_stream: bool = False,
 	claude_stream: bool = False,
+	resuming: bool = False,
+	resume_session_id: str | None = None,
 ) -> str | None:
 	if PAUSE:
 		input(f"[pause] press Enter to run {banner}... ")
@@ -232,6 +234,8 @@ def run_agent(
 				stdin_text=str_prompt,
 				cwd=const.REPO_ROOT,
 				timeout=const.AGENT_TIMEOUT,
+				resuming=resuming,
+				resume_session_id=resume_session_id,
 			)
 			session_id = result.session_id
 			if result.returncode != 0:
@@ -242,6 +246,8 @@ def run_agent(
 				argv,
 				cwd=const.REPO_ROOT,
 				timeout=const.AGENT_TIMEOUT,
+				resuming=resuming,
+				resume_session_id=resume_session_id,
 			)
 			session_id = result.session_id
 			if result.returncode != 0:
@@ -287,13 +293,15 @@ def run_dev_agent(*, full_prompt: str, resume_prompt: str | None = None) -> None
 		banner = "🖥️🖥️🖥️  dev agent (resume)"
 	else:
 		prompt = full_prompt
-		banner = "🖥️🖥️🖥️  dev agent"
+		banner = "🖥️🖥️🖥️  dev agent (new session)"
 
 	session_id = run_agent(
 		cmd,
 		banner,
 		prompt,
 		format_stream=True,
+		resuming=resuming,
+		resume_session_id=sid if resuming else None,
 	)
 	if session_id:
 		agent_sessions.set_dev_session(session_id)
@@ -322,9 +330,16 @@ def run_lead_agent(*, full_prompt: str, resume_prompt: str | None = None) -> Non
 		banner = (
 			"👨‍⚖️👨‍⚖️👨‍⚖️  lead agent (cursor opus, resume)"
 			if resuming
-			else "👨‍⚖️👨‍⚖️👨‍⚖️  lead agent (cursor opus)"
+			else "👨‍⚖️👨‍⚖️👨‍⚖️  lead agent (cursor opus, new session)"
 		)
-		session_id = run_agent(cmd, banner, prompt, format_stream=True)
+		session_id = run_agent(
+			cmd,
+			banner,
+			prompt,
+			format_stream=True,
+			resuming=resuming,
+			resume_session_id=sid if resuming else None,
+		)
 	else:
 		cmd = [
 			"claude",
@@ -342,7 +357,7 @@ def run_lead_agent(*, full_prompt: str, resume_prompt: str | None = None) -> Non
 		banner = (
 			"👨‍⚖️👨‍⚖️👨‍⚖️  lead agent (resume)"
 			if resuming
-			else "👨‍⚖️👨‍⚖️👨‍⚖️  lead agent"
+			else "👨‍⚖️👨‍⚖️👨‍⚖️  lead agent (new session)"
 		)
 		session_id = run_agent(
 			cmd,
@@ -350,6 +365,8 @@ def run_lead_agent(*, full_prompt: str, resume_prompt: str | None = None) -> Non
 			prompt,
 			prompt_via_stdin=True,
 			claude_stream=True,
+			resuming=resuming,
+			resume_session_id=sid if resuming else None,
 		)
 
 	if session_id:
