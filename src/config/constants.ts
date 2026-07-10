@@ -284,6 +284,41 @@ export const HEALTH_PICKUP = {
   firstThreshold: 15,
 } as const;
 
+/**
+ * Kill-drop / parachute pickup tunables (#21).
+ *
+ * Flash: on every 3rd kill, always attach a powerup; health when
+ * `rthelis >= nextHealth` (starts 15, doubles), else a random weapon/state
+ * frame. Spec + ticket AC reinterpret the `random(100) % 32 == 0` gate as the
+ * ~3% weapon/ammo drop chance on non-threshold kills (no every-3rd gate).
+ */
+export const POWERUP_DROP = {
+  /** Flash `random(100)` range (integers 0..99). */
+  chanceRange: 100,
+  /** Flash `% 32 == 0` → 4 of 100 rolls (0,32,64,96) ≈ 3–4%. */
+  chanceModulus: 32,
+  /**
+   * Non-health crate frames in Flash `power._totalframes` (frames 2..14):
+   * weapons 1–12 + one state-powerup roll.
+   */
+  nonHealthFrameCount: 13,
+  /** Flash `powerup.png` logical size. */
+  crateW: 33,
+  crateH: 32,
+  /** Slow descent while the chute is open (Flash non-fall `yspeed = 2`). */
+  chuteFallSpeed: 2,
+  /** Gravity while chute collapses (Flash `yspeed++` per discrete step). */
+  fallGravity: 1,
+  /** Flash near-ground probe: `map[floor((_y+150)/tile)]`. */
+  groundLookaheadPx: 150,
+  /** Soft-land when `yspeed < 4` (Flash). */
+  softLandSpeed: 4,
+  /** Hard-land bounce (Flash `yspeed *= -0.25`). */
+  bounceScale: -0.25,
+  /** Chute open/close rate (Flash `chute._xscale ± 10` per step). */
+  chuteScaleRate: 10,
+} as const;
+
 export const BULLET_TIME = {
   maxFrames: 250,
   refillPerKill: 250 / 3,

@@ -31,6 +31,16 @@ import {
   type PlayerHealthState,
 } from '../combat/playerHealth';
 import {
+  collectPowerups,
+  createPlayerPowerupState,
+  createPowerupDropState,
+  stepPowerups,
+  trySpawnDropOnKill,
+  type PlayerPowerupState,
+  type PowerupDropState,
+  type PowerupPickup,
+} from '../combat/powerupDrop';
+import {
   addDamageScore,
   createScoreState,
   type ScoreState,
@@ -61,7 +71,8 @@ export const DEBUG_BOX_SPAWN = { x: 200, y: 200 } as const;
  * Per-run sim state for GameScene: fixed-step accumulator, timeStep, HUD
  * counters, original level map, player, bullet pool, weapon inventory (#14),
  * helicopter combat (#12/#13), enemy return fire + player health (#18),
- * replacement spawn treadmill + difficulty ramp (#19), and the debug box.
+ * replacement spawn treadmill + difficulty ramp (#19), parachuting powerup
+ * drops (#21), and the debug box.
  * Lives outside Phaser so scene restarts and the update loop are
  * unit-testable (Phaser reuses the scene instance; only create() re-runs).
  *
@@ -124,6 +135,15 @@ export class SimSession {
   /** Player vitals — health, i-frames, death (#18). */
   playerHealth: PlayerHealthState = createPlayerHealth();
 
+  /** Kill-drop threshold tracker (Flash `nextHealth`) (#21). */
+  powerupDrop: PowerupDropState = createPowerupDropState();
+
+  /** Active parachuting crates (#21). */
+  powerups: PowerupPickup[] = [];
+
+  /** Timed state powerup slot — effects wired in #22. */
+  playerPowerup: PlayerPowerupState = createPlayerPowerupState();
+
   /**
    * Held-fire intent (Flash `mouseD`): scene sets from pointer.isDown each
    * render frame; sim ticks read it and stream at the active weapon's reload.
@@ -174,6 +194,9 @@ export class SimSession {
     this.explosions = [];
     this.score = createScoreState();
     this.playerHealth = createPlayerHealth();
+    this.powerupDrop = createPowerupDropState();
+    this.powerups = [];
+    this.playerPowerup = createPlayerPowerupState();
     this.debugBox.dragging = false;
     this.debugBox.placeAt(DEBUG_BOX_SPAWN.x, DEBUG_BOX_SPAWN.y);
   }
@@ -299,6 +322,14 @@ export class SimSession {
           // State only — never splice/push helis here. Rail + A-Bomb keep
           // iterating the same array after a kill (#19 Lead review).
           recordHeliKill(this.heliSpawn, this.score.value);
+          trySpawnDropOnKill(
+            this.heliSpawn.kills,
+            this.powerupDrop,
+            this.powerups,
+            event.heli.x,
+            event.heli.y,
+            this.spawnRng,
+          );
           killsThisTick += 1;
         }
       },
@@ -328,6 +359,18 @@ export class SimSession {
       this.map,
     );
     syncPlayerLastHealth(this.playerHealth);
+
+    stepPowerups(this.powerups, this.map, this.timeScale.timeStep);
+    if (this.playerHealth.alive) {
+      collectPowerups(
+        this.powerups,
+        playerBody,
+        this.playerHealth,
+        this.inventory,
+        this.playerPowerup,
+        this.spawnRng,
+      );
+    }
 
     for (let i = this.explosions.length - 1; i >= 0; i -= 1) {
       if (stepHeliExplosion(this.explosions[i]!, this.timeScale.timeStep)) {
