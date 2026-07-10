@@ -1,10 +1,13 @@
 /**
  * Helicopter enemy — plain sim matching HA2 `addEnemy` / `heliFrame` essentials.
  * Phaser only draws; hit tests use the baked alpha mask ({@link bulletHitsHeli}).
+ * Enemy fire (#18): aimed gun + speed-7 bullets with ±5° spread.
  */
 
-import { HELI, WORLD } from '../config/constants';
+import { ENEMY_BULLET, HELI, WORLD } from '../config/constants';
+import { aimAngleDeg, shortestAngleDelta } from './gunAim';
 import type { BulletPool } from './bullet';
+import type { EnemyBulletPool } from './enemyBullet';
 import { stepSpecialBullet } from './specialProjectile';
 import type { AabbBody } from '../world/aabbBody';
 import type { TileMap } from '../world/tileMap';
@@ -33,6 +36,10 @@ export type Helicopter = {
    * `lasthealth != health`). Scene swaps to `heli_hit` while > 0.
    */
   hitFlashRemaining: number;
+  /** Aimed gun rotation in degrees (Flash `gun._rotation`). */
+  gunRotationDeg: number;
+  /** Fire cadence counter (Flash `shoot`). */
+  shootCounter: number;
 };
 
 /** Callback fired when a bullet damages a heli (#13 score + kill VFX). */
@@ -131,6 +138,8 @@ export function createHelicopter(
     xDrift: 0,
     frameCounter: 0,
     hitFlashRemaining: 0,
+    gunRotationDeg: 0,
+    shootCounter: 0,
   };
 }
 
@@ -164,6 +173,8 @@ export function isHeliFlashing(heli: Helicopter): boolean {
 /**
  * One sim tick of hover/drift (simplified `heliFrame` motion when on-screen).
  * Tracks the player horizontally with periodic vertical jitter.
+ * Returns true on a discrete move frame (Flash `move` after `stepc`) — used
+ * by {@link tryHeliFire} so fire cadence matches the original.
  */
 export function stepHelicopter(
   heli: Helicopter,
@@ -172,9 +183,9 @@ export function stepHelicopter(
   playerY: number,
   arenaW: number,
   arenaH: number,
-): void {
+): boolean {
   if (!heli.active) {
-    return;
+    return false;
   }
 
   // Expire prior-frame flash before motion (Flash clears after one heliFrame).
@@ -224,6 +235,119 @@ export function stepHelicopter(
     heli.yspeed *= 0.9 * timeStep;
     heli.onScreen -= 1;
   }
+
+  return move === 1;
+}
+
+/**
+ * Flash heli gun aim toward the player:
+ * `gunrotation = aim(heli→player) - heli._rotation`, then ease with
+ * `dif/Math.max(1,10-level)` (level 0 → divisor 10).
+ */
+export function stepHeliGunAim(
+  heli: Helicopter,
+  playerCenterX: number,
+  playerCenterY: number,
+  timeStep: number,
+  turnDivisor: number = HELI.gunTurnDivisor,
+): void {
+  if (!heli.active) {
+    return;
+  }
+  const target =
+    aimAngleDeg(heli.x, heli.y, playerCenterX, playerCenterY) -
+    heli.rotationDeg;
+  const dif = shortestAngleDelta(heli.gunRotationDeg, target);
+  heli.gunRotationDeg += (dif / turnDivisor) * timeStep;
+}
+
+/**
+ * Flash aim spread: `gun._rotation - 5 + random(10)` (±5°, width
+ * {@link HELI.aimSpreadDeg}). `random(10)` → integer 0..9.
+ */
+export function heliFireSpreadDeg(
+  gunRotationDeg: number,
+  rng: SpawnRng,
+  spreadDeg: number = HELI.aimSpreadDeg,
+): number {
+  const half = spreadDeg / 2;
+  const jitter = randomInt(rng, spreadDeg);
+  return gunRotationDeg - half + jitter;
+}
+
+/** Muzzle point along the barrel from heli center. */
+export function heliMuzzlePosition(
+  heli: Helicopter,
+  offset: number = HELI.muzzleOffset,
+): { x: number; y: number } {
+  const rad = (heli.gunRotationDeg * Math.PI) / 180;
+  return {
+    x: heli.x + Math.cos(rad) * offset,
+    y: heli.y + Math.sin(rad) * offset,
+  };
+}
+
+export type HeliFireShot = {
+  x: number;
+  y: number;
+  rotationDeg: number;
+  speed: number;
+  damage: number;
+};
+
+/**
+ * Flash fire gate: on a discrete move frame, when
+ * `(shoot++ % fireInterval) == 1`, spawn an aimed bullet with spread.
+ * Returns the shot descriptor, or null when not firing this tick.
+ */
+export function tryHeliFire(
+  heli: Helicopter,
+  movedThisTick: boolean,
+  rng: SpawnRng,
+): HeliFireShot | null {
+  if (!heli.active || !movedThisTick) {
+    return null;
+  }
+  heli.shootCounter += 1;
+  if (heli.shootCounter % HELI.fireIntervalFrames !== 1) {
+    return null;
+  }
+  const muzzle = heliMuzzlePosition(heli);
+  return {
+    x: muzzle.x,
+    y: muzzle.y,
+    rotationDeg: heliFireSpreadDeg(heli.gunRotationDeg, rng),
+    speed: HELI.bulletSpeed,
+    damage: ENEMY_BULLET.damage,
+  };
+}
+
+/**
+ * Aim + optional fire into an enemy-bullet pool. `movedThisTick` should be
+ * true on discrete move frames (Flash `move` after `stepc`).
+ */
+export function stepHeliCombat(
+  heli: Helicopter,
+  timeStep: number,
+  playerCenterX: number,
+  playerCenterY: number,
+  enemyBullets: EnemyBulletPool,
+  rng: SpawnRng,
+  movedThisTick = true,
+): HeliFireShot | null {
+  stepHeliGunAim(heli, playerCenterX, playerCenterY, timeStep);
+  const shot = tryHeliFire(heli, movedThisTick, rng);
+  if (!shot) {
+    return null;
+  }
+  enemyBullets.acquire(
+    shot.x,
+    shot.y,
+    shot.rotationDeg,
+    shot.speed,
+    shot.damage,
+  );
+  return shot;
 }
 
 export function stepHeliExplosion(

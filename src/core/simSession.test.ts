@@ -71,6 +71,9 @@ describe('SimSession', () => {
     expect(session.displayedSimRate).toBe(0);
     expect(session.accumulator.leftoverSeconds).toBe(0);
     expect(session.score.value).toBe(0);
+    expect(session.playerHealth.health).toBe(100);
+    expect(session.playerHealth.alive).toBe(true);
+    expect(session.enemyBullets.activeCount).toBe(0);
   });
 
   it('steps the player walk curve through the fixed sim (ramp to cap, decay to 0)', () => {

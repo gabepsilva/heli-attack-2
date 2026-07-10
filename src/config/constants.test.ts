@@ -2,10 +2,12 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   BULLET,
   BULLET_TIME,
+  ENEMY_BULLET,
   GUN,
   HEALTH_PICKUP,
   HELI,
   PLAYER,
+  PLAYER_COMBAT,
   PLAYER_DEFAULTS,
   POWERUP,
   POWERUP_FRAMES,
@@ -78,6 +80,9 @@ describe('config/constants (spec seed)', () => {
       onScreenFramesRand: 100,
       explosionDurationFrames: 20,
       hitFlashFrames: 1,
+      fireIntervalFrames: 16,
+      gunTurnDivisor: 10,
+      muzzleOffset: 40,
     });
     expect(SCORE).toEqual({ displayScale: 100 });
     expect(POWERUP_FRAMES).toBe(500);
@@ -123,5 +128,22 @@ describe('config/constants (spec seed)', () => {
     expect(BULLET.maxLifetimeFrames).toBe(300);
     expect(BULLET.poolCapacity).toBe(64);
     expect(BULLET.radius).toBe(3);
+  });
+
+  it('seeds ENEMY_BULLET and PLAYER_COMBAT from issue #18 / Flash values', () => {
+    expect(ENEMY_BULLET).toEqual({
+      damage: 10,
+      speed: 7,
+      poolCapacity: 64,
+      maxLifetimeFrames: 300,
+      cullMargin: 50,
+      radius: 3,
+    });
+    expect(PLAYER_COMBAT).toEqual({
+      maxHealth: 100,
+      iFrameFrames: 10,
+    });
+    expect(ENEMY_BULLET.speed).toBe(HELI.bulletSpeed);
+    expect(PLAYER_COMBAT.maxHealth).toBe(PLAYER_DEFAULTS.health);
   });
 });
