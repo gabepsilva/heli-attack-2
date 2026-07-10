@@ -1,12 +1,12 @@
 /**
- * Phaser view for the in-game HUD (#23 / #105).
+ * Phaser view for the in-game HUD (#23 / #105 / #106).
  *
  * Thin renderer over {@link buildHudSnapshot} — all meter math lives in hud.ts.
  * Anchored to the 1920×1080 design resolution via {@link HUD_LAYOUT}; scroll
  * factor 0 so the HUD stays fixed while the camera follows play.
  *
- * Bottom-left cluster matches Flash: weapon crate icon (`HUD.weapon`) + ammo
- * text (`HUD.ammo`) — not a modern text-only chip.
+ * Bottom-left cluster matches Flash weapon crate + ammo (#105). Bottom meters
+ * match Flash Symbol 38 order/positions: hyper-jump → bullet-time → reload (#106).
  */
 
 import type Phaser from 'phaser';
@@ -104,7 +104,7 @@ export class GameHud {
       .setScrollFactor(0)
       .setDepth(depth);
 
-    // --- Weapon crate + ammo + reload (Flash bottom-left cluster) ---
+    // --- Weapon crate + ammo (Flash bottom-left cluster; reload is with meters) ---
     const wx = L.weapon.x;
     const wy = L.weapon.y;
     const iconSize = weaponHudIconDisplaySize();
@@ -123,24 +123,22 @@ export class GameHud {
       .setOrigin(0, 0.5)
       .setScrollFactor(0)
       .setDepth(depth);
-    this.reload = this.createMeter(
-      scene,
-      wx,
-      wy + iconSize.h + L.weapon.reloadGap,
-      L.weapon.reloadWidth,
-      L.weapon.reloadHeight,
-      COLORS.reload,
-      depth,
-    );
 
-    // --- Hyper-jump + bullet-time meters ---
+    // --- Hyper-jump → bullet-time → reload (Flash Symbol 38 bottom row) ---
+    const labelStyle = {
+      fontFamily: 'monospace',
+      fontSize: `${L.meters.labelFontSize}px`,
+      color: COLORS.meterLabel,
+    } as const;
+
     scene.add
-      .text(L.meters.hyperJumpX, L.meters.y - 22, 'HYPER JUMP', {
-        fontFamily: 'monospace',
-        fontSize: '18px',
-        color: COLORS.meterLabel,
-      })
-      .setOrigin(0, 0)
+      .text(
+        L.meters.hyperJumpLabelX,
+        L.meters.labelY,
+        L.meters.hyperJumpLabel,
+        labelStyle,
+      )
+      .setOrigin(0, 0.5)
       .setScrollFactor(0)
       .setDepth(depth);
     this.hyperJump = this.createMeter(
@@ -154,12 +152,13 @@ export class GameHud {
     );
 
     scene.add
-      .text(L.meters.bulletTimeX, L.meters.y - 22, 'BULLET TIME', {
-        fontFamily: 'monospace',
-        fontSize: '18px',
-        color: COLORS.meterLabel,
-      })
-      .setOrigin(0, 0)
+      .text(
+        L.meters.bulletTimeLabelX,
+        L.meters.labelY,
+        L.meters.bulletTimeLabel,
+        labelStyle,
+      )
+      .setOrigin(0, 0.5)
       .setScrollFactor(0)
       .setDepth(depth);
     this.bulletTime = this.createMeter(
@@ -169,6 +168,26 @@ export class GameHud {
       L.meters.width,
       L.meters.height,
       COLORS.bulletTime,
+      depth,
+    );
+
+    scene.add
+      .text(
+        L.meters.reloadLabelX,
+        L.meters.labelY,
+        L.meters.reloadLabel,
+        labelStyle,
+      )
+      .setOrigin(0, 0.5)
+      .setScrollFactor(0)
+      .setDepth(depth);
+    this.reload = this.createMeter(
+      scene,
+      L.meters.reloadX,
+      L.meters.y,
+      L.meters.width,
+      L.meters.height,
+      COLORS.reload,
       depth,
     );
 
@@ -263,6 +282,8 @@ export class GameHud {
     // Flash: HUD.weapon.gotoAndStop(cgun+1) + HUD.ammo = "Infinite x " | "N x "
     this.weaponIcon.setFrame(snap.weaponIconFrame);
     this.ammoText.setText(snap.ammoText);
+
+    // Flash: HUD.reload.mask._xscale + HUD.reload.yellow when ready
     this.reload.fill.width = Math.max(
       0,
       this.reload.width * snap.reloadFraction,

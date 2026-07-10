@@ -38,6 +38,10 @@ import { WEAPON_HUD_ICON_FRAMES, weaponHudIconFrame } from '../art/catalog';
 import {
   buildHudSnapshot,
   DEATH_AMMO_HUD,
+  FLASH_HUD_METER_LABELS,
+  FLASH_HUD_METERS,
+  FLASH_STAGE,
+  flashToDesign,
   formatAmmoHud,
   HUD_LAYOUT,
   hudDesignAnchors,
@@ -78,7 +82,8 @@ describe('HUD layout @ 1080p (issue #23)', () => {
     // Health / meter bars wide enough to read at 1080p.
     expect(HUD_LAYOUT.health.width).toBeGreaterThanOrEqual(280);
     expect(HUD_LAYOUT.health.height).toBeGreaterThanOrEqual(24);
-    expect(HUD_LAYOUT.meters.width).toBeGreaterThanOrEqual(200);
+    // Three Flash-anchored bottom meters (#106): width fits reload at Flash X.
+    expect(HUD_LAYOUT.meters.width).toBeGreaterThanOrEqual(160);
     expect(HUD_LAYOUT.meters.height).toBeGreaterThanOrEqual(14);
     // Score / ammo / crate icon large enough to scan during play.
     expect(HUD_LAYOUT.score.fontSize).toBeGreaterThanOrEqual(40);
@@ -102,9 +107,11 @@ describe('HUD layout @ 1080p (issue #23)', () => {
     expect(a.score).toEqual({ x: GAME_WIDTH - 40, y: 36 });
     expect(a.weapon).toEqual({ x: 40, y: GAME_HEIGHT - 120 });
     expect(a.powerup).toEqual({ x: 40, y: 100 });
-    expect(a.meters.y).toBe(GAME_HEIGHT - 56);
-    expect(a.meters.hyperJumpX).toBe(GAME_WIDTH / 2 - 300);
-    expect(a.meters.bulletTimeX).toBe(GAME_WIDTH / 2 + 20);
+    // Meter Y is Flash 302 scaled to 1080p (#106), not the old ad-hoc bottom strip.
+    expect(a.meters.y).toBe((302 * GAME_HEIGHT) / 320);
+    expect(a.meters.hyperJumpX).toBe((129 * GAME_WIDTH) / 450);
+    expect(a.meters.bulletTimeX).toBe((282 * GAME_WIDTH) / 450);
+    expect(a.meters.reloadX).toBe((407 * GAME_WIDTH) / 450);
   });
 });
 
@@ -464,7 +471,135 @@ describe('HUD weapon crate + ammo (issue #105 AC)', () => {
     expect(HUD_LAYOUT.weapon.y).toBe(GAME_HEIGHT - 120);
     expect(HUD_LAYOUT.weapon.iconTextGap).toBe(16);
     expect(HUD_LAYOUT.weapon.ammoFontSize).toBe(32);
-    // Reload bar sits under the crate (same x as icon).
-    expect(HUD_LAYOUT.weapon.reloadWidth).toBe(280);
+    // Reload is NOT under the crate — it sits with the Flash bottom meters (#106).
+    expect(
+      'reloadWidth' in HUD_LAYOUT.weapon || 'reloadGap' in HUD_LAYOUT.weapon,
+    ).toBe(false);
+  });
+});
+
+describe('HUD meter order + Flash positions (issue #106 AC)', () => {
+  it('locks Flash stage size and Symbol 38 meter instance coords', () => {
+    expect(FLASH_STAGE).toEqual({ width: 450, height: 320 });
+    // Exact FLA twips÷20 positions from Symbol 38 (HUD).
+    expect(FLASH_HUD_METERS.hyperjump).toEqual({ x: 129, y: 302 });
+    expect(FLASH_HUD_METERS.bullettime).toEqual({ x: 282, y: 302 });
+    expect(FLASH_HUD_METERS.reload).toEqual({ x: 407, y: 302 });
+    expect(FLASH_HUD_METER_LABELS.hyperjump.text).toBe('HyperJump:');
+    expect(FLASH_HUD_METER_LABELS.bullettime.text).toBe('TimeDistort:');
+    expect(FLASH_HUD_METER_LABELS.reload.text).toBe('Reload:');
+  });
+
+  it('places hyper-jump, bullet-time, reload in Flash left→right order', () => {
+    const a = hudDesignAnchors();
+    expect(a.meters.order).toEqual(['hyperJump', 'bulletTime', 'reload']);
+    // Strict L→R on the shared bottom row.
+    expect(a.meters.hyperJumpX).toBeLessThan(a.meters.bulletTimeX);
+    expect(a.meters.bulletTimeX).toBeLessThan(a.meters.reloadX);
+    expect(HUD_LAYOUT.meters.hyperJumpX).toBeLessThan(
+      HUD_LAYOUT.meters.bulletTimeX,
+    );
+    expect(HUD_LAYOUT.meters.bulletTimeX).toBeLessThan(
+      HUD_LAYOUT.meters.reloadX,
+    );
+    // Shared Flash bottom Y (not split across weapon cluster + center strip).
+    expect(a.meters.y).toBe(HUD_LAYOUT.meters.y);
+    expect(HUD_LAYOUT.meters.hyperJumpX).toBe(a.meters.hyperJumpX);
+    expect(HUD_LAYOUT.meters.bulletTimeX).toBe(a.meters.bulletTimeX);
+    expect(HUD_LAYOUT.meters.reloadX).toBe(a.meters.reloadX);
+  });
+
+  it('scales Flash meter anchors exactly into 1920×1080 design space', () => {
+    const hj = flashToDesign(129, 302);
+    const bt = flashToDesign(282, 302);
+    const rl = flashToDesign(407, 302);
+    expect(hj).toEqual({
+      x: (129 * 1920) / 450,
+      y: (302 * 1080) / 320,
+    });
+    expect(bt).toEqual({
+      x: (282 * 1920) / 450,
+      y: (302 * 1080) / 320,
+    });
+    expect(rl).toEqual({
+      x: (407 * 1920) / 450,
+      y: (302 * 1080) / 320,
+    });
+    // Exact design anchors used by GameHud.
+    expect(HUD_LAYOUT.meters.hyperJumpX).toBe(hj.x);
+    expect(HUD_LAYOUT.meters.bulletTimeX).toBe(bt.x);
+    expect(HUD_LAYOUT.meters.reloadX).toBe(rl.x);
+    expect(HUD_LAYOUT.meters.y).toBe(hj.y);
+    expect(hj.y).toBe(1019.25);
+    expect(hj.x).toBe(550.4);
+    expect(bt.x).toBe(1203.2);
+    expect(rl.x).toBeCloseTo(1736.5333333333, 10);
+
+    // Labels sit left of each bar at Flash-scaled positions.
+    expect(HUD_LAYOUT.meters.hyperJumpLabelX).toBe((58 * 1920) / 450);
+    expect(HUD_LAYOUT.meters.bulletTimeLabelX).toBe((210 * 1920) / 450);
+    expect(HUD_LAYOUT.meters.reloadLabelX).toBe((365 * 1920) / 450);
+    expect(HUD_LAYOUT.meters.labelY).toBe((307 * 1080) / 320);
+    expect(HUD_LAYOUT.meters.hyperJumpLabel).toBe('HyperJump:');
+    expect(HUD_LAYOUT.meters.bulletTimeLabel).toBe('TimeDistort:');
+    expect(HUD_LAYOUT.meters.reloadLabel).toBe('Reload:');
+  });
+
+  it('keeps meters readable at 1080p under FIT (not tiny Flash leftovers)', () => {
+    expect(HUD_LAYOUT.meters.width).toBe(176);
+    expect(HUD_LAYOUT.meters.height).toBe(18);
+    expect(HUD_LAYOUT.meters.width).toBeGreaterThanOrEqual(160);
+    expect(HUD_LAYOUT.meters.height).toBeGreaterThanOrEqual(14);
+    // Exact Flash reload X + readable width still fits the design canvas.
+    const rightEdge = HUD_LAYOUT.meters.reloadX + HUD_LAYOUT.meters.width;
+    expect(rightEdge).toBeLessThan(GAME_WIDTH);
+    expect(rightEdge).toBeCloseTo(1736.5333333333 + 176, 10);
+    expect(HUD_LAYOUT.meters.hyperJumpX).toBeGreaterThan(0);
+    expect(HUD_LAYOUT.meters.y + HUD_LAYOUT.meters.height).toBeLessThan(
+      GAME_HEIGHT,
+    );
+  });
+
+  it('preserves Flash meter fill + reload-ready yellow behavior', () => {
+    // Hyper-jump charge ratio (mask _xscale = hyperjump/150 * 100).
+    const boost = createBoostState();
+    boost.charge = 75;
+    let snap = buildHudSnapshot(baseInput({ boost }));
+    expect(snap.hyperJumpFraction).toBe(0.5);
+    expect(PLAYER.boostChargeFrames).toBe(150);
+
+    // Bullet-time drain (mask _xscale = bullettime/maxbullettime * 100).
+    const bt = createBulletTimeState();
+    expect(bt.meter).toBe(BULLET_TIME.maxFrames);
+    stepBulletTime(bt, WORLD.timeStep, {
+      keyHeld: true,
+      gameOver: false,
+      timeRiftActive: false,
+    });
+    expect(bt.meter).toBe(249);
+    snap = buildHudSnapshot(baseInput({ bulletTime: bt }));
+    expect(snap.bulletTimeFraction).toBeCloseTo(249 / 250, 10);
+
+    // Reload charging + ready (Flash yellow when reloadtime >= gun.reloadtime).
+    const weapon = {
+      type: 2,
+      reloadTime: 10,
+      bullets: 14,
+      shots: 0,
+    };
+    snap = buildHudSnapshot(
+      baseInput({ weapon, weaponDef: WEAPONS[2], weaponIndex: 2 }),
+    );
+    expect(WEAPONS[2].reload).toBe(25);
+    expect(snap.reloadFraction).toBe(10 / 25);
+    expect(weaponReloadFraction(weapon, WEAPONS[2])).toBe(10 / 25);
+    expect(snap.reloadReady).toBe(false);
+
+    weapon.reloadTime = 25;
+    snap = buildHudSnapshot(
+      baseInput({ weapon, weaponDef: WEAPONS[2], weaponIndex: 2 }),
+    );
+    expect(snap.reloadFraction).toBe(1);
+    expect(snap.reloadReady).toBe(true);
   });
 });
