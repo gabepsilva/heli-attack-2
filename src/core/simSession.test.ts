@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { BULLET, PLAYER, SIM_DT, SIM_HZ, WORLD } from '../config/constants';
+import {
+  BULLET,
+  PLAYER,
+  SIM_DT,
+  SIM_HZ,
+  WEAPONS,
+  WORLD,
+} from '../config/constants';
 import { PLAYER_SPAWN } from '../player/player';
 import { DEBUG_BOX_SPAWN, SimSession } from './simSession';
 
@@ -26,6 +33,9 @@ describe('SimSession', () => {
     session.player.placeAt(400, 50);
     session.debugBox.placeAt(400, 50);
     session.debugBox.dragging = true;
+    session.fireHeld = true;
+    session.update(1000 / 30);
+    expect(session.weapon.shots).toBeGreaterThan(0);
 
     // Game → Boot → Game: create() must call reset() so state does not leak.
     session.reset();
@@ -44,7 +54,10 @@ describe('SimSession', () => {
     });
     expect(session.bullets.activeCount).toBe(0);
     expect(session.bullets.acquireCount).toBe(0);
-    expect(session.fireRequested).toBe(false);
+    expect(session.fireHeld).toBe(false);
+    expect(session.weapon.shots).toBe(0);
+    expect(session.weapon.reloadTime).toBe(Number.POSITIVE_INFINITY);
+    expect(session.weapon.bullets).toBe(Number.POSITIVE_INFINITY);
     expect(session.debugBox.body.x).toBe(DEBUG_BOX_SPAWN.x);
     expect(session.debugBox.body.y).toBe(DEBUG_BOX_SPAWN.y);
     expect(session.debugBox.body.vx).toBe(0);
@@ -158,22 +171,41 @@ describe('SimSession', () => {
     expect(session.map.cells[14]!.every((c) => c === 1)).toBe(true);
   });
 
-  it('consumes fireRequested once per sim tick and spawns a pooled bullet', () => {
+  it('streams MachineGun at reload cadence while fireHeld (issue #11)', () => {
     const session = new SimSession();
     const slotsRef = session.bullets.slots;
     expect(session.bullets.capacity).toBe(BULLET.poolCapacity);
+    expect(WEAPONS[0].reload).toBe(5);
 
-    session.fireRequested = true;
+    session.fireHeld = true;
+    const fireTicks: number[] = [];
+    for (let i = 0; i < SIM_HZ; i += 1) {
+      const before = session.bullets.acquireCount;
+      session.update(1000 / 30);
+      if (session.bullets.acquireCount > before) {
+        fireTicks.push(i);
+      }
+    }
+
+    // Held fire @ 30 Hz with reload 5 → shots on ticks 0,5,10,15,20,25.
+    expect(fireTicks).toEqual([0, 5, 10, 15, 20, 25]);
+    expect(session.weapon.shots).toBe(6);
+    expect(session.bullets.acquireCount).toBe(6);
+    expect(session.fireHeld).toBe(true);
+    expect(session.bullets.slots).toBe(slotsRef);
+  });
+
+  it('does not spawn while fireHeld is false even when reload-ready', () => {
+    const session = new SimSession();
+    expect(session.weapon.reloadTime).toBe(Number.POSITIVE_INFINITY);
+
+    session.fireHeld = false;
     session.update(1000 / 30);
 
-    expect(session.fireRequested).toBe(false);
-    expect(session.bullets.acquireCount).toBe(1);
-    expect(session.bullets.activeCount).toBe(1);
-    const bullet = session.bullets.slots.find((b) => b.active)!;
-    expect(bullet.age).toBe(1);
-    expect(bullet.speed).toBe(BULLET.defaultSpeed);
-    expect(bullet.damage).toBe(BULLET.defaultDamage);
-    expect(session.bullets.slots).toBe(slotsRef);
+    expect(session.weapon.shots).toBe(0);
+    expect(session.bullets.acquireCount).toBe(0);
+    // Reload still advances each sim tick (Flash reloadtime++ every move frame).
+    expect(session.weapon.reloadTime).toBe(Number.POSITIVE_INFINITY);
   });
 
   it('tryFire spawns at the current muzzle with MachineGun speed/damage', () => {
@@ -190,7 +222,7 @@ describe('SimSession', () => {
     expect(bullet.damage).toBe(10);
   });
 
-  it('reuses pool slots across many fires without growing capacity', () => {
+  it('reuses pool slots across many held-fire shots without growing capacity', () => {
     const session = new SimSession();
     const capacity = session.bullets.capacity;
     const slotsRef = session.bullets.slots;
@@ -204,14 +236,16 @@ describe('SimSession', () => {
       session.update(1000 / 30);
     }
 
+    session.fireHeld = true;
+    // 120 ticks held → 120/5 = 24 shots at reload 5 (first immediate).
     for (let i = 0; i < 120; i += 1) {
-      session.fireRequested = true;
       session.update(1000 / 30);
     }
 
+    expect(session.weapon.shots).toBe(120 / WEAPONS[0].reload);
+    expect(session.bullets.acquireCount).toBe(session.weapon.shots);
     expect(session.bullets.capacity).toBe(capacity);
     expect(session.bullets.slots).toBe(slotsRef);
-    expect(session.bullets.acquireCount).toBe(120);
     expect(session.bullets.recycleCount).toBeGreaterThan(0);
     expect(session.bullets.activeCount).toBeLessThanOrEqual(capacity);
   });

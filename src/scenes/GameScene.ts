@@ -1,5 +1,12 @@
 import Phaser from 'phaser';
-import { BULLET, GUN, PLAYER, SIM_HZ, WORLD } from '../config/constants';
+import {
+  BULLET,
+  GUN,
+  PLAYER,
+  SIM_HZ,
+  WEAPONS,
+  WORLD,
+} from '../config/constants';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/game';
 import { SCENE_KEYS } from '../config/scenes';
 import { SimSession } from '../core/simSession';
@@ -24,9 +31,9 @@ const BULLET_COLOR = 0xffe066;
 /**
  * Thin Phaser shell: banks render deltas into a 30 Hz fixed sim, draws the
  * original level layout (placeholder tiles), hosts a controllable player
- * (←/→ walk, ↑ jump, ↓ duck, Ctrl boost, mouse aim, click-fire pooled
- * bullets), and a draggable debug box. Game logic lives in plain modules
- * under src/.
+ * (←/→ walk, ↑ jump, ↓ duck, Ctrl boost, mouse aim, hold-to-fire MachineGun
+ * pooled bullets), and a draggable debug box. Game logic lives in plain
+ * modules under src/.
  *
  * The debug overlay (#8) is a DOM panel outside Phaser so it can host real
  * `<input>` controls for live physics tuning and toggle off for clean demos.
@@ -79,7 +86,7 @@ export class GameScene extends Phaser.Scene {
       .text(
         GAME_WIDTH / 2,
         28,
-        '↑ jump · Ctrl boost · ↓ duck · ←/→ walk · mouse aim · click fire',
+        '↑ jump · Ctrl boost · ↓ duck · ←/→ walk · mouse aim · hold to fire',
         {
           fontFamily: 'Arial, Helvetica, sans-serif',
           fontSize: '36px',
@@ -91,24 +98,13 @@ export class GameScene extends Phaser.Scene {
     this.add.text(
       40,
       GAME_HEIGHT - 60,
-      '←/→ walk · ↑ jump · Ctrl boost · ↓ duck · mouse aim · click fire · drag box · ` debug · 1/2 timeStep · Esc → Boot',
+      '←/→ walk · ↑ jump · Ctrl boost · ↓ duck · mouse aim · hold fire · drag box · ` debug · 1/2 timeStep · Esc → Boot',
       {
         fontFamily: 'monospace',
         fontSize: '20px',
         color: '#9ab',
       },
     );
-
-    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      if (pointer.rightButtonDown()) {
-        return;
-      }
-      // Don't fire when starting a debug-box drag.
-      if (this.input.hitTestPointer(pointer).includes(this.boxRect)) {
-        return;
-      }
-      this.session.fireRequested = true;
-    });
 
     this.input.keyboard?.on('keydown-ONE', () => {
       this.session.timeScale.setTimeStep(1);
@@ -143,10 +139,24 @@ export class GameScene extends Phaser.Scene {
       y: this.input.activePointer.worldY - this.arenaOriginY,
     };
 
+    // Held fire (Flash mouseD). Skip while dragging the debug box.
+    const pointer = this.input.activePointer;
+    this.session.fireHeld =
+      pointer.isDown &&
+      !pointer.rightButtonDown() &&
+      !this.session.debugBox.dragging;
+
     this.session.update(delta);
 
     const p = this.session.player.body;
     const pl = this.session.player;
+    const gun = this.session.weapon;
+    const pool = this.session.bullets;
+    const reloadFrames = WEAPONS[0].reload;
+    const mgReloadHud =
+      gun.reloadTime === Number.POSITIVE_INFINITY
+        ? 'ready'
+        : `${Math.min(gun.reloadTime, reloadFrames)}/${reloadFrames}`;
     this.overlay?.update({
       simRate: this.session.displayedSimRate,
       simHzTarget: SIM_HZ,
@@ -163,6 +173,12 @@ export class GameScene extends Phaser.Scene {
       boostCharge: pl.boostState.charge,
       boostChargeMax: PLAYER.boostChargeFrames,
       hjump: pl.boostState.hjump,
+      mgReloadHud,
+      mgShots: gun.shots,
+      bulletsActive: pool.activeCount,
+      bulletsCapacity: pool.capacity,
+      bulletsFired: pool.acquireCount,
+      bulletsRecycled: pool.recycleCount,
     });
 
     this.syncPlayerVisual();

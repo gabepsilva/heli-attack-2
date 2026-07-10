@@ -1,6 +1,11 @@
 import { FixedTimestepAccumulator } from './fixedTimestep';
 import { TimeScale } from './timeScale';
 import { BulletPool, arenaCullBounds, type CullBounds } from '../combat/bullet';
+import {
+  createMachineGunState,
+  stepWeaponFire,
+  type WeaponState,
+} from '../combat/weapon';
 import { PLAYER_SPAWN, Player } from '../player/player';
 import { DebugBox } from '../world/debugBox';
 import {
@@ -15,9 +20,12 @@ export const DEBUG_BOX_SPAWN = { x: 200, y: 200 } as const;
 
 /**
  * Per-run sim state for GameScene: fixed-step accumulator, timeStep, HUD
- * counters, original level map, player, bullet pool, and the debug box. Lives
- * outside Phaser so scene restarts and the update loop are unit-testable
- * (Phaser reuses the scene instance; only create() re-runs).
+ * counters, original level map, player, bullet pool, MachineGun reload, and
+ * the debug box. Lives outside Phaser so scene restarts and the update loop
+ * are unit-testable (Phaser reuses the scene instance; only create() re-runs).
+ *
+ * The debug overlay (#8) is a DOM panel outside Phaser so it can host real
+ * `<input>` controls for live physics tuning and toggle off for clean demos.
  */
 export class SimSession {
   readonly accumulator = new FixedTimestepAccumulator();
@@ -47,11 +55,13 @@ export class SimSession {
   readonly debugBox = new DebugBox(DEBUG_BOX_SPAWN.x, DEBUG_BOX_SPAWN.y);
 
   /**
-   * Click-to-fire latch: scene sets true on pointer down; consumed once per
-   * sim tick so a single click cannot multi-fire within one accumulator burst.
-   * Full MachineGun reload cadence is #11.
+   * Held-fire intent (Flash `mouseD`): scene sets from pointer.isDown each
+   * render frame; sim ticks read it and stream at MachineGun reload cadence.
    */
-  fireRequested = false;
+  fireHeld = false;
+
+  /** Starting MachineGun slot — reload counter + infinite ammo (#11). */
+  weapon: WeaponState = createMachineGunState();
 
   /** Clear all per-run state — call from GameScene.create() on every start. */
   reset(): void {
@@ -71,7 +81,8 @@ export class SimSession {
     };
     this.player.placeAt(PLAYER_SPAWN.x, PLAYER_SPAWN.y);
     this.bullets.reset();
-    this.fireRequested = false;
+    this.fireHeld = false;
+    this.weapon = createMachineGunState();
     this.debugBox.dragging = false;
     this.debugBox.placeAt(DEBUG_BOX_SPAWN.x, DEBUG_BOX_SPAWN.y);
   }
@@ -116,8 +127,8 @@ export class SimSession {
     this.simTickCount += 1;
     this.ticksThisSecond += 1;
     this.player.step(this.map, this.timeScale.timeStep);
-    if (this.fireRequested) {
-      this.fireRequested = false;
+    // Flash: reload++ every move frame; fire when held && reloadtime >= reload.
+    if (stepWeaponFire(this.weapon, this.fireHeld)) {
       this.tryFire();
     }
     this.bullets.stepAll(this.timeScale.timeStep, this.bulletCullBounds);

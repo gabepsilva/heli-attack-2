@@ -35,6 +35,14 @@ export type DebugOverlaySnapshot = {
   boostCharge: number;
   boostChargeMax: number;
   hjump: boolean;
+  /** MachineGun reload HUD — `ready` or `n/5` while charging (#11). */
+  mgReloadHud: string;
+  /** Lifetime MachineGun shot counter (#11). */
+  mgShots: number;
+  bulletsActive: number;
+  bulletsCapacity: number;
+  bulletsFired: number;
+  bulletsRecycled: number;
 };
 
 export type DebugOverlayOptions = {
@@ -72,7 +80,10 @@ export function formatDebugStatus(s: DebugOverlaySnapshot): string {
     `vx=${s.vx.toFixed(0)} vy=${s.vy.toFixed(1)}  ` +
     `(${s.x.toFixed(0)},${s.y.toFixed(0)})  ` +
     `${grounded}${duck}  ${j} up=${s.jumpUp}  ` +
-    `boost=${s.boostCharge}/${s.boostChargeMax}${hj}`
+    `boost=${s.boostCharge}/${s.boostChargeMax}${hj}  ` +
+    `MG ${s.mgReloadHud} shots=${s.mgShots}  ` +
+    `pool ${s.bulletsActive}/${s.bulletsCapacity} ` +
+    `fired ${s.bulletsFired} rc ${s.bulletsRecycled}`
   );
 }
 
@@ -292,6 +303,12 @@ export function emptyDebugSnapshot(
     boostCharge: PLAYER.boostChargeFrames,
     boostChargeMax: PLAYER.boostChargeFrames,
     hjump: false,
+    mgReloadHud: 'ready',
+    mgShots: 0,
+    bulletsActive: 0,
+    bulletsCapacity: 0,
+    bulletsFired: 0,
+    bulletsRecycled: 0,
     ...partial,
   };
 }
