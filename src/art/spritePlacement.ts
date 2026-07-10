@@ -62,3 +62,27 @@ export function playerSpritePlacement(
 ): SpritePlacement {
   return placeOnAabbBottomCenter(body, def.pivot, gameDrawSize(def));
 }
+
+/**
+ * Uniformly scale a game-space display size.
+ * Prefer this (or re-`setDisplaySize`) over Phaser `setScale` on atlas Images
+ * whose native texture is larger than the game draw box — `setScale` overwrites
+ * the scale that `setDisplaySize` installed (#34 lead review).
+ */
+export function scaledDisplaySize(
+  baseW: number,
+  baseH: number,
+  scale: number,
+): Readonly<{ w: number; h: number }> {
+  return { w: baseW * scale, h: baseH * scale };
+}
+
+/**
+ * Explosion growth over lifetime: 1 → 2.5 (matches prior Arc `setScale` feel).
+ */
+export function explosionAgeScale(age: number, maxAge: number): number {
+  if (maxAge <= 0) {
+    return 1;
+  }
+  return 1 + (age / maxAge) * 1.5;
+}

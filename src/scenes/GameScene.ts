@@ -1,6 +1,16 @@
 import Phaser from 'phaser';
-import { getSpriteDef, heliFrameForLook, type SpriteId } from '../art/catalog';
-import { placeOnCenter, playerSpritePlacement } from '../art/spritePlacement';
+import {
+  gameDrawSize,
+  getSpriteDef,
+  heliFrameForLook,
+  type SpriteId,
+} from '../art/catalog';
+import {
+  explosionAgeScale,
+  placeOnCenter,
+  playerSpritePlacement,
+  scaledDisplaySize,
+} from '../art/spritePlacement';
 import { AudioHud } from '../audio/audioHud';
 import { getGameAudio } from '../audio/gameAudio';
 import { GameSfx } from '../audio/gameSfx';
@@ -650,6 +660,7 @@ export class GameScene extends Phaser.Scene {
       .setDepth(20);
 
     const muzzleDef = getSpriteDef(MUZZLE_FRAME);
+    const muzzleDraw = gameDrawSize(muzzleDef);
     this.muzzleSprite = this.add
       .image(
         this.arenaOriginX + this.session.player.muzzle.x,
@@ -658,7 +669,7 @@ export class GameScene extends Phaser.Scene {
         MUZZLE_FRAME,
       )
       .setOrigin(muzzleDef.pivot.x, muzzleDef.pivot.y)
-      .setDisplaySize(18, 18)
+      .setDisplaySize(muzzleDraw.w, muzzleDraw.h)
       .setDepth(21)
       .setVisible(false);
   }
@@ -673,8 +684,9 @@ export class GameScene extends Phaser.Scene {
       this.arenaOriginY + pivot.y,
     );
     this.gunSprite.setAngle(aim.rotationDeg);
-    // Flash `_yscale = -100` when aiming left — Phaser flipY.
-    this.gunSprite.setScale(1, aim.flipY ? -1 : 1);
+    // Flash `_yscale = -100` when aiming left. Use flipY — do NOT setScale,
+    // which would wipe setDisplaySize on the atlas Image (#34 lead review).
+    this.gunSprite.setFlipY(aim.flipY);
 
     this.muzzleSprite.setPosition(
       this.arenaOriginX + player.muzzle.x,
@@ -770,13 +782,14 @@ export class GameScene extends Phaser.Scene {
       );
     }
     const boomDef = getSpriteDef(EXPLOSION_FRAME);
+    const boomDraw = gameDrawSize(boomDef);
     this.explosionSprites = [];
     for (let i = 0; i < boomPool; i += 1) {
       this.explosionSprites.push(
         this.add
           .image(0, 0, ATLAS_KEY, EXPLOSION_FRAME)
           .setOrigin(boomDef.pivot.x, boomDef.pivot.y)
-          .setDisplaySize(120, 120)
+          .setDisplaySize(boomDraw.w, boomDraw.h)
           .setDepth(25)
           .setVisible(false),
       );
@@ -850,6 +863,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     const booms = this.session.explosions;
+    const boomBase = gameDrawSize(getSpriteDef(EXPLOSION_FRAME));
     for (let i = 0; i < this.explosionSprites.length; i += 1) {
       const sprite = this.explosionSprites[i]!;
       const boom = booms[i];
@@ -857,13 +871,16 @@ export class GameScene extends Phaser.Scene {
         sprite.setVisible(false);
         continue;
       }
-      const scale = 1 + (boom.age / boom.maxAge) * 1.5;
+      // Grow via setDisplaySize — setScale would wipe the 120px base and draw
+      // the 748×744 texture at native size (#34 lead review).
+      const grow = explosionAgeScale(boom.age, boom.maxAge);
+      const size = scaledDisplaySize(boomBase.w, boomBase.h, grow);
       sprite.setVisible(true);
       sprite.setPosition(
         this.arenaOriginX + boom.x,
         this.arenaOriginY + boom.y,
       );
-      sprite.setScale(scale);
+      sprite.setDisplaySize(size.w, size.h);
       sprite.setAlpha(Math.max(0, 1 - boom.age / boom.maxAge));
     }
   }
