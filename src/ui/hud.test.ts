@@ -34,6 +34,7 @@ import {
   buildHudSnapshot,
   formatAmmoHud,
   HUD_LAYOUT,
+  hudDesignAnchors,
   hudSpecSeeds,
   POWERUP_HUD_NAMES,
   powerupHudName,
@@ -82,6 +83,20 @@ describe('HUD layout @ 1080p (issue #23)', () => {
     expect(HUD_LAYOUT.score.x).toBe(GAME_WIDTH - HUD_LAYOUT.margin);
     expect(HUD_LAYOUT.weapon.y).toBeLessThan(GAME_HEIGHT);
     expect(HUD_LAYOUT.meters.y).toBeLessThan(GAME_HEIGHT);
+  });
+
+  it('locks exact design-space corner anchors for FIT scaling (#28)', () => {
+    const a = hudDesignAnchors();
+    expect(a.designWidth).toBe(GAME_WIDTH);
+    expect(a.designHeight).toBe(GAME_HEIGHT);
+    expect(a.margin).toBe(40);
+    expect(a.health).toEqual({ x: 40, y: 40 });
+    expect(a.score).toEqual({ x: GAME_WIDTH - 40, y: 36 });
+    expect(a.weapon).toEqual({ x: 40, y: GAME_HEIGHT - 120 });
+    expect(a.powerup).toEqual({ x: 40, y: 100 });
+    expect(a.meters.y).toBe(GAME_HEIGHT - 56);
+    expect(a.meters.hyperJumpX).toBe(GAME_WIDTH / 2 - 300);
+    expect(a.meters.bulletTimeX).toBe(GAME_WIDTH / 2 + 20);
   });
 });
 

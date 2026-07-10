@@ -2,10 +2,10 @@
  * DOM fullscreen toggle for issue #28.
  *
  * Lives outside Phaser so a real `<button>` can satisfy the Fullscreen API
- * user-gesture requirement. Toggle calls Phaser Scale Manager enter/leave.
+ * user-gesture requirement. Must be mounted as a descendant of
+ * {@link ./../config/scale.SCALE_PARENT_ID} (the fullscreen target) so it remains visible
+ * after `requestFullscreen` promotes that element to the top layer.
  */
-
-import { fullscreenButtonLabel } from './responsiveScale';
 
 export type FullscreenScaleApi = {
   isFullscreen: () => boolean;
@@ -15,8 +15,14 @@ export type FullscreenScaleApi = {
 
 export type FullscreenButtonOptions = {
   scale: FullscreenScaleApi;
+  /** Must be the fullscreen target (or a descendant) — typically `#game-container`. */
   parent?: HTMLElement;
 };
+
+/** Label for the fullscreen toggle button. */
+export function fullscreenButtonLabel(isFullscreen: boolean): string {
+  return isFullscreen ? 'Exit Fullscreen' : 'Fullscreen';
+}
 
 /**
  * Mount a top-left fullscreen control. Returns a destroy handle.
@@ -57,8 +63,7 @@ export function mountFullscreenButton(options: FullscreenButtonOptions): {
     } else {
       scale.startFullscreen();
     }
-    // Label may update on the next fullscreenchange; refresh optimistically.
-    refresh();
+    // Label updates on fullscreenchange — isFullscreen is still stale here.
   });
 
   const onFsChange = (): void => {

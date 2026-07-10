@@ -20,7 +20,13 @@ const config: Phaser.Types.Core.GameConfig = {
 
 const game = new Phaser.Game(config);
 
+// Mount inside the fullscreen target so the button stays visible in FS
+// (Fullscreen API only paints the target element and its descendants).
+const fullscreenParent =
+  document.getElementById(SCALE_PARENT_ID) ?? document.body;
+
 mountFullscreenButton({
+  parent: fullscreenParent,
   scale: {
     isFullscreen: () => game.scale.isFullscreen,
     startFullscreen: () => {

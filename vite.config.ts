@@ -19,8 +19,6 @@ export default defineConfig({
         'src/audio/gameAudio.ts',
         // Phaser HUD view — meter math is covered via src/ui/hud.ts.
         'src/ui/gameHud.ts',
-        // DOM fullscreen control — label/layout math covered in responsiveScale.
-        'src/ui/fullscreenButton.ts',
       ],
       thresholds: {
         lines: 60,

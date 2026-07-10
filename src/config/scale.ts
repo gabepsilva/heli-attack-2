@@ -6,16 +6,15 @@
  * and rejected: it changes the game size to the parent, which would stretch
  * or reflow the world and break {@link ../ui/hud.HUD_LAYOUT} corner anchors.
  *
- * Numeric mode/center values match Phaser 4 enums so unit tests can lock them
- * without importing Phaser (which needs a DOM).
+ * Numeric mode/center values match Phaser 4 enums (`Scale.FIT` = 3,
+ * `Scale.CENTER_BOTH` = 1) so unit tests can lock the config handed to Phaser
+ * without importing the engine (needs a DOM).
  */
 
 import { GAME_HEIGHT, GAME_WIDTH } from './game';
 
 /** Phaser.Scale.ScaleModes.FIT */
 export const SCALE_MODE_FIT = 3;
-/** Phaser.Scale.ScaleModes.RESIZE — evaluated, not used for #28. */
-export const SCALE_MODE_RESIZE = 5;
 /** Phaser.Scale.Center.CENTER_BOTH */
 export const SCALE_CENTER_BOTH = 1;
 
@@ -30,12 +29,7 @@ export const SCALE = {
   /** Aspect locked by FIT (16:9). */
   aspectRatio: GAME_WIDTH / GAME_HEIGHT,
   mode: SCALE_MODE_FIT,
-  modeName: 'FIT' as const,
-  /** RESIZE kept for the evaluation record / regression guard. */
-  rejectedMode: SCALE_MODE_RESIZE,
-  rejectedModeName: 'RESIZE' as const,
   autoCenter: SCALE_CENTER_BOTH,
-  autoCenterName: 'CENTER_BOTH' as const,
   parent: SCALE_PARENT_ID,
   fullscreenTarget: SCALE_PARENT_ID,
 } as const;
@@ -54,13 +48,4 @@ export function phaserScaleConfig(): {
     autoCenter: SCALE.autoCenter,
     fullscreenTarget: SCALE.fullscreenTarget,
   };
-}
-
-/** Why FIT won over RESIZE for this remake. */
-export function scaleModeRationale(): string {
-  return (
-    'FIT preserves the 1920×1080 design resolution and HUD anchors under ' +
-    'any parent aspect; RESIZE changes game size to the parent and breaks ' +
-    'fixed 1080p layout.'
-  );
 }
