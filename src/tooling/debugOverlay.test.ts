@@ -38,6 +38,12 @@ describe('DebugOverlay (issue #8)', () => {
         boostCharge: 75,
         boostChargeMax: 150,
         hjump: true,
+        mgReloadHud: '3/5',
+        mgShots: 12,
+        bulletsActive: 4,
+        bulletsCapacity: 64,
+        bulletsFired: 12,
+        bulletsRecycled: 8,
       }),
     );
     expect(line).toContain('sim 30.0/30');
@@ -49,6 +55,8 @@ describe('DebugOverlay (issue #8)', () => {
     expect(line).toContain('up=3');
     expect(line).toContain('boost=75/150');
     expect(line).toContain('hj');
+    expect(line).toContain('MG 3/5 shots=12');
+    expect(line).toContain('pool 4/64 fired 12 rc 8');
   });
 
   it('mounts visible by default and toggles off for clean demos (AC)', () => {
