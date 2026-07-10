@@ -67,7 +67,12 @@ export class SimSession {
 
   /** Active helicopter enemies in arena space (#12). */
   helicopters: Helicopter[] = [
-    spawnHelicopter(HELI.hp, LEVEL1_WIDTH_PX, LEVEL1_HEIGHT_PX, createSpawnRng(12)),
+    spawnHelicopter(
+      HELI.hp,
+      LEVEL1_WIDTH_PX,
+      LEVEL1_HEIGHT_PX,
+      createSpawnRng(12),
+    ),
   ];
 
   /** Short-lived placeholder explosions after heli kills (#12). */

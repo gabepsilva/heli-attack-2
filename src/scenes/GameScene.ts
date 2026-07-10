@@ -422,9 +422,7 @@ export class GameScene extends Phaser.Scene {
         this.arenaOriginY + boom.y,
       );
       this.explosionSprite.setScale(scale);
-      this.explosionSprite.setAlpha(
-        Math.max(0, 1 - boom.age / boom.maxAge),
-      );
+      this.explosionSprite.setAlpha(Math.max(0, 1 - boom.age / boom.maxAge));
     }
   }
 

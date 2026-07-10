@@ -29,7 +29,11 @@ function hitWorld(heli: Helicopter) {
   return { x: left + HIT_LOCAL.x, y: top + HIT_LOCAL.y };
 }
 
-function fireHit(pool: BulletPool, heli: Helicopter, damage = BULLET.defaultDamage) {
+function fireHit(
+  pool: BulletPool,
+  heli: Helicopter,
+  damage = BULLET.defaultDamage,
+) {
   const p = hitWorld(heli);
   // Flash tests after motion — spawn one step before the opaque pixel along +X.
   const slot = pool.acquire(
@@ -49,7 +53,12 @@ describe('helicopter (issue #12 — enemy entity)', () => {
     expect(HELI.hp / WEAPONS[0].damage).toBe(30);
 
     const rng = createSpawnRng(99);
-    const heli = spawnHelicopter(HELI.hp, LEVEL1_WIDTH_PX, LEVEL1_HEIGHT_PX, rng);
+    const heli = spawnHelicopter(
+      HELI.hp,
+      LEVEL1_WIDTH_PX,
+      LEVEL1_HEIGHT_PX,
+      rng,
+    );
     expect(heli.health).toBe(300);
     expect(heli.active).toBe(true);
     const offLeft = heli.x < 0 || heli.x > LEVEL1_WIDTH_PX;

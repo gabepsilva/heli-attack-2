@@ -25,7 +25,12 @@ function heliAt(cx: number, cy: number) {
   };
 }
 
-function worldFromLocal(cx: number, cy: number, localX: number, localY: number) {
+function worldFromLocal(
+  cx: number,
+  cy: number,
+  localX: number,
+  localY: number,
+) {
   const left = cx - HELI.spriteW / 2;
   const top = cy - HELI.spriteH / 2;
   return { x: left + localX, y: top + localY };

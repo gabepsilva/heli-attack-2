@@ -284,8 +284,7 @@ describe('SimSession', () => {
     expect(heli.health).toBe(0);
     expect(session.weapon.shots).toBeGreaterThanOrEqual(30);
     expect(
-      session.explosions.some((e) => e.active) ||
-        session.explosions.length > 0,
+      session.explosions.some((e) => e.active) || session.explosions.length > 0,
     ).toBe(true);
   });
 });

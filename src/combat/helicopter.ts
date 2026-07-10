@@ -126,10 +126,7 @@ export function createHeliExplosion(
 }
 
 /** Apply weapon damage; returns true when the heli dies this hit. */
-export function damageHelicopter(
-  heli: Helicopter,
-  amount: number,
-): boolean {
+export function damageHelicopter(heli: Helicopter, amount: number): boolean {
   if (!heli.active) {
     return false;
   }
@@ -233,7 +230,13 @@ export function stepBulletsVsHelis(
       continue;
     }
 
-    const shouldCull = stepBulletWithHit(bullet, helis, timeStep, bounds, onHeliKilled);
+    const shouldCull = stepBulletWithHit(
+      bullet,
+      helis,
+      timeStep,
+      bounds,
+      onHeliKilled,
+    );
     if (shouldCull) {
       pool.release(bullet);
     }
