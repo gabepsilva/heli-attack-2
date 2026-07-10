@@ -1,8 +1,7 @@
 import const as const
 
-# Every agent call is a fresh, stateless session: the persona is prepended to
-# each prompt and the prompt carries all the context (issue/PR numbers) the
-# agent needs. No --continue, no session bookkeeping.
+# Full prompts include persona on the first call per issue. Follow-ups omit persona
+# and are used when resuming a saved dev/lead session within the same issue.
 
 DEV_PERSONA = """\
 You are the Developer agent in an automated issue-solving loop.
@@ -32,9 +31,10 @@ Pick the best open GitHub issue to work on next
 (ignore any labeled '{const.NEEDS_HUMAN_LABEL}').
 
 Preference order:
-1. Prefer an issue from the open-PR catalog below — resume/finish that work.
-2. If that catalog is empty, pick the most appropriate open issue via gh
-   (dependencies, impact, readiness).
+1. Prefer an open issue that does NOT appear in the open-PR catalog below
+   (new implementation work).
+2. Only pick from the open-PR catalog if that PR clearly still needs
+   implementation (not merely review/merge).
 
 Issues with an OPEN PR linked:
 {{issues_catalog}}
@@ -56,15 +56,57 @@ The lead requested changes on PR #{pr_number}.
 Read the review comments, address every one, push, and keep CI green.
 """
 
+DEV_FIX_PR_FOLLOWUP = """\
+Address every unresolved lead review comment on PR #{pr_number}, push, and keep CI green.
+"""
+
 MERGE_PR_PROMPT = DEV_PERSONA + """\
 The lead approved PR #{pr_number}. Merge it to master, monitor CI on master, then close issue #{issue_number}.
 """
 
+DEV_MERGE_PR_FOLLOWUP = """\
+Merge PR #{pr_number} to master, monitor CI on master, then close issue #{issue_number}.
+"""
+
 # ############ LEAD PROMPTS ############
+LEAD_CHOOSE_AND_REVIEW_PROMPT = LEAD_PERSONA + f"""\
+Pick one OPEN PR from the catalog below that still needs Lead review
+(ignore any issue labeled '{const.NEEDS_HUMAN_LABEL}').
+
+Preference order:
+1. PRs with no Lead review yet
+2. PRs with unresolved review comments / requested changes
+3. Skip PRs that are already approved and ready to merge unless something
+   new landed since approval
+
+Catalog (issues with OPEN PRs):
+{{issues_catalog}}
+
+Review the chosen PR:
+- post your findings as comments on the PR using gh
+- do not write code
+
+When done, record all of the following:
+echo <issue_number> > {const.SOLVE_ISSUE_FILE}
+echo <pr_number> > {const.PR_FILE}
+- ready to merge: echo APPROVED > {const.VERDICT_FILE}
+- changes needed: echo CHANGES > {const.VERDICT_FILE}
+
+If every PR in the catalog is already adequately reviewed and needs no further
+Lead action, record nothing and stop.
+"""
+
 LEAD_REVIEW_PR_PROMPT = LEAD_PERSONA + f"""\
 Review PR #{{pr_number}}, which resolves issue #{{issue_number}}.
 Post your findings as comments on the PR using gh.
 When done, record your verdict deterministically:
+- ready to merge: echo APPROVED > {const.VERDICT_FILE}
+- changes needed: echo CHANGES > {const.VERDICT_FILE}
+"""
+
+LEAD_REREVIEW_PR_FOLLOWUP = f"""\
+Dev pushed updates. Re-review PR #{{pr_number}} (issue #{{issue_number}}).
+Post new comments as needed and record your verdict:
 - ready to merge: echo APPROVED > {const.VERDICT_FILE}
 - changes needed: echo CHANGES > {const.VERDICT_FILE}
 """

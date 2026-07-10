@@ -6,10 +6,12 @@ import sys
 import time
 from pathlib import Path
 
+import agent_sessions
 import claude_usage
 import const as const
 import cursor_usage
 import prompt_strings as prompts
+import stream_format
 
 PAUSE = False
 
@@ -185,6 +187,7 @@ def ensure_label() -> None:
 
 def mark_needs_human(issue: str, reason: str) -> None:
 	print(f"Marking issue #{issue} as {const.NEEDS_HUMAN_LABEL}: {reason}")
+	agent_sessions.clear_issue_sessions()
 	gh("issue", "edit", issue, "--add-label", const.NEEDS_HUMAN_LABEL)
 	gh("issue", "comment", issue, "--body", f"Agent loop stopped working on this issue: {reason}")
 
@@ -204,8 +207,14 @@ def reset_loop_controls() -> None:
 
 
 def run_agent(
-	cmd: list[str], banner: str, str_prompt: str, *, prompt_via_stdin: bool = False
-) -> None:
+	cmd: list[str],
+	banner: str,
+	str_prompt: str,
+	*,
+	prompt_via_stdin: bool = False,
+	format_stream: bool = False,
+	claude_stream: bool = False,
+) -> str | None:
 	if PAUSE:
 		input(f"[pause] press Enter to run {banner}... ")
 	print("")
@@ -214,86 +223,200 @@ def run_agent(
 	print(str_prompt)
 	print("--------------------------------")
 	print("")
+	argv = cmd if prompt_via_stdin else [*cmd, str_prompt]
+	session_id: str | None = None
 	try:
-		subprocess.run(
-			cmd if prompt_via_stdin else [*cmd, str_prompt],
-			input=str_prompt if prompt_via_stdin else None,
-			cwd=const.REPO_ROOT,
-			check=True,
-			timeout=const.AGENT_TIMEOUT,
-			text=True,
-		)
+		if claude_stream:
+			result = stream_format.run_claude_live(
+				argv,
+				stdin_text=str_prompt,
+				cwd=const.REPO_ROOT,
+				timeout=const.AGENT_TIMEOUT,
+			)
+			session_id = result.session_id
+			if result.returncode != 0:
+				raise subprocess.CalledProcessError(result.returncode, argv)
+		elif format_stream:
+			# PTY so cursor-agent line-buffers stream-json (pipes batch until done).
+			result = stream_format.run_cursor_agent_live(
+				argv,
+				cwd=const.REPO_ROOT,
+				timeout=const.AGENT_TIMEOUT,
+			)
+			session_id = result.session_id
+			if result.returncode != 0:
+				raise subprocess.CalledProcessError(result.returncode, argv)
+		else:
+			subprocess.run(
+				argv,
+				input=str_prompt if prompt_via_stdin else None,
+				cwd=const.REPO_ROOT,
+				check=True,
+				timeout=const.AGENT_TIMEOUT,
+				text=True,
+			)
 	except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
 		print(f"{banner} failed: {exc}")
 		print("Aborting agent loop")
 		sys.exit(1)
+	return session_id
 
 
-def run_dev_agent(str_prompt: str) -> None:
-	cmd = [
+def _cursor_agent_cmd(*, model: str) -> list[str]:
+	return [
 		"cursor-agent",
 		"-p",
 		"--yolo",
+		"--output-format",
+		"stream-json",
+		"--stream-partial-output",
 		"--workspace",
 		str(const.REPO_ROOT),
 		"--model",
-		"auto",
+		model,
 	]
-	run_agent(cmd, "🖥️🖥️🖥️  dev agent", str_prompt)
 
 
-def run_lead_agent(str_prompt: str) -> None:
-	if claude_usage.should_fallback_to_cursor(const.CLAUDE_USAGE_FALLBACK_PCT):
+def run_dev_agent(*, full_prompt: str, resume_prompt: str | None = None) -> None:
+	cmd = _cursor_agent_cmd(model="auto")
+	sid = agent_sessions.dev_session_id()
+	resuming = sid is not None and resume_prompt is not None
+	if resuming:
+		cmd.extend(agent_sessions.cursor_resume_args(sid))
+		prompt = resume_prompt
+		banner = "🖥️🖥️🖥️  dev agent (resume)"
+	else:
+		prompt = full_prompt
+		banner = "🖥️🖥️🖥️  dev agent"
+
+	session_id = run_agent(
+		cmd,
+		banner,
+		prompt,
+		format_stream=True,
+	)
+	if session_id:
+		agent_sessions.set_dev_session(session_id)
+
+
+def run_lead_agent(*, full_prompt: str, resume_prompt: str | None = None) -> None:
+	use_cursor = claude_usage.should_fallback_to_cursor(const.CLAUDE_USAGE_FALLBACK_PCT)
+	backend = (
+		agent_sessions.LeadBackend.CURSOR
+		if use_cursor
+		else agent_sessions.LeadBackend.CLAUDE
+	)
+
+	sid = agent_sessions.lead_session_id()
+	if sid and agent_sessions.lead_backend() != backend:
+		agent_sessions.clear_lead_session()
+		sid = None
+
+	resuming = sid is not None and resume_prompt is not None
+	prompt = resume_prompt if resuming else full_prompt
+
+	if use_cursor:
+		cmd = _cursor_agent_cmd(model=const.CURSOR_LEAD_MODEL)
+		if resuming:
+			cmd.extend(agent_sessions.cursor_resume_args(sid))
+		banner = (
+			"👨‍⚖️👨‍⚖️👨‍⚖️  lead agent (cursor opus, resume)"
+			if resuming
+			else "👨‍⚖️👨‍⚖️👨‍⚖️  lead agent (cursor opus)"
+		)
+		session_id = run_agent(cmd, banner, prompt, format_stream=True)
+	else:
 		cmd = [
-			"cursor-agent",
+			"claude",
 			"-p",
-			"--yolo",
-			"--workspace",
-			str(const.REPO_ROOT),
+			"--dangerously-skip-permissions",
 			"--model",
-			const.CURSOR_LEAD_MODEL,
+			"opus",
+			"--output-format",
+			"stream-json",
+			"--include-partial-messages",
+			"--verbose",
 		]
-		run_agent(cmd, "👨‍⚖️👨‍⚖️👨‍⚖️  lead agent (cursor opus)", str_prompt)
-		return
+		if resuming:
+			cmd.extend(agent_sessions.claude_resume_args(sid))
+		banner = (
+			"👨‍⚖️👨‍⚖️👨‍⚖️  lead agent (resume)"
+			if resuming
+			else "👨‍⚖️👨‍⚖️👨‍⚖️  lead agent"
+		)
+		session_id = run_agent(
+			cmd,
+			banner,
+			prompt,
+			prompt_via_stdin=True,
+			claude_stream=True,
+		)
 
-	cmd = [
-		"claude",
-		"-p",
-		"--dangerously-skip-permissions",
-		"--model",
-		"opus",
-	]
-	run_agent(cmd, "👨‍⚖️👨‍⚖️👨‍⚖️  lead agent", str_prompt, prompt_via_stdin=True)
+	if session_id:
+		agent_sessions.set_lead_session(session_id, backend)
 
 
-def process_issue(issue: str) -> None:
-	clear_control(const.PR_FILE)
-	run_dev_agent(prompts.DEV_WORK_ON_ISSUE_PROMPT.format(issue_number=issue))
-	pr = read_control(const.PR_FILE)
-	if not pr.isdigit():
-		mark_needs_human(issue, "dev did not record a PR number")
-		return
+def merge_approved_pr(issue: str, pr: str) -> None:
+	print("Lead approved — merging PR")
+	run_dev_agent(
+		full_prompt=prompts.MERGE_PR_PROMPT.format(pr_number=pr, issue_number=issue),
+		resume_prompt=prompts.DEV_MERGE_PR_FOLLOWUP.format(
+			pr_number=pr, issue_number=issue
+		),
+	)
 
-	for round_num in range(1, const.MAX_REVIEW_ROUNDS + 1):
+
+def fix_pr_after_changes(pr: str) -> None:
+	print("Lead requested changes")
+	run_dev_agent(
+		full_prompt=prompts.FIX_PR_PROMPT.format(pr_number=pr),
+		resume_prompt=prompts.DEV_FIX_PR_FOLLOWUP.format(pr_number=pr),
+	)
+
+
+def review_until_merged(
+	issue: str, pr: str, *, initial_verdict: str | None = None
+) -> None:
+	"""Lead review ↔ Dev fix loop. Optional initial_verdict counts as round 1."""
+	start_round = 1
+	if initial_verdict is not None:
+		print(f"Lead review round 1/{const.MAX_REVIEW_ROUNDS} (already completed)")
+		if initial_verdict == "APPROVED":
+			merge_approved_pr(issue, pr)
+			return
+		if initial_verdict == "CHANGES":
+			fix_pr_after_changes(pr)
+			start_round = 2
+		else:
+			mark_needs_human(
+				issue,
+				f"lead produced no usable verdict (got '{initial_verdict}') on PR #{pr}",
+			)
+			return
+
+	for round_num in range(start_round, const.MAX_REVIEW_ROUNDS + 1):
 		print(f"Lead review round {round_num}/{const.MAX_REVIEW_ROUNDS}")
 		clear_control(const.VERDICT_FILE)
 		run_lead_agent(
-			prompts.LEAD_REVIEW_PR_PROMPT.format(pr_number=pr, issue_number=issue)
+			full_prompt=prompts.LEAD_REVIEW_PR_PROMPT.format(
+				pr_number=pr, issue_number=issue
+			),
+			resume_prompt=prompts.LEAD_REREVIEW_PR_FOLLOWUP.format(
+				pr_number=pr, issue_number=issue
+			),
 		)
 		verdict = read_control(const.VERDICT_FILE)
 
 		if verdict == "APPROVED":
-			print("Lead approved — merging PR")
-			run_dev_agent(
-				prompts.MERGE_PR_PROMPT.format(pr_number=pr, issue_number=issue)
-			)
+			merge_approved_pr(issue, pr)
 			return
 		if verdict == "CHANGES":
-			print("Lead requested changes")
-			run_dev_agent(prompts.FIX_PR_PROMPT.format(pr_number=pr))
+			fix_pr_after_changes(pr)
 			continue
 
-		mark_needs_human(issue, f"lead produced no usable verdict (got '{verdict}') on PR #{pr}")
+		mark_needs_human(
+			issue, f"lead produced no usable verdict (got '{verdict}') on PR #{pr}"
+		)
 		return
 
 	mark_needs_human(
@@ -301,10 +424,64 @@ def process_issue(issue: str) -> None:
 	)
 
 
+def process_issue(issue: str) -> None:
+	agent_sessions.clear_issue_sessions()
+	clear_control(const.PR_FILE)
+	run_dev_agent(
+		full_prompt=prompts.DEV_WORK_ON_ISSUE_PROMPT.format(issue_number=issue)
+	)
+	pr = read_control(const.PR_FILE)
+	if not pr.isdigit():
+		mark_needs_human(issue, "dev did not record a PR number")
+		return
+	review_until_merged(issue, pr)
+	agent_sessions.clear_issue_sessions()
+
+
+def process_lead_open_pr_review() -> bool:
+	"""Lead picks an open PR and reviews it.
+
+	Returns True if a PR was reviewed (or merge/fix attempted).
+	Returns False if the catalog is empty, or Lead recorded no pick.
+	"""
+	catalog_issues = issues_with_open_prs()
+	if not catalog_issues:
+		return False
+
+	catalog = format_issues_with_prs(catalog_issues)
+	agent_sessions.clear_issue_sessions()
+	clear_control(const.SOLVE_ISSUE_FILE)
+	clear_control(const.PR_FILE)
+	clear_control(const.VERDICT_FILE)
+	run_lead_agent(
+		full_prompt=prompts.LEAD_CHOOSE_AND_REVIEW_PROMPT.format(
+			issues_catalog=catalog
+		)
+	)
+
+	issue = read_control(const.SOLVE_ISSUE_FILE)
+	pr = read_control(const.PR_FILE)
+	verdict = read_control(const.VERDICT_FILE)
+
+	if not issue.isdigit() or not pr.isdigit():
+		print("Lead did not pick a PR to review")
+		return False
+
+	print(f"Lead reviewing issue #{issue} / PR #{pr}")
+	review_until_merged(issue, pr, initial_verdict=verdict)
+	agent_sessions.clear_issue_sessions()
+	return True
+
+
 def main() -> None:
 	global PAUSE
 	parser = argparse.ArgumentParser()
 	parser.add_argument("--solve-issue", type=int, metavar="NUMBER", default=None)
+	parser.add_argument(
+		"--review-open-prs",
+		action="store_true",
+		help="start with Lead reviewing open PRs that need review",
+	)
 	parser.add_argument(
 		"--once", action="store_true", help="process a single issue, then exit"
 	)
@@ -328,6 +505,21 @@ def main() -> None:
 	while True:
 		issue = read_control(const.SOLVE_ISSUE_FILE)
 		if not issue:
+			if args.review_open_prs and issues_with_open_prs():
+				print("Lead choosing open PR to review")
+				reviewed = process_lead_open_pr_review()
+				clear_control(const.SOLVE_ISSUE_FILE)
+				clear_control(const.PR_FILE)
+				clear_control(const.VERDICT_FILE)
+				if reviewed:
+					if args.once:
+						return
+					continue
+				if args.once:
+					print("Lead found no PR needing review — exiting (--once)")
+					return
+				print("Lead found no PR needing review — falling back to issue selection")
+
 			if not has_open_issues():
 				if args.once:
 					print("No open issues — exiting (--once)")
@@ -339,7 +531,9 @@ def main() -> None:
 			catalog = format_issues_with_prs(issues_with_open_prs())
 			print(catalog)
 			run_dev_agent(
-				prompts.DEV_CHOOSES_ISSUE_PROMPT.format(issues_catalog=catalog)
+				full_prompt=prompts.DEV_CHOOSES_ISSUE_PROMPT.format(
+					issues_catalog=catalog
+				)
 			)
 			issue = read_control(const.SOLVE_ISSUE_FILE)
 			if not issue:
