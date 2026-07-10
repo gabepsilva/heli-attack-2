@@ -41,7 +41,12 @@ export class SimSession {
     this.secondTimerMs = 0;
     this.displayedSimRate = 0;
     this.map = createTestArena();
-    this.player.input = { left: false, right: false };
+    this.player.input = {
+      left: false,
+      right: false,
+      jump: false,
+      duck: false,
+    };
     this.player.placeAt(PLAYER_SPAWN.x, PLAYER_SPAWN.y);
     this.debugBox.dragging = false;
     this.debugBox.placeAt(DEBUG_BOX_SPAWN.x, DEBUG_BOX_SPAWN.y);
