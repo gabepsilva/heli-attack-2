@@ -6,12 +6,7 @@ import { getGameAudio } from '../audio/gameAudio';
 import { GameSfx } from '../audio/gameSfx';
 import { ATLAS_KEY } from '../config/art';
 import { playerPowerupAlpha } from '../combat/powerupEffects';
-import {
-  getActiveWeaponDef,
-  nextWeapon,
-  prevWeapon,
-  selectWeaponByDigitKey,
-} from '../combat/weaponInventory';
+import { getActiveWeaponDef } from '../combat/weaponInventory';
 import {
   BULLET,
   ENEMY_BULLET,
@@ -36,6 +31,16 @@ import {
   type GameFlowState,
 } from '../core/gameFlow';
 import { SimSession } from '../core/simSession';
+import {
+  createIntentActionBuffer,
+  drainIntentActions,
+  queueNextWeapon,
+  queuePrevWeapon,
+  queueWeaponDigit,
+  sampleKeyboardMouseIntent,
+  type IntentActionBuffer,
+} from '../input/keyboardMouse';
+import { applyPlayerIntent } from '../input/playerIntent';
 import { DebugOverlay } from '../tooling/debugOverlay';
 import { buildHudSnapshot } from '../ui/hud';
 import { GameHud } from '../ui/gameHud';
@@ -74,6 +79,9 @@ const POWERUP_FRAME = 'powerup';
  * (#23), menu/pause/game-over session loop (#24), and a draggable debug box.
  * Game logic lives in plain modules under src/.
  *
+ * Input (#29): keyboard/mouse only feed the intent layer; gameplay reads
+ * {@link applyPlayerIntent} output on the session — never raw keys.
+ *
  * Audio (#26/#27): menu unlock + catalog load; GameScene starts looping music
  * and drains sim SFX events (weapon / hurt / hyper-jump / heliboom / powerups).
  * DOM HUD owns master volume + mute. Pooling / gain math lives in AudioManager.
@@ -84,6 +92,9 @@ const POWERUP_FRAME = 'powerup';
 export class GameScene extends Phaser.Scene {
   private readonly session = new SimSession();
   private readonly flow: GameFlowState = createGameFlowState('playing');
+  /** Edge-triggered weapon actions queued from keydown (#29). */
+  private readonly intentActions: IntentActionBuffer =
+    createIntentActionBuffer();
 
   private boxRect!: Phaser.GameObjects.Rectangle;
   private playerSprite!: Phaser.GameObjects.Image;
@@ -124,6 +135,8 @@ export class GameScene extends Phaser.Scene {
     // Phaser reuses this instance across scene.start — only create() re-runs.
     this.session.reset();
     startPlaying(this.flow);
+    // Drop any weapon-switch presses queued while the scene was shut down.
+    drainIntentActions(this.intentActions);
     this.gameSfx?.destroy();
     this.gameSfx = null;
     this.audioHud?.destroy();
@@ -186,7 +199,7 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-EQUALS', () => {
       this.session.timeScale.setTimeStep(0.5);
     });
-    // Number keys 1–0 → arsenal indices 0–9 (#14).
+    // Number keys 1–0 → arsenal indices 0–9 (#14) via intent action buffer (#29).
     const digitKeyNames = [
       'ZERO',
       'ONE',
@@ -202,18 +215,14 @@ export class GameScene extends Phaser.Scene {
     for (let digit = 0; digit <= 9; digit += 1) {
       const key = digitKeyNames[digit]!;
       this.input.keyboard?.on(`keydown-${key}`, () => {
-        selectWeaponByDigitKey(
-          this.session.inventory,
-          digit,
-          this.session.playerPowerup.powerupOn,
-        );
+        queueWeaponDigit(this.intentActions, digit);
       });
     }
     this.input.keyboard?.on('keydown-Q', () => {
-      prevWeapon(this.session.inventory, this.session.playerPowerup.powerupOn);
+      queuePrevWeapon(this.intentActions);
     });
     this.input.keyboard?.on('keydown-E', () => {
-      nextWeapon(this.session.inventory, this.session.playerPowerup.powerupOn);
+      queueNextWeapon(this.intentActions);
     });
     // Flash pauseKey (80 / P) via GAME_FLOW — addKey avoids OS key-repeat strobe.
     this.pauseKey = this.input.keyboard!.addKey(GAME_FLOW.pauseKeyCode);
@@ -277,26 +286,28 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
-    this.session.player.input = {
-      left: this.cursors.left.isDown,
-      right: this.cursors.right.isDown,
-      jump: this.cursors.up.isDown,
-      duck: this.cursors.down.isDown,
-      boost: this.boostKey.isDown,
-    };
-    this.session.bulletTimeHeld = this.bulletTimeKey.isDown;
-    this.session.player.mouse = {
-      x: this.input.activePointer.worldX - this.arenaOriginX,
-      y: this.input.activePointer.worldY - this.arenaOriginY,
-    };
-
-    // Held fire (Flash mouseD). Skip while dragging the debug box / dying.
+    // Keyboard/mouse → intent → session. Gameplay never reads keys directly (#29).
     const pointer = this.input.activePointer;
-    this.session.fireHeld =
-      this.flow.phase === 'playing' &&
-      pointer.isDown &&
-      !pointer.rightButtonDown() &&
-      !this.session.debugBox.dragging;
+    const intent = sampleKeyboardMouseIntent({
+      held: {
+        left: this.cursors.left.isDown,
+        right: this.cursors.right.isDown,
+        jump: this.cursors.up.isDown,
+        duck: this.cursors.down.isDown,
+        boost: this.boostKey.isDown,
+        bulletTime: this.bulletTimeKey.isDown,
+      },
+      pointer: {
+        aimX: pointer.worldX - this.arenaOriginX,
+        aimY: pointer.worldY - this.arenaOriginY,
+        primaryDown: pointer.isDown,
+        rightDown: pointer.rightButtonDown(),
+      },
+      actions: this.intentActions,
+      allowFire:
+        this.flow.phase === 'playing' && !this.session.debugBox.dragging,
+    });
+    applyPlayerIntent(this.session, intent);
 
     const wasDying = this.flow.phase === 'dying';
     const ticksBefore = this.session.simTickCount;

@@ -31,8 +31,8 @@ import { applyHorizontalWalk } from './walkPhysics';
 export const PLAYER_SPAWN = LEVEL1_PLAYER_SPAWN;
 
 /**
- * Per-frame keyboard state. Phaser only fills this; all physics lives here.
- * `jump` / `duck` / `boost` are key-held flags (↑ / ↓ / Ctrl).
+ * Per-frame movement intent. Filled from the player intent layer (#29);
+ * all physics lives here. `jump` / `duck` / `boost` are held flags (↑ / ↓ / Ctrl).
  */
 export type PlayerInput = {
   left: boolean;
@@ -46,7 +46,7 @@ export type PlayerInput = {
 /**
  * Controllable player: walk + gravity + variable jump + double-jump + charged
  * hyper-jump + duck + AABB resolve + mouse gun aim.
- * Plain module — Phaser only owns the visual and keyboard/mouse → {@link input}.
+ * Plain module — the intent layer owns keyboard/mouse → {@link input} / mouse.
  */
 export class Player {
   readonly body: AabbBody;
@@ -65,7 +65,7 @@ export class Player {
   /** Last gun grip/pivot in arena/world space. */
   gunPivot: Vec2 = { x: 0, y: 0 };
 
-  /** Set by the scene each render frame from keyboard state. */
+  /** Set each render frame from the player intent layer (#29). */
   input: PlayerInput = {
     left: false,
     right: false,
@@ -75,8 +75,8 @@ export class Player {
   };
 
   /**
-   * Mouse position in arena/world space (same coords as {@link body}).
-   * Scene converts pointer → arena each frame.
+   * Aim point in arena/world space (same coords as {@link body}).
+   * Intent layer converts pointer → arena each frame.
    */
   mouse: Vec2 = { x: PLAYER_SPAWN.x + 100, y: PLAYER_SPAWN.y };
 

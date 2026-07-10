@@ -187,14 +187,15 @@ export class SimSession {
   predatorFlicker = 0;
 
   /**
-   * Held-fire intent (Flash `mouseD`): scene sets from pointer.isDown each
-   * render frame; sim ticks read it and stream at the active weapon's reload.
+   * Held-fire intent (Flash `mouseD`): filled from the player intent layer
+   * each render frame; sim ticks read it and stream at the active weapon's reload.
    */
   fireHeld = false;
 
   /**
-   * Bullet-time key held (Flash `Key.isDown(bulletTimeKey)` / Shift).
-   * Scene sets each render frame; sim ticks ease `timeScale` from it.
+   * Bullet-time held (Flash `Key.isDown(bulletTimeKey)` / Shift).
+   * Filled from the player intent layer each render frame; sim ticks ease
+   * `timeScale` from it.
    */
   bulletTimeHeld = false;
 
