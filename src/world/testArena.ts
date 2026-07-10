@@ -6,6 +6,8 @@ const S = TILE_SOLID;
 
 /**
  * Hand-authored 24×16 test arena (1200×800 px at {@link WORLD.tile}).
+ * Kept for collision / physics unit tests (#4). The shipped playfield is
+ * {@link createLevel1} from `level1.ts` (#41).
  *
  * Features called out by issue #4:
  * - Floor with a **pit** in the middle
