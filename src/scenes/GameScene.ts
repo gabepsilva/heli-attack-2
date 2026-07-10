@@ -7,13 +7,12 @@ import { ATLAS_KEY } from '../config/art';
 import { AUDIO_TEST_SFX_ID } from '../config/audio';
 import { formatScoreHud } from '../combat/score';
 import {
-  BULLET,
-  GUN,
-  PLAYER,
-  SIM_HZ,
-  WEAPONS,
-  WORLD,
-} from '../config/constants';
+  getActiveWeaponDef,
+  nextWeapon,
+  prevWeapon,
+  selectWeaponByDigitKey,
+} from '../combat/weaponInventory';
+import { BULLET, GUN, PLAYER, SIM_HZ, WORLD } from '../config/constants';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/game';
 import { SCENE_KEYS } from '../config/scenes';
 import { SimSession } from '../core/simSession';
@@ -42,9 +41,10 @@ const HELI_HIT_FRAME = 'heli_hit';
 /**
  * Thin Phaser shell: banks render deltas into a 30 Hz fixed sim, draws the
  * original level layout (placeholder tiles), hosts a controllable player
- * (←/→ walk, ↑ jump, ↓ duck, Ctrl boost, mouse aim, hold-to-fire MachineGun
- * pooled bullets) rendered from the packed atlas (#32), a shootable heli with
- * hit flash / death boom / score HUD (#12/#13), and a draggable debug box.
+ * (←/→ walk, ↑ jump, ↓ duck, Ctrl boost, mouse aim, hold-to-fire, weapon
+ * switch via 1–0 / Q–E (#14), pooled bullets) rendered from the packed atlas
+ * (#32), a shootable heli with hit flash / death boom / score HUD (#12/#13),
+ * and a draggable debug box.
  * Game logic lives in plain modules under src/.
  *
  * Audio (#26): click plays the test SFX after Boot unlock; DOM HUD owns
@@ -110,7 +110,7 @@ export class GameScene extends Phaser.Scene {
       .text(
         GAME_WIDTH / 2,
         28,
-        '↑ jump · Ctrl boost · ↓ duck · ←/→ walk · mouse aim · hold to fire · click SFX',
+        '↑ jump · Ctrl boost · ↓ duck · ←/→ walk · mouse aim · hold fire · 1–0 / Q–E weapons · click SFX',
         {
           fontFamily: 'Arial, Helvetica, sans-serif',
           fontSize: '36px',
@@ -122,7 +122,7 @@ export class GameScene extends Phaser.Scene {
     this.add.text(
       40,
       GAME_HEIGHT - 60,
-      '←/→ walk · ↑ jump · Ctrl boost · ↓ duck · mouse aim · hold fire · click SFX · drag box · ` debug · 1/2 timeStep · Esc → Boot',
+      '←/→ walk · ↑ jump · Ctrl boost · ↓ duck · mouse aim · hold fire · 1–0 weapons · Q/E prev/next · -/= timeStep · click SFX · drag box · ` debug · Esc → Boot',
       {
         fontFamily: 'monospace',
         fontSize: '20px',
@@ -130,11 +130,36 @@ export class GameScene extends Phaser.Scene {
       },
     );
 
-    this.input.keyboard?.on('keydown-ONE', () => {
+    this.input.keyboard?.on('keydown-MINUS', () => {
       this.session.timeScale.setTimeStep(1);
     });
-    this.input.keyboard?.on('keydown-TWO', () => {
+    this.input.keyboard?.on('keydown-EQUALS', () => {
       this.session.timeScale.setTimeStep(0.5);
+    });
+    // Number keys 1–0 → arsenal indices 0–9 (#14).
+    const digitKeyNames = [
+      'ZERO',
+      'ONE',
+      'TWO',
+      'THREE',
+      'FOUR',
+      'FIVE',
+      'SIX',
+      'SEVEN',
+      'EIGHT',
+      'NINE',
+    ] as const;
+    for (let digit = 0; digit <= 9; digit += 1) {
+      const key = digitKeyNames[digit]!;
+      this.input.keyboard?.on(`keydown-${key}`, () => {
+        selectWeaponByDigitKey(this.session.inventory, digit);
+      });
+    }
+    this.input.keyboard?.on('keydown-Q', () => {
+      prevWeapon(this.session.inventory);
+    });
+    this.input.keyboard?.on('keydown-E', () => {
+      nextWeapon(this.session.inventory);
     });
     this.input.keyboard?.on('keydown-ESC', () => {
       this.scene.start(SCENE_KEYS.Boot);
@@ -197,12 +222,15 @@ export class GameScene extends Phaser.Scene {
     const p = this.session.player.body;
     const pl = this.session.player;
     const gun = this.session.weapon;
+    const gunDef = getActiveWeaponDef(this.session.inventory);
     const pool = this.session.bullets;
-    const reloadFrames = WEAPONS[0].reload;
+    const reloadFrames = gunDef.reload;
     const mgReloadHud =
       gun.reloadTime === Number.POSITIVE_INFINITY
         ? 'ready'
         : `${Math.min(gun.reloadTime, reloadFrames)}/${reloadFrames}`;
+    const weaponAmmoHud =
+      gun.bullets === Number.POSITIVE_INFINITY ? '∞' : String(gun.bullets);
     this.overlay?.update({
       simRate: this.session.displayedSimRate,
       simHzTarget: SIM_HZ,
@@ -219,6 +247,9 @@ export class GameScene extends Phaser.Scene {
       boostCharge: pl.boostState.charge,
       boostChargeMax: PLAYER.boostChargeFrames,
       hjump: pl.boostState.hjump,
+      weaponName: gunDef.name,
+      weaponIndex: this.session.inventory.activeIndex,
+      weaponAmmoHud,
       mgReloadHud,
       mgShots: gun.shots,
       bulletsActive: pool.activeCount,

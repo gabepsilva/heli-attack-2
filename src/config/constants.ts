@@ -13,6 +13,19 @@
  * {@link resetPhysicsConstants} to restore them.
  */
 
+import { WEAPONS } from './weapons';
+
+/** Full 14-weapon arsenal — see {@link ./weapons}. */
+export {
+  MACHINE_GUN,
+  PREDATOR_WEAPON_INDEX,
+  WEAPONS,
+  WEAPON_COUNT,
+  WEAPON_PICKUP_AMMO,
+  getWeaponDef,
+  type WeaponDef,
+} from './weapons';
+
 /** Fixed simulation rate matching the original Flash stage framerate. */
 export const SIM_HZ = 30;
 
@@ -167,14 +180,6 @@ export const BULLET_TIME = {
   minScale: 0.2,
   easePerFrame: 0.1,
 } as const;
-
-/**
- * Starting arsenal entry (MachineGun). Full table lands with #14–#17;
- * #10/#11 only need the starter for default projectile speed/damage/reload.
- */
-export const WEAPONS = [
-  { name: 'MachineGun', reload: 5, speed: 8, damage: 10 },
-] as const;
 
 /**
  * Pooled projectile defaults (#10). Speed/damage match MachineGun; cull margin

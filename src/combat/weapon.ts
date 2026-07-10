@@ -14,14 +14,9 @@
  * Reload increments by 1 per discrete sim frame (not scaled by timeStep).
  */
 
-import { WEAPONS } from '../config/constants';
+import { MACHINE_GUN, type WeaponDef } from '../config/weapons';
 
-export type WeaponDef = Readonly<{
-  name: string;
-  reload: number;
-  speed: number;
-  damage: number;
-}>;
+export type { WeaponDef };
 
 /** Per-player gun slot — Flash `this.guns[cgun]`. */
 export type WeaponState = {
@@ -38,8 +33,7 @@ export type WeaponState = {
   shots: number;
 };
 
-/** Spec entry for the starting MachineGun (arsenal index 0). */
-export const MACHINE_GUN: WeaponDef = WEAPONS[0];
+export { MACHINE_GUN };
 
 /** Fresh MachineGun slot matching Flash `heroSetup` gun 0. */
 export function createMachineGunState(): WeaponState {

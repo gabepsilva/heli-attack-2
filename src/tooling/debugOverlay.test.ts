@@ -38,6 +38,9 @@ describe('DebugOverlay (issue #8)', () => {
         boostCharge: 75,
         boostChargeMax: 150,
         hjump: true,
+        weaponName: 'MachineGun',
+        weaponIndex: 0,
+        weaponAmmoHud: '∞',
         mgReloadHud: '3/5',
         mgShots: 12,
         bulletsActive: 4,
@@ -55,7 +58,8 @@ describe('DebugOverlay (issue #8)', () => {
     expect(line).toContain('up=3');
     expect(line).toContain('boost=75/150');
     expect(line).toContain('hj');
-    expect(line).toContain('MG 3/5 shots=12');
+    expect(line).toContain('gun=0:MachineGun ammo=∞');
+    expect(line).toContain('rl 3/5 shots=12');
     expect(line).toContain('pool 4/64 fired 12 rc 8');
   });
 
