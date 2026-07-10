@@ -13,6 +13,7 @@
     "format:check": "prettier --check .",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
+    "audio:transcode": "node scripts/audio/transcode-wavs.mjs",
     "prepare": "node scripts/install-git-hooks.mjs"
   },
   "devDependencies": {

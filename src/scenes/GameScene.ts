@@ -1,4 +1,7 @@
 import Phaser from 'phaser';
+import { AudioHud } from '../audio/audioHud';
+import { getGameAudio } from '../audio/gameAudio';
+import { AUDIO_TEST_SFX_ID } from '../config/audio';
 import {
   BULLET,
   GUN,
@@ -35,6 +38,9 @@ const BULLET_COLOR = 0xffe066;
  * pooled bullets), and a draggable debug box. Game logic lives in plain
  * modules under src/.
  *
+ * Audio (#26): click plays the test SFX after Boot unlock; DOM HUD owns
+ * master volume + mute. Pooling / gain math lives in {@link AudioManager}.
+ *
  * The debug overlay (#8) is a DOM panel outside Phaser so it can host real
  * `<input>` controls for live physics tuning and toggle off for clean demos.
  */
@@ -48,6 +54,7 @@ export class GameScene extends Phaser.Scene {
   /** One visual per pool slot — toggled visible when the slot is active. */
   private bulletDots: Phaser.GameObjects.Arc[] = [];
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
+  private audioHud: AudioHud | null = null;
   private boostKey!: Phaser.Input.Keyboard.Key;
   private overlay: DebugOverlay | null = null;
   private arenaOriginX = 0;
@@ -60,6 +67,7 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     // Phaser reuses this instance across scene.start — only create() re-runs.
     this.session.reset();
+    this.audioHud?.destroy();
     this.overlay?.destroy();
     this.overlay = new DebugOverlay({
       search:
@@ -76,6 +84,7 @@ export class GameScene extends Phaser.Scene {
     this.createGunVisual();
     this.createBulletVisuals();
     this.createDebugBoxVisual();
+    this.setupAudioDemo();
 
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.boostKey = this.input.keyboard!.addKey(
@@ -86,7 +95,7 @@ export class GameScene extends Phaser.Scene {
       .text(
         GAME_WIDTH / 2,
         28,
-        '↑ jump · Ctrl boost · ↓ duck · ←/→ walk · mouse aim · hold to fire',
+        '↑ jump · Ctrl boost · ↓ duck · ←/→ walk · mouse aim · hold to fire · click SFX',
         {
           fontFamily: 'Arial, Helvetica, sans-serif',
           fontSize: '36px',
@@ -98,7 +107,7 @@ export class GameScene extends Phaser.Scene {
     this.add.text(
       40,
       GAME_HEIGHT - 60,
-      '←/→ walk · ↑ jump · Ctrl boost · ↓ duck · mouse aim · hold fire · drag box · ` debug · 1/2 timeStep · Esc → Boot',
+      '←/→ walk · ↑ jump · Ctrl boost · ↓ duck · mouse aim · hold fire · click SFX · drag box · ` debug · 1/2 timeStep · Esc → Boot',
       {
         fontFamily: 'monospace',
         fontSize: '20px',
@@ -121,8 +130,30 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.audioHud?.destroy();
+      this.audioHud = null;
       this.overlay?.destroy();
       this.overlay = null;
+    });
+  }
+
+  private setupAudioDemo(): void {
+    const audio = getGameAudio();
+    this.audioHud = new AudioHud({ audio });
+
+    void (async () => {
+      if (!audio.isUnlocked()) {
+        await audio.unlock();
+      }
+      if (!audio.hasBuffer(AUDIO_TEST_SFX_ID)) {
+        await audio.load(AUDIO_TEST_SFX_ID);
+      }
+      this.audioHud?.refreshStatus();
+    })();
+
+    this.input.on('pointerdown', () => {
+      audio.play(AUDIO_TEST_SFX_ID);
+      this.audioHud?.refreshStatus();
     });
   }
 

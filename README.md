@@ -104,7 +104,12 @@ npm run typecheck # strict TS check (src + vite.config.ts)
 npm run lint      # ESLint (type-aware)
 npm run format    # Prettier --write (format:check to verify only)
 npm test          # Vitest (test:watch for watch mode)
+npm run audio:transcode  # WAV → public/audio (.ogg/.webm/.mp3); needs ffmpeg
 ```
+
+Web-ready SFX live in `public/audio/` (committed). Source WAVs stay gitignored under
+`reference/ha2-source/wav/` — pull from [iopred/heliattack](https://github.com/iopred/heliattack)
+`ha2/assets/helisounds` when regenerating, then run `npm run audio:transcode`.
 
 `npm install` points git at [`.githooks/`](.githooks/) when `core.hooksPath` is
 unset so commits run `lint` + `typecheck` locally (optional quality gate from #2).

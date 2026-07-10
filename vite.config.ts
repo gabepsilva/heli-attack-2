@@ -11,7 +11,13 @@ export default defineConfig({
       // covered by the future Playwright smoke test. Game logic belongs in
       // plain modules, which this floor applies to.
       include: ['src/**/*.ts'],
-      exclude: ['src/main.ts', 'src/scenes/**'],
+      exclude: [
+        'src/main.ts',
+        'src/scenes/**',
+        // DOM HUD is a thin view over AudioManager (covered by unit tests).
+        'src/audio/audioHud.ts',
+        'src/audio/gameAudio.ts',
+      ],
       thresholds: {
         lines: 60,
         functions: 60,
