@@ -243,6 +243,17 @@ export const SCORE = {
 } as const;
 
 /**
+ * Session loop / game states (#24). Flash `gameover++` each frame while dead;
+ * stats screen when `gameover > 200`. Pause key default is ASCII 80 (`P`).
+ */
+export const GAME_FLOW = {
+  /** Flash: show stats when `gameover > 200`. */
+  gameOverDelayFrames: 200,
+  /** Flash default `pauseKey = 80` (`P`). */
+  pauseKeyCode: 80,
+} as const;
+
+/**
  * Held starting gun (machine gun). Size/pivot match Flash `machineGun.png`
  * (29×16, grip at 0.2×0.5). Attach is the grip offset from the player AABB
  * top-left (chest mount). Aim turn rate matches Flash `dif/2*timeStep`.

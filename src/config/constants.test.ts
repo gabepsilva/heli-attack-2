@@ -22,6 +22,7 @@ import {
   WEAPONS,
   WORLD,
   WORLD_DEFAULTS,
+  GAME_FLOW,
   resetPhysicsConstants,
 } from './constants';
 
@@ -114,6 +115,10 @@ describe('config/constants (spec seed)', () => {
       firstLevelScore: 10000,
     });
     expect(SCORE).toEqual({ displayScale: 100 });
+    expect(GAME_FLOW).toEqual({
+      gameOverDelayFrames: 200,
+      pauseKeyCode: 80,
+    });
     expect(POWERUP_FRAMES).toBe(500);
     expect(POWERUP).toEqual({
       TriDamage: 1,

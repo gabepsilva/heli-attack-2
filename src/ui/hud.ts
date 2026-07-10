@@ -88,7 +88,7 @@ export const HUD_LAYOUT = {
     labelGap: 6,
     fontSize: 26,
   },
-  /** Centered death banner (until #24 owns game-over). */
+  /** Centered death banner during the dying delay (#24 owns game-over screen). */
   death: { fontSize: 96 },
   depth: 40,
 } as const;
