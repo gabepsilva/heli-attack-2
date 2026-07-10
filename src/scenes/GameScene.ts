@@ -15,6 +15,8 @@ import { AudioHud } from '../audio/audioHud';
 import { getGameAudio } from '../audio/gameAudio';
 import { GameSfx } from '../audio/gameSfx';
 import { GameParticles } from '../fx/gameParticles';
+import { GameCameraFeel } from '../fx/gameCameraFeel';
+import { CameraFeelHud } from '../fx/cameraFeelHud';
 import { ATLAS_KEY, BG_IMAGE_KEY } from '../config/art';
 import { isPlayerHurtFlashing } from '../combat/playerHealth';
 import { playerPowerupAlpha } from '../combat/powerupEffects';
@@ -121,6 +123,9 @@ const TILE_FRAME = 'tile_floor';
  * Particles (#35): pooled Phaser emitters for explosions, impacts, smoke,
  * debris, muzzle flashes, and blood — drained from sim FX events each frame.
  *
+ * Camera feel (#36): damage-scaled screen shake, hit flash, hit-stop, damage
+ * vignette, and subtle aim/velocity lead — intensity toggle in the DOM HUD.
+ *
  * The debug overlay (#8) is a DOM panel outside Phaser so it can host real
  * `<input>` controls for live physics tuning and toggle off for clean demos.
  */
@@ -175,6 +180,8 @@ export class GameScene extends Phaser.Scene {
   private audioHud: AudioHud | null = null;
   private gameSfx: GameSfx | null = null;
   private gameParticles: GameParticles | null = null;
+  private gameCameraFeel: GameCameraFeel | null = null;
+  private cameraFeelHud: CameraFeelHud | null = null;
   private boostKey!: Phaser.Input.Keyboard.Key;
   private bulletTimeKey!: Phaser.Input.Keyboard.Key;
   private pauseKey!: Phaser.Input.Keyboard.Key;
@@ -199,6 +206,10 @@ export class GameScene extends Phaser.Scene {
     drainIntentActions(this.intentActions);
     this.gameParticles?.destroy();
     this.gameParticles = null;
+    this.gameCameraFeel?.destroy();
+    this.gameCameraFeel = null;
+    this.cameraFeelHud?.destroy();
+    this.cameraFeelHud = null;
     this.gameSfx?.destroy();
     this.gameSfx = null;
     this.audioHud?.destroy();
@@ -229,6 +240,10 @@ export class GameScene extends Phaser.Scene {
       scene: this,
       originX: this.arenaOriginX,
       originY: this.arenaOriginY,
+    });
+    this.gameCameraFeel = new GameCameraFeel({ scene: this });
+    this.cameraFeelHud = new CameraFeelHud({
+      cameraFeel: this.gameCameraFeel,
     });
     this.gameHud = new GameHud(this);
     this.createDebugBoxVisual();
@@ -330,6 +345,10 @@ export class GameScene extends Phaser.Scene {
       }
       this.gameParticles?.destroy();
       this.gameParticles = null;
+      this.gameCameraFeel?.destroy();
+      this.gameCameraFeel = null;
+      this.cameraFeelHud?.destroy();
+      this.cameraFeelHud = null;
       this.gameSfx?.destroy();
       this.gameSfx = null;
       this.audioHud?.destroy();
@@ -477,46 +496,57 @@ export class GameScene extends Phaser.Scene {
 
     const wasDying = this.flow.phase === 'dying';
     const ticksBefore = this.session.simTickCount;
-    this.session.update(delta);
-    const simSteps = this.session.simTickCount - ticksBefore;
-    // Advance walk cycle once per sim move tick while horizontally moving
-    // (Flash `gfx.gfx.nextFrame()` under walk parent frame 4).
-    if (simSteps > 0) {
-      const moving = playerAnimMoving(this.session.player.body.vx);
-      for (let i = 0; i < simSteps; i += 1) {
-        this.playerWalkPhase = advanceWalkPhase(
-          this.playerWalkPhase,
-          moving,
-          true,
-        );
+    // Hit-stop freezes the sim briefly on big hits (#36).
+    if (!this.gameCameraFeel?.isHitStopping()) {
+      this.session.update(delta);
+      const simSteps = this.session.simTickCount - ticksBefore;
+      // Advance walk cycle once per sim move tick while horizontally moving
+      // (Flash `gfx.gfx.nextFrame()` under walk parent frame 4).
+      if (simSteps > 0) {
+        const moving = playerAnimMoving(this.session.player.body.vx);
+        for (let i = 0; i < simSteps; i += 1) {
+          this.playerWalkPhase = advanceWalkPhase(
+            this.playerWalkPhase,
+            moving,
+            true,
+          );
+        }
       }
-    }
-    this.gameSfx?.drainAndPlay(this.session.drainAudioEvents(), {
-      simTicks: simSteps,
-    });
-    this.gameParticles?.drainAndExplode(this.session.drainParticleFx());
+      this.gameSfx?.drainAndPlay(this.session.drainAudioEvents(), {
+        simTicks: simSteps,
+      });
+      this.gameParticles?.drainAndExplode(this.session.drainParticleFx());
+      this.gameCameraFeel?.consume(this.session.drainCameraFeelEvents());
 
-    if (!this.session.playerHealth.alive) {
-      if (this.flow.phase === 'playing') {
-        beginDeath(this.flow, this.session.score.value);
-      }
-      if (this.flow.phase === 'dying') {
-        // Count only steps while already dead; on the death frame count one
-        // (sim steps before the killing blow were still alive).
-        const deathTicks = wasDying ? simSteps : simSteps > 0 ? 1 : 0;
-        for (let i = 0; i < deathTicks; i += 1) {
-          if (tickDeath(this.flow)) {
-            this.scene.start(SCENE_KEYS.GameOver, {
-              finalScore: this.flow.finalScore,
-              helisKilled: this.session.heliSpawn.kills,
-              shots: this.session.runShots,
-              hits: this.session.runHits,
-            });
-            return;
+      if (!this.session.playerHealth.alive) {
+        if (this.flow.phase === 'playing') {
+          beginDeath(this.flow, this.session.score.value);
+        }
+        if (this.flow.phase === 'dying') {
+          // Count only steps while already dead; on the death frame count one
+          // (sim steps before the killing blow were still alive).
+          const deathTicks = wasDying ? simSteps : simSteps > 0 ? 1 : 0;
+          for (let i = 0; i < deathTicks; i += 1) {
+            if (tickDeath(this.flow)) {
+              this.scene.start(SCENE_KEYS.GameOver, {
+                finalScore: this.flow.finalScore,
+                helisKilled: this.session.heliSpawn.kills,
+                shots: this.session.runShots,
+                hits: this.session.runHits,
+              });
+              return;
+            }
           }
         }
       }
     }
+
+    this.gameCameraFeel?.update(
+      delta,
+      this.session.player.gunAim.rotationDeg,
+      this.session.player.body.vx,
+      this.session.player.body.vy,
+    );
 
     const p = this.session.player.body;
     const pl = this.session.player;
