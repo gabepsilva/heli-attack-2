@@ -76,8 +76,10 @@ export class GameScene extends Phaser.Scene {
   private bulletDots: Phaser.GameObjects.Arc[] = [];
   /** Enemy return-fire visuals (#18). */
   private enemyBulletDots: Phaser.GameObjects.Arc[] = [];
-  private heliSprite!: Phaser.GameObjects.Image;
-  private explosionSprite!: Phaser.GameObjects.Arc;
+  /** One visual per concurrent heli slot (#19 treadmill can fill several). */
+  private heliSprites: Phaser.GameObjects.Image[] = [];
+  /** One visual per in-flight explosion (kills can overlap). */
+  private explosionSprites: Phaser.GameObjects.Arc[] = [];
   private scoreText!: Phaser.GameObjects.Text;
   private healthText!: Phaser.GameObjects.Text;
   private healthBarFill!: Phaser.GameObjects.Rectangle;
@@ -458,21 +460,31 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createHeliVisual(): void {
+    // Pool sized for max concurrent + a couple spare explosion slots (#19).
+    const heliPool = 8;
+    const boomPool = 8;
     const def = getSpriteDef(HELI_FRAME);
     const place = placeOnCenter(0, 0, def.pivot, {
       w: def.originalW,
       h: def.originalH,
     });
-    this.heliSprite = this.add
-      .image(0, 0, ATLAS_KEY, HELI_FRAME)
-      .setOrigin(place.originX, place.originY)
-      .setDisplaySize(place.displayW, place.displayH)
-      .setTint(HELI_TINT)
-      .setVisible(false);
-
-    this.explosionSprite = this.add
-      .circle(0, 0, 40, EXPLOSION_COLOR, 0.85)
-      .setVisible(false);
+    this.heliSprites = [];
+    for (let i = 0; i < heliPool; i += 1) {
+      this.heliSprites.push(
+        this.add
+          .image(0, 0, ATLAS_KEY, HELI_FRAME)
+          .setOrigin(place.originX, place.originY)
+          .setDisplaySize(place.displayW, place.displayH)
+          .setTint(HELI_TINT)
+          .setVisible(false),
+      );
+    }
+    this.explosionSprites = [];
+    for (let i = 0; i < boomPool; i += 1) {
+      this.explosionSprites.push(
+        this.add.circle(0, 0, 40, EXPLOSION_COLOR, 0.85).setVisible(false),
+      );
+    }
   }
 
   private createScoreHud(): void {
@@ -552,10 +564,14 @@ export class GameScene extends Phaser.Scene {
   }
 
   private syncHeliVisual(): void {
-    const heli = this.session.helicopters.find((h) => h.active);
-    if (!heli) {
-      this.heliSprite.setVisible(false);
-    } else {
+    const helis = this.session.helicopters;
+    for (let i = 0; i < this.heliSprites.length; i += 1) {
+      const sprite = this.heliSprites[i]!;
+      const heli = helis[i];
+      if (!heli || !heli.active) {
+        sprite.setVisible(false);
+        continue;
+      }
       const flashing = heli.hitFlashRemaining > 0;
       const frame = flashing ? HELI_HIT_FRAME : HELI_FRAME;
       const def = getSpriteDef(frame);
@@ -563,31 +579,35 @@ export class GameScene extends Phaser.Scene {
         w: def.originalW,
         h: def.originalH,
       });
-      this.heliSprite.setVisible(true);
-      this.heliSprite.setTexture(ATLAS_KEY, frame);
-      this.heliSprite.setOrigin(place.originX, place.originY);
-      this.heliSprite.setDisplaySize(place.displayW, place.displayH);
-      this.heliSprite.setPosition(
+      sprite.setVisible(true);
+      sprite.setTexture(ATLAS_KEY, frame);
+      sprite.setOrigin(place.originX, place.originY);
+      sprite.setDisplaySize(place.displayW, place.displayH);
+      sprite.setPosition(
         this.arenaOriginX + place.x,
         this.arenaOriginY + place.y,
       );
-      this.heliSprite.setAngle(heli.rotationDeg);
+      sprite.setAngle(heli.rotationDeg);
       // Brighten during flash so the hit reads even if frames look similar.
-      this.heliSprite.setTint(flashing ? 0xffffff : HELI_TINT);
+      sprite.setTint(flashing ? 0xffffff : HELI_TINT);
     }
 
-    const boom = this.session.explosions.find((e) => e.active);
-    if (!boom) {
-      this.explosionSprite.setVisible(false);
-    } else {
+    const booms = this.session.explosions;
+    for (let i = 0; i < this.explosionSprites.length; i += 1) {
+      const sprite = this.explosionSprites[i]!;
+      const boom = booms[i];
+      if (!boom || !boom.active) {
+        sprite.setVisible(false);
+        continue;
+      }
       const scale = 1 + (boom.age / boom.maxAge) * 1.5;
-      this.explosionSprite.setVisible(true);
-      this.explosionSprite.setPosition(
+      sprite.setVisible(true);
+      sprite.setPosition(
         this.arenaOriginX + boom.x,
         this.arenaOriginY + boom.y,
       );
-      this.explosionSprite.setScale(scale);
-      this.explosionSprite.setAlpha(Math.max(0, 1 - boom.age / boom.maxAge));
+      sprite.setScale(scale);
+      sprite.setAlpha(Math.max(0, 1 - boom.age / boom.maxAge));
     }
   }
 

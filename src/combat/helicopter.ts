@@ -298,18 +298,21 @@ export type HeliFireShot = {
 /**
  * Flash fire gate: on a discrete move frame, when
  * `(shoot++ % fireInterval) == 1`, spawn an aimed bullet with spread.
+ * `fireInterval` defaults to level-0 {@link HELI.fireIntervalFrames}; pass
+ * {@link heliFireInterval}(level) for the difficulty ramp (#19).
  * Returns the shot descriptor, or null when not firing this tick.
  */
 export function tryHeliFire(
   heli: Helicopter,
   movedThisTick: boolean,
   rng: SpawnRng,
+  fireInterval: number = HELI.fireIntervalFrames,
 ): HeliFireShot | null {
   if (!heli.active || !movedThisTick) {
     return null;
   }
   heli.shootCounter += 1;
-  if (heli.shootCounter % HELI.fireIntervalFrames !== 1) {
+  if (heli.shootCounter % fireInterval !== 1) {
     return null;
   }
   const muzzle = heliMuzzlePosition(heli);
@@ -325,6 +328,8 @@ export function tryHeliFire(
 /**
  * Aim + optional fire into an enemy-bullet pool. `movedThisTick` should be
  * true on discrete move frames (Flash `move` after `stepc`).
+ * `level` drives Flash `Math.max(10,16-level)` fire cadence and
+ * `Math.max(1,10-level)` gun turn (#19 difficulty ramp).
  */
 export function stepHeliCombat(
   heli: Helicopter,
@@ -334,9 +339,18 @@ export function stepHeliCombat(
   enemyBullets: EnemyBulletPool,
   rng: SpawnRng,
   movedThisTick = true,
+  level = 0,
 ): HeliFireShot | null {
-  stepHeliGunAim(heli, playerCenterX, playerCenterY, timeStep);
-  const shot = tryHeliFire(heli, movedThisTick, rng);
+  const turnDivisor = Math.max(
+    HELI.gunTurnDivisorMin,
+    HELI.gunTurnDivisor - Math.max(0, level),
+  );
+  const fireInterval = Math.max(
+    HELI.fireIntervalMin,
+    HELI.fireIntervalFrames - Math.max(0, level),
+  );
+  stepHeliGunAim(heli, playerCenterX, playerCenterY, timeStep, turnDivisor);
+  const shot = tryHeliFire(heli, movedThisTick, rng, fireInterval);
   if (!shot) {
     return null;
   }

@@ -18,6 +18,13 @@ import {
   type Helicopter,
 } from '../combat/helicopter';
 import {
+  createHeliSpawnState,
+  ensureHeliPopulation,
+  onHeliKilled,
+  stepDifficultyFromScore,
+  type HeliSpawnState,
+} from '../combat/heliSpawn';
+import {
   createPlayerHealth,
   stepPlayerIFrames,
   syncPlayerLastHealth,
@@ -53,9 +60,10 @@ export const DEBUG_BOX_SPAWN = { x: 200, y: 200 } as const;
 /**
  * Per-run sim state for GameScene: fixed-step accumulator, timeStep, HUD
  * counters, original level map, player, bullet pool, weapon inventory (#14),
- * helicopter combat (#12/#13), enemy return fire + player health (#18), and
- * the debug box. Lives outside Phaser so scene restarts and the update loop
- * are unit-testable (Phaser reuses the scene instance; only create() re-runs).
+ * helicopter combat (#12/#13), enemy return fire + player health (#18),
+ * replacement spawn treadmill + difficulty ramp (#19), and the debug box.
+ * Lives outside Phaser so scene restarts and the update loop are
+ * unit-testable (Phaser reuses the scene instance; only create() re-runs).
  *
  * The debug overlay (#8) is a DOM panel outside Phaser so it can host real
  * `<input>` controls for live physics tuning and toggle off for clean demos.
@@ -96,14 +104,15 @@ export class SimSession {
   /** Draggable/droppable AABB that collides with {@link map}. */
   readonly debugBox = new DebugBox(DEBUG_BOX_SPAWN.x, DEBUG_BOX_SPAWN.y);
 
-  /** Active helicopter enemies in arena space (#12). */
+  /** Spawn RNG — fixed seed so tests and demos are reproducible. */
+  readonly spawnRng = createSpawnRng(12);
+
+  /** Kill count / level / nextLevelScore for the spawn treadmill (#19). */
+  heliSpawn: HeliSpawnState = createHeliSpawnState();
+
+  /** Active helicopter enemies in arena space (#12/#19). */
   helicopters: Helicopter[] = [
-    spawnHelicopter(
-      HELI.hp,
-      LEVEL1_WIDTH_PX,
-      LEVEL1_HEIGHT_PX,
-      createSpawnRng(12),
-    ),
+    spawnHelicopter(HELI.hp, LEVEL1_WIDTH_PX, LEVEL1_HEIGHT_PX, this.spawnRng),
   ];
 
   /** Short-lived placeholder explosions after heli kills (#12/#13). */
@@ -114,9 +123,6 @@ export class SimSession {
 
   /** Player vitals — health, i-frames, death (#18). */
   playerHealth: PlayerHealthState = createPlayerHealth();
-
-  /** Spawn RNG — fixed seed so tests and demos are reproducible. */
-  readonly spawnRng = createSpawnRng(12);
 
   /**
    * Held-fire intent (Flash `mouseD`): scene sets from pointer.isDown each
@@ -156,14 +162,15 @@ export class SimSession {
     this.enemyBullets.reset();
     this.fireHeld = false;
     this.inventory = createWeaponInventory({ testGrant: true });
-    this.helicopters = [
-      spawnHelicopter(
-        HELI.hp,
-        LEVEL1_WIDTH_PX,
-        LEVEL1_HEIGHT_PX,
-        this.spawnRng,
-      ),
-    ];
+    this.heliSpawn = createHeliSpawnState();
+    this.helicopters = [];
+    ensureHeliPopulation(
+      this.helicopters,
+      this.heliSpawn,
+      LEVEL1_WIDTH_PX,
+      LEVEL1_HEIGHT_PX,
+      this.spawnRng,
+    );
     this.explosions = [];
     this.score = createScoreState();
     this.playerHealth = createPlayerHealth();
@@ -273,6 +280,7 @@ export class SimSession {
           this.enemyBullets,
           this.spawnRng,
           moved,
+          this.heliSpawn.level,
         );
       }
     }
@@ -286,11 +294,22 @@ export class SimSession {
         addDamageScore(this.score, event.damage);
         if (event.killed) {
           this.explosions.push(createHeliExplosion(event.heli.x, event.heli.y));
+          onHeliKilled(
+            this.helicopters,
+            this.heliSpawn,
+            this.score.value,
+            LEVEL1_WIDTH_PX,
+            LEVEL1_HEIGHT_PX,
+            this.spawnRng,
+          );
         }
       },
       this.map,
       playerBody,
     );
+
+    // Flash checks `score > nextLevel` every frame (not only on kill).
+    stepDifficultyFromScore(this.heliSpawn, this.score.value);
 
     stepEnemyBulletsVsPlayer(
       this.enemyBullets,
