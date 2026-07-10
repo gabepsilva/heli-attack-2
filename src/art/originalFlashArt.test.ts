@@ -69,6 +69,28 @@ describe('original Flash art swap (issue #95 acceptance)', () => {
     expect(FLASH_ORIGINAL_SOURCES.blood).toBe('blood.png');
     expect(FLASH_ORIGINAL_SOURCES.explosion).toBe('bigboom.png');
     expect(FLASH_ORIGINAL_SOURCES.powerup).toBe('powerup.png');
+    expect(FLASH_ORIGINAL_SOURCES.powermachinegun).toBe('powermachinegun.png');
+    expect(FLASH_ORIGINAL_SOURCES.poweruzi).toBe('old/poweruzi.png');
+    expect(FLASH_ORIGINAL_SOURCES.powershotgun).toBe('powershotgun.png');
+    expect(FLASH_ORIGINAL_SOURCES.powershotgunrocket).toBe(
+      'powershotgunrocket.png',
+    );
+    expect(FLASH_ORIGINAL_SOURCES.powergen).toBe('powergen.png');
+    expect(FLASH_ORIGINAL_SOURCES.powerrpg).toBe('powerrpg.png');
+    expect(FLASH_ORIGINAL_SOURCES.powerrocketlauncher).toBe(
+      'powerrocketlauncher.png',
+    );
+    expect(FLASH_ORIGINAL_SOURCES.powerseeker).toBe('powerseeker.png');
+    expect(FLASH_ORIGINAL_SOURCES.powerflamethrower).toBe(
+      'powerflamethrower.png',
+    );
+    expect(FLASH_ORIGINAL_SOURCES.powermine).toBe('powermine.png');
+    expect(FLASH_ORIGINAL_SOURCES.powerabomb).toBe('powerabomb.png');
+    expect(FLASH_ORIGINAL_SOURCES.powerrail).toBe('powerrail.png');
+    expect(FLASH_ORIGINAL_SOURCES.powergrapple).toBe('powergrapple.png');
+    expect(FLASH_ORIGINAL_SOURCES.powershouldercannon).toBe(
+      'powershouldercannon.png',
+    );
     expect(FLASH_ORIGINAL_SOURCES.tile_floor).toBe('new/Floor.png');
     expect(Object.keys(FLASH_ORIGINAL_SOURCES).sort()).toEqual(
       SPRITE_DEFS.map((d) => d.id).sort(),

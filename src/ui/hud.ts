@@ -1,5 +1,5 @@
 /**
- * In-game HUD snapshot + 1080p layout — issue #23.
+ * In-game HUD snapshot + 1080p layout — issue #23 / #105.
  *
  * Pure logic (no Phaser). GameScene feeds live sim values each frame; the
  * Phaser view ({@link ./gameHud}) only draws this snapshot.
@@ -13,6 +13,7 @@
  *   HUD.hyperjump.mask._xscale = hyperjump/150 * 100
  *   HUD.bullettime.mask._xscale = bullettime/maxbullettime * 100
  *   HUD.powerup.text + powerup.mask._yscale = powerupTime/powerupTime * 100
+ *   heroDie: HUD.ammo = "0 x "
  */
 
 import {
@@ -38,6 +39,7 @@ import { bulletTimeMeterRatio, type BulletTimeState } from '../core/bulletTime';
 import { boostChargeRatio, type BoostState } from '../player/boostPhysics';
 import type { WeaponDef } from '../config/weapons';
 import type { WeaponState } from '../combat/weapon';
+import { weaponHudIconFrame, type SpriteId } from '../art/catalog';
 
 /** Flash `HUD.powerup.text` labels for `powerupOn` 1..5. */
 export const POWERUP_HUD_NAMES: Readonly<Record<number, string>> = {
@@ -62,12 +64,21 @@ export const HUD_LAYOUT = {
   health: { x: 40, y: 40, width: 360, height: 28, labelGap: 8 },
   /** Top-right score. */
   score: { x: GAME_WIDTH - 40, y: 36, fontSize: 48 },
-  /** Bottom-left weapon + ammo + reload. */
+  /**
+   * Bottom-left Flash weapon cluster (#105): crate icon + ammo + reload.
+   * Icon is Flash `power*.png` (33×32) drawn larger for 1080p readability.
+   */
   weapon: {
     x: 40,
     y: GAME_HEIGHT - 120,
-    fontSize: 32,
-    ammoFontSize: 28,
+    /** Flash crate logical size (power*.png). */
+    iconW: 33,
+    iconH: 32,
+    /** Display scale so the crate reads at 1080p (≈3× Flash). */
+    iconDisplayScale: 3,
+    /** Gap between crate icon and ammo text. */
+    iconTextGap: 16,
+    ammoFontSize: 32,
     reloadWidth: 280,
     reloadHeight: 12,
     reloadGap: 10,
@@ -125,6 +136,8 @@ export type HudSnapshot = {
   healthLabel: string;
   weaponName: string;
   weaponIndex: number;
+  /** Atlas frame for Flash `HUD.weapon` crate icon (#105). */
+  weaponIconFrame: SpriteId;
   ammoText: string;
   reloadFraction: number;
   reloadReady: boolean;
@@ -148,13 +161,19 @@ export type HudBuildInput = {
   powerup: Readonly<PlayerPowerupState>;
 };
 
-/** Flash: `HUD.ammo = "Infinite x "` when bullets are infinite. */
+/**
+ * Flash: `HUD.ammo = "Infinite x "` when bullets are infinite;
+ * otherwise `bullets + " x "`. Trailing space omitted in the port string.
+ */
 export function formatAmmoHud(bullets: number): string {
   if (!Number.isFinite(bullets)) {
     return 'Infinite x';
   }
   return `${Math.max(0, Math.floor(bullets))} x`;
 }
+
+/** Flash `heroDie`: `HUD.ammo = "0 x "`. */
+export const DEATH_AMMO_HUD = '0 x';
 
 /** Flash: `HUD.reload.mask._xscale = reloadtime/reloadtime * 100`. */
 export function weaponReloadFraction(
@@ -195,7 +214,9 @@ export function buildHudSnapshot(input: HudBuildInput): HudSnapshot {
       : 'Health: DEAD',
     weaponName: weaponDef.name,
     weaponIndex: input.weaponIndex,
-    ammoText: formatAmmoHud(weapon.bullets),
+    weaponIconFrame: weaponHudIconFrame(input.weaponIndex),
+    // Flash heroDie forces "0 x " regardless of remaining bullets.
+    ammoText: alive ? formatAmmoHud(weapon.bullets) : DEATH_AMMO_HUD,
     reloadFraction: weaponReloadFraction(weapon, weaponDef),
     reloadReady: weapon.reloadTime >= weaponDef.reload,
     hyperJumpFraction: boostChargeRatio(input.boost),
@@ -217,5 +238,16 @@ export function hudSpecSeeds() {
     boostChargeFrames: PLAYER.boostChargeFrames,
     bulletTimeMaxFrames: BULLET_TIME.maxFrames,
     powerupFrames: POWERUP_FRAMES,
+    weaponIconW: HUD_LAYOUT.weapon.iconW,
+    weaponIconH: HUD_LAYOUT.weapon.iconH,
+  };
+}
+
+/** Design-space size of the bottom-left weapon crate icon. */
+export function weaponHudIconDisplaySize(): { w: number; h: number } {
+  const { iconW, iconH, iconDisplayScale } = HUD_LAYOUT.weapon;
+  return {
+    w: iconW * iconDisplayScale,
+    h: iconH * iconDisplayScale,
   };
 }

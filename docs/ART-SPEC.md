@@ -86,6 +86,20 @@ origin  = (pivot.x, pivot.y)   // usually (0.5, 1)
 | `blood` | `blood.png` | 30×30 | 120×120 (final) | 30×30 | (0.5, 0.5) | Hit / blood VFX (temp Flash blood.png) |
 | `explosion` | `explosion.png` | 187×186 | 748×744 (final) | 120×120 | (0.5, 0.5) | Heli death explosion (temp Flash bigboom.png, half-res catalog) |
 | `powerup` | `powerup.png` | 33×32 | 132×128 (final) | 33×32 | (0.5, 0.5) | Powerup crate base (temp Flash powerup.png) |
+| `powermachinegun` | `powermachinegun.png` | 33×32 | 132×128 (final) | 33×32 | (0.5, 0.5) | HUD weapon crate cgun 0 MachineGun (Flash powermachinegun.png) |
+| `poweruzi` | `poweruzi.png` | 33×32 | 132×128 (final) | 33×32 | (0.5, 0.5) | HUD weapon crate cgun 1 AkimboMac10 (Flash old/poweruzi.png) |
+| `powershotgun` | `powershotgun.png` | 33×32 | 132×128 (final) | 33×32 | (0.5, 0.5) | HUD weapon crate cgun 2 Shotgun (Flash powershotgun.png) |
+| `powershotgunrocket` | `powershotgunrocket.png` | 33×32 | 132×128 (final) | 33×32 | (0.5, 0.5) | HUD weapon crate cgun 3 ShotgunRockets (Flash powershotgunrocket.png) |
+| `powergen` | `powergen.png` | 33×32 | 132×128 (final) | 33×32 | (0.5, 0.5) | HUD weapon crate cgun 4 GrenadeLauncher (Flash powergen.png) |
+| `powerrpg` | `powerrpg.png` | 33×32 | 132×128 (final) | 33×32 | (0.5, 0.5) | HUD weapon crate cgun 5 RPG (Flash powerrpg.png) |
+| `powerrocketlauncher` | `powerrocketlauncher.png` | 33×32 | 132×128 (final) | 33×32 | (0.5, 0.5) | HUD weapon crate cgun 6 RocketLauncher (Flash powerrocketlauncher.png) |
+| `powerseeker` | `powerseeker.png` | 33×32 | 132×128 (final) | 33×32 | (0.5, 0.5) | HUD weapon crate cgun 7 SeekerLauncher (Flash powerseeker.png) |
+| `powerflamethrower` | `powerflamethrower.png` | 33×32 | 132×128 (final) | 33×32 | (0.5, 0.5) | HUD weapon crate cgun 8 FlameThrower (Flash powerflamethrower.png) |
+| `powermine` | `powermine.png` | 33×32 | 132×128 (final) | 33×32 | (0.5, 0.5) | HUD weapon crate cgun 9 FireMines (Flash powermine.png) |
+| `powerabomb` | `powerabomb.png` | 33×32 | 132×128 (final) | 33×32 | (0.5, 0.5) | HUD weapon crate cgun 10 ABombLauncher (Flash powerabomb.png) |
+| `powerrail` | `powerrail.png` | 33×32 | 132×128 (final) | 33×32 | (0.5, 0.5) | HUD weapon crate cgun 11 RailGun (Flash powerrail.png) |
+| `powergrapple` | `powergrapple.png` | 33×32 | 132×128 (final) | 33×32 | (0.5, 0.5) | HUD weapon crate cgun 12 GrappleCannon (Flash powergrapple.png) |
+| `powershouldercannon` | `powershouldercannon.png` | 33×32 | 132×128 (final) | 33×32 | (0.5, 0.5) | HUD weapon crate cgun 13 ShoulderCannon (Flash powershouldercannon.png) |
 | `tile_floor` | `Floor.png` | 52×52 | 208×208 (final) | 50×50 | (0, 0) | Solid floor tile (temp Flash assets/new/Floor.png; maps to WORLD.tile) |
 
 ## Adding a new sprite

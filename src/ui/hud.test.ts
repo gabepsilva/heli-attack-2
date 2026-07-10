@@ -14,7 +14,6 @@ import {
   POWERUP,
   POWERUP_FRAMES,
   SCORE,
-  WEAPONS,
   WORLD,
 } from '../config/constants';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/game';
@@ -31,13 +30,21 @@ import {
 import { createBoostState } from '../player/boostPhysics';
 import { createMachineGunState } from '../combat/weapon';
 import {
+  PREDATOR_WEAPON_INDEX,
+  WEAPON_COUNT,
+  WEAPONS,
+} from '../config/weapons';
+import { WEAPON_HUD_ICON_FRAMES, weaponHudIconFrame } from '../art/catalog';
+import {
   buildHudSnapshot,
+  DEATH_AMMO_HUD,
   formatAmmoHud,
   HUD_LAYOUT,
   hudDesignAnchors,
   hudSpecSeeds,
   POWERUP_HUD_NAMES,
   powerupHudName,
+  weaponHudIconDisplaySize,
   weaponReloadFraction,
   type HudBuildInput,
 } from './hud';
@@ -73,9 +80,10 @@ describe('HUD layout @ 1080p (issue #23)', () => {
     expect(HUD_LAYOUT.health.height).toBeGreaterThanOrEqual(24);
     expect(HUD_LAYOUT.meters.width).toBeGreaterThanOrEqual(200);
     expect(HUD_LAYOUT.meters.height).toBeGreaterThanOrEqual(14);
-    // Score / weapon type large enough to scan during play.
+    // Score / ammo / crate icon large enough to scan during play.
     expect(HUD_LAYOUT.score.fontSize).toBeGreaterThanOrEqual(40);
-    expect(HUD_LAYOUT.weapon.fontSize).toBeGreaterThanOrEqual(28);
+    expect(HUD_LAYOUT.weapon.ammoFontSize).toBeGreaterThanOrEqual(28);
+    expect(HUD_LAYOUT.weapon.iconDisplayScale).toBeGreaterThanOrEqual(2);
     expect(HUD_LAYOUT.powerup.fontSize).toBeGreaterThanOrEqual(22);
     // Elements stay inside the design canvas with a margin.
     expect(HUD_LAYOUT.margin).toBe(40);
@@ -139,6 +147,7 @@ describe('HUD live updates (issue #23 AC)', () => {
     expect(snap.healthLabel).toBe('Health: 100/100');
     expect(snap.weaponName).toBe('MachineGun');
     expect(snap.weaponIndex).toBe(0);
+    expect(snap.weaponIconFrame).toBe('powermachinegun');
     expect(snap.ammoText).toBe('Infinite x');
     expect(snap.reloadFraction).toBe(1);
     expect(snap.reloadReady).toBe(true);
@@ -181,6 +190,7 @@ describe('HUD live updates (issue #23 AC)', () => {
     );
     expect(snap.weaponName).toBe('Shotgun');
     expect(snap.weaponIndex).toBe(2);
+    expect(snap.weaponIconFrame).toBe('powershotgun');
     expect(snap.ammoText).toBe('17 x');
     expect(formatAmmoHud(17)).toBe('17 x');
     expect(WEAPONS[2].reload).toBe(25);
@@ -212,6 +222,9 @@ describe('HUD live updates (issue #23 AC)', () => {
     expect(snap.healthAlive).toBe(false);
     expect(snap.healthLabel).toBe('Health: DEAD');
     expect(snap.showDeath).toBe(true);
+    // Flash heroDie: HUD.ammo = "0 x "
+    expect(snap.ammoText).toBe(DEATH_AMMO_HUD);
+    expect(snap.ammoText).toBe('0 x');
   });
 });
 
@@ -311,5 +324,147 @@ describe('HUD bullet-time + powerup meters (issue #23 AC)', () => {
     );
     expect(snap.powerupVisible).toBe(false);
     expect(snap.powerupFraction).toBe(0);
+  });
+});
+
+describe('HUD weapon crate + ammo (issue #105 AC)', () => {
+  it('maps every cgun slot to a Flash HUD.weapon crate frame (gotoAndStop(cgun+1))', () => {
+    expect(WEAPON_COUNT).toBe(14);
+    expect(WEAPON_HUD_ICON_FRAMES).toHaveLength(WEAPON_COUNT);
+    expect(PREDATOR_WEAPON_INDEX).toBe(13);
+
+    // Exact Flash power*.png → arsenal index mapping.
+    expect(WEAPON_HUD_ICON_FRAMES[0]).toBe('powermachinegun');
+    expect(WEAPON_HUD_ICON_FRAMES[1]).toBe('poweruzi');
+    expect(WEAPON_HUD_ICON_FRAMES[2]).toBe('powershotgun');
+    expect(WEAPON_HUD_ICON_FRAMES[3]).toBe('powershotgunrocket');
+    expect(WEAPON_HUD_ICON_FRAMES[4]).toBe('powergen');
+    expect(WEAPON_HUD_ICON_FRAMES[5]).toBe('powerrpg');
+    expect(WEAPON_HUD_ICON_FRAMES[6]).toBe('powerrocketlauncher');
+    expect(WEAPON_HUD_ICON_FRAMES[7]).toBe('powerseeker');
+    expect(WEAPON_HUD_ICON_FRAMES[8]).toBe('powerflamethrower');
+    expect(WEAPON_HUD_ICON_FRAMES[9]).toBe('powermine');
+    expect(WEAPON_HUD_ICON_FRAMES[10]).toBe('powerabomb');
+    expect(WEAPON_HUD_ICON_FRAMES[11]).toBe('powerrail');
+    expect(WEAPON_HUD_ICON_FRAMES[12]).toBe('powergrapple');
+    expect(WEAPON_HUD_ICON_FRAMES[13]).toBe('powershouldercannon');
+
+    for (let cgun = 0; cgun < WEAPON_COUNT; cgun += 1) {
+      expect(weaponHudIconFrame(cgun)).toBe(WEAPON_HUD_ICON_FRAMES[cgun]);
+    }
+    // Out-of-range falls back to MachineGun crate (frame 1).
+    expect(weaponHudIconFrame(-1)).toBe('powermachinegun');
+    expect(weaponHudIconFrame(99)).toBe('powermachinegun');
+  });
+
+  it('formats ammo exactly like Flash HUD.ammo (Infinite x / N x)', () => {
+    expect(formatAmmoHud(Number.POSITIVE_INFINITY)).toBe('Infinite x');
+    expect(formatAmmoHud(50)).toBe('50 x');
+    expect(formatAmmoHud(14)).toBe('14 x');
+    expect(formatAmmoHud(0)).toBe('0 x');
+    expect(formatAmmoHud(-3)).toBe('0 x');
+    expect(DEATH_AMMO_HUD).toBe('0 x');
+  });
+
+  it('updates weapon crate icon + ammo live when switching or spending ammo', () => {
+    // Start: MachineGun infinite.
+    let snap = buildHudSnapshot(
+      baseInput({
+        weapon: createMachineGunState(),
+        weaponDef: WEAPONS[0],
+        weaponIndex: 0,
+      }),
+    );
+    expect(snap.weaponIconFrame).toBe('powermachinegun');
+    expect(snap.weaponIndex).toBe(0);
+    expect(snap.ammoText).toBe('Infinite x');
+
+    // Switch to Shotgun with 14 rounds (Flash pickup amount).
+    snap = buildHudSnapshot(
+      baseInput({
+        weapon: { type: 2, reloadTime: 25, bullets: 14, shots: 0 },
+        weaponDef: WEAPONS[2],
+        weaponIndex: 2,
+      }),
+    );
+    expect(snap.weaponIconFrame).toBe('powershotgun');
+    expect(snap.ammoText).toBe('14 x');
+
+    // Spend one round.
+    snap = buildHudSnapshot(
+      baseInput({
+        weapon: { type: 2, reloadTime: 0, bullets: 13, shots: 1 },
+        weaponDef: WEAPONS[2],
+        weaponIndex: 2,
+      }),
+    );
+    expect(snap.weaponIconFrame).toBe('powershotgun');
+    expect(snap.ammoText).toBe('13 x');
+
+    // Gain ammo (pickup).
+    snap = buildHudSnapshot(
+      baseInput({
+        weapon: { type: 2, reloadTime: 25, bullets: 27, shots: 1 },
+        weaponDef: WEAPONS[2],
+        weaponIndex: 2,
+      }),
+    );
+    expect(snap.ammoText).toBe('27 x');
+
+    // Switch to FlameThrower.
+    snap = buildHudSnapshot(
+      baseInput({
+        weapon: { type: 8, reloadTime: 1, bullets: 150, shots: 0 },
+        weaponDef: WEAPONS[8],
+        weaponIndex: 8,
+      }),
+    );
+    expect(snap.weaponIconFrame).toBe('powerflamethrower');
+    expect(snap.ammoText).toBe('150 x');
+  });
+
+  it('forces Flash heroDie ammo "0 x" on death even with infinite MG', () => {
+    const health = createPlayerHealth();
+    for (let i = 0; i < 10; i += 1) {
+      health.iFramesRemaining = 0;
+      damagePlayer(health, 10);
+    }
+    const snap = buildHudSnapshot(
+      baseInput({
+        health,
+        weapon: createMachineGunState(),
+        weaponDef: WEAPONS[0],
+        weaponIndex: 0,
+      }),
+    );
+    expect(snap.healthAlive).toBe(false);
+    expect(Number.isFinite(createMachineGunState().bullets)).toBe(false);
+    expect(snap.ammoText).toBe('0 x');
+    // Crate still reflects last cgun (Flash keeps HUD.weapon frame).
+    expect(snap.weaponIconFrame).toBe('powermachinegun');
+  });
+
+  it('lays out a bottom-left crate+ammo cluster (not a free-floating text chip)', () => {
+    const seeds = hudSpecSeeds();
+    expect(seeds.weaponIconW).toBe(33);
+    expect(seeds.weaponIconH).toBe(32);
+    expect(HUD_LAYOUT.weapon.iconW).toBe(33);
+    expect(HUD_LAYOUT.weapon.iconH).toBe(32);
+
+    const icon = weaponHudIconDisplaySize();
+    expect(icon).toEqual({
+      w: 33 * HUD_LAYOUT.weapon.iconDisplayScale,
+      h: 32 * HUD_LAYOUT.weapon.iconDisplayScale,
+    });
+    expect(icon.w).toBe(99);
+    expect(icon.h).toBe(96);
+
+    // Cluster sits in the bottom-left margin, icon then ammo gap.
+    expect(HUD_LAYOUT.weapon.x).toBe(HUD_LAYOUT.margin);
+    expect(HUD_LAYOUT.weapon.y).toBe(GAME_HEIGHT - 120);
+    expect(HUD_LAYOUT.weapon.iconTextGap).toBe(16);
+    expect(HUD_LAYOUT.weapon.ammoFontSize).toBe(32);
+    // Reload bar sits under the crate (same x as icon).
+    expect(HUD_LAYOUT.weapon.reloadWidth).toBe(280);
   });
 });

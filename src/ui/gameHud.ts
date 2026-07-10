@@ -1,14 +1,18 @@
 /**
- * Phaser view for the in-game HUD (#23).
+ * Phaser view for the in-game HUD (#23 / #105).
  *
  * Thin renderer over {@link buildHudSnapshot} — all meter math lives in hud.ts.
  * Anchored to the 1920×1080 design resolution via {@link HUD_LAYOUT}; scroll
  * factor 0 so the HUD stays fixed while the camera follows play.
+ *
+ * Bottom-left cluster matches Flash: weapon crate icon (`HUD.weapon`) + ammo
+ * text (`HUD.ammo`) — not a modern text-only chip.
  */
 
 import type Phaser from 'phaser';
+import { ATLAS_KEY } from '../config/art';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/game';
-import { HUD_LAYOUT, type HudSnapshot } from './hud';
+import { HUD_LAYOUT, weaponHudIconDisplaySize, type HudSnapshot } from './hud';
 
 const COLORS = {
   panel: 0x1b263b,
@@ -18,8 +22,7 @@ const COLORS = {
   healthLabel: '#7dcfb6',
   healthDeadLabel: '#e63946',
   score: '#ffe066',
-  weapon: '#f2e9e4',
-  ammo: '#c9ada7',
+  ammo: '#f2e9e4',
   reload: 0xffe066,
   reloadReady: 0x2a9d8f,
   hyperJump: 0x4cc9f0,
@@ -44,7 +47,7 @@ export class GameHud {
   private readonly healthFill: Phaser.GameObjects.Rectangle;
   private readonly healthLabel: Phaser.GameObjects.Text;
   private readonly healthInnerW: number;
-  private readonly weaponText: Phaser.GameObjects.Text;
+  private readonly weaponIcon: Phaser.GameObjects.Image;
   private readonly ammoText: Phaser.GameObjects.Text;
   private readonly reload: MeterBar;
   private readonly hyperJump: MeterBar;
@@ -101,31 +104,29 @@ export class GameHud {
       .setScrollFactor(0)
       .setDepth(depth);
 
-    // --- Weapon + ammo + reload ---
+    // --- Weapon crate + ammo + reload (Flash bottom-left cluster) ---
     const wx = L.weapon.x;
     const wy = L.weapon.y;
-    this.weaponText = scene.add
-      .text(wx, wy, '', {
-        fontFamily: 'monospace',
-        fontSize: `${L.weapon.fontSize}px`,
-        color: COLORS.weapon,
-      })
+    const iconSize = weaponHudIconDisplaySize();
+    this.weaponIcon = scene.add
+      .image(wx, wy, ATLAS_KEY, 'powermachinegun')
       .setOrigin(0, 0)
+      .setDisplaySize(iconSize.w, iconSize.h)
       .setScrollFactor(0)
       .setDepth(depth);
     this.ammoText = scene.add
-      .text(wx, wy + L.weapon.fontSize + 4, '', {
+      .text(wx + iconSize.w + L.weapon.iconTextGap, wy + iconSize.h / 2, '', {
         fontFamily: 'monospace',
         fontSize: `${L.weapon.ammoFontSize}px`,
         color: COLORS.ammo,
       })
-      .setOrigin(0, 0)
+      .setOrigin(0, 0.5)
       .setScrollFactor(0)
       .setDepth(depth);
     this.reload = this.createMeter(
       scene,
       wx,
-      wy + L.weapon.fontSize + L.weapon.ammoFontSize + L.weapon.reloadGap + 8,
+      wy + iconSize.h + L.weapon.reloadGap,
       L.weapon.reloadWidth,
       L.weapon.reloadHeight,
       COLORS.reload,
@@ -259,8 +260,9 @@ export class GameHud {
       snap.healthAlive ? COLORS.healthLabel : COLORS.healthDeadLabel,
     );
 
-    this.weaponText.setText(snap.weaponName);
-    this.ammoText.setText(`Ammo: ${snap.ammoText}`);
+    // Flash: HUD.weapon.gotoAndStop(cgun+1) + HUD.ammo = "Infinite x " | "N x "
+    this.weaponIcon.setFrame(snap.weaponIconFrame);
+    this.ammoText.setText(snap.ammoText);
     this.reload.fill.width = Math.max(
       0,
       this.reload.width * snap.reloadFraction,

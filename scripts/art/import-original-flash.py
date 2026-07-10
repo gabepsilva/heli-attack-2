@@ -129,6 +129,21 @@ def main() -> None:
         ("smoke.png", "smoke.png"),
         ("blood.png", "blood.png"),
         ("powerup.png", "powerup.png"),
+        # HUD / drop weapon crate icons — Flash `HUD.weapon` frames (#105).
+        ("powermachinegun.png", "powermachinegun.png"),
+        ("poweruzi.png", "poweruzi.png"),  # AkimboMac10 (iopred old/)
+        ("powershotgun.png", "powershotgun.png"),
+        ("powershotgunrocket.png", "powershotgunrocket.png"),
+        ("powergen.png", "powergen.png"),  # GrenadeLauncher
+        ("powerrpg.png", "powerrpg.png"),
+        ("powerrocketlauncher.png", "powerrocketlauncher.png"),
+        ("powerseeker.png", "powerseeker.png"),
+        ("powerflamethrower.png", "powerflamethrower.png"),
+        ("powermine.png", "powermine.png"),
+        ("powerabomb.png", "powerabomb.png"),
+        ("powerrail.png", "powerrail.png"),
+        ("powergrapple.png", "powergrapple.png"),
+        ("powershouldercannon.png", "powershouldercannon.png"),
         ("Floor.png", "Floor.png"),
         ("bg.png", "bg.png"),
     ]
