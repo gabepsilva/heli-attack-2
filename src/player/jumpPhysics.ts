@@ -4,17 +4,23 @@ import { PLAYER } from '../config/constants';
  * Jump / double-jump state matching `heroAction` in the decompiled AS.
  *
  * Variable height: while the jump key is held and {@link JumpState.up} > 0,
- * each frame forces `vy = min(vy, jumpVel)` (−8) and decrements `up`.
- * Releasing the key refills `up` to {@link PLAYER.jumpHoldFrames} when
- * `!jump || (!jump2 && !duck)` — duck blocks only the double-jump refill term.
- * The press path is ungated (grounded crouch hops are allowed).
+ * each frame forces `vy = min(vy, jumpVel)` (−8) and decrements `up` by
+ * `timeStep` (issue #90 — hold duration is in sim time so bullet-time arcs
+ * stay meaningful). Releasing the key refills `up` to
+ * {@link PLAYER.jumpHoldFrames} when `!jump || (!jump2 && !duck)` — duck
+ * blocks only the double-jump refill term. The press path is ungated
+ * (grounded crouch hops are allowed).
  */
 export type JumpState = {
   /** True after leaving the ground (jump, fall, or ceiling bonk). */
   jump: boolean;
   /** True after the second jump (or ceiling bonk). */
   jump2: boolean;
-  /** Remaining frames of the hold window (0..{@link PLAYER.jumpHoldFrames}). */
+  /**
+   * Remaining hold-window time (0..{@link PLAYER.jumpHoldFrames}).
+   * At `timeStep === 1` this matches Flash frame counts; under bullet-time
+   * it drains by `timeStep` so a full hold still lasts 6 units of sim time.
+   */
   up: number;
   /** Previous-frame jump-key latch (`upk` in the original). */
   upHeld: boolean;
@@ -53,11 +59,15 @@ export function markAirborneIfMoving(state: JumpState, vy: number): void {
  *
  * Call after walk friction and before gravity. Does not apply gravity or
  * terminal clamp — those stay in the player step / tile resolver.
+ *
+ * {@link timeStep} drains the hold window (Flash used 1/frame; under
+ * bullet-time we drain by the live scale so jump height stays playable).
  */
 export function applyJumpInput(
   vy: number,
   state: JumpState,
   input: JumpInput,
+  timeStep: number = 1,
 ): number {
   if (input.jump) {
     if (state.up > 0) {
@@ -69,7 +79,7 @@ export function applyJumpInput(
           state.jump2 = true;
         }
       }
-      state.up -= 1;
+      state.up = Math.max(0, state.up - timeStep);
     }
     state.upHeld = true;
   } else {
