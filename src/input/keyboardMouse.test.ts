@@ -1,6 +1,7 @@
 /**
  * Keyboard/mouse source — unit tests for issue #29.
- * Pins default bindings and the sample → intent mapping (unchanged controls).
+ * Pins default bindings (the GameScene key-binding source of truth) and
+ * the sample → intent mapping (unchanged controls).
  */
 
 import { describe, expect, it } from 'vitest';
@@ -12,6 +13,7 @@ import {
   queuePrevWeapon,
   queueWeaponDigit,
   sampleKeyboardMouseIntent,
+  weaponDigitKeydownEvent,
   type KeyboardHeldSample,
   type PointerSample,
 } from './keyboardMouse';
@@ -39,20 +41,43 @@ function pointer(overrides: Partial<PointerSample> = {}): PointerSample {
 }
 
 describe('keyboardMouse source (issue #29)', () => {
-  it('documents the fixed default bindings from the migration plan', () => {
-    // Rebinding is out of scope, but this table is the future rebind seam.
-    expect(DEFAULT_KEY_BINDINGS).toEqual({
-      left: 'ArrowLeft',
-      right: 'ArrowRight',
-      jump: 'ArrowUp',
-      duck: 'ArrowDown',
-      boost: 'Control',
-      bulletTime: 'Shift',
-      prevWeapon: 'KeyQ',
-      nextWeapon: 'KeyE',
-      weaponDigits: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-      fire: 'MousePrimary',
+  it('pins DEFAULT_KEY_BINDINGS to the shipped keyboard/mouse controls', () => {
+    // GameScene binds via these codes/events — changing a slot here changes
+    // what the player presses. Codes match Phaser.Input.Keyboard.KeyCodes.
+    expect(DEFAULT_KEY_BINDINGS.left).toEqual({ code: 37, event: 'LEFT' });
+    expect(DEFAULT_KEY_BINDINGS.right).toEqual({ code: 39, event: 'RIGHT' });
+    expect(DEFAULT_KEY_BINDINGS.jump).toEqual({ code: 38, event: 'UP' });
+    expect(DEFAULT_KEY_BINDINGS.duck).toEqual({ code: 40, event: 'DOWN' });
+    expect(DEFAULT_KEY_BINDINGS.boost).toEqual({ code: 17, event: 'CTRL' });
+    expect(DEFAULT_KEY_BINDINGS.bulletTime).toEqual({
+      code: 16,
+      event: 'SHIFT',
     });
+    expect(DEFAULT_KEY_BINDINGS.prevWeapon).toEqual({ code: 81, event: 'Q' });
+    expect(DEFAULT_KEY_BINDINGS.nextWeapon).toEqual({ code: 69, event: 'E' });
+    expect(DEFAULT_KEY_BINDINGS.fire).toBe('MousePrimary');
+    expect([...DEFAULT_KEY_BINDINGS.weaponDigits]).toEqual([
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+    ]);
+    expect([...DEFAULT_KEY_BINDINGS.weaponDigitEvents]).toEqual([
+      'ZERO',
+      'ONE',
+      'TWO',
+      'THREE',
+      'FOUR',
+      'FIVE',
+      'SIX',
+      'SEVEN',
+      'EIGHT',
+      'NINE',
+    ]);
+  });
+
+  it('weaponDigitKeydownEvent maps each digit to the Phaser keydown suffix', () => {
+    expect(weaponDigitKeydownEvent(0)).toBe('ZERO');
+    expect(weaponDigitKeydownEvent(1)).toBe('ONE');
+    expect(weaponDigitKeydownEvent(9)).toBe('NINE');
+    expect(() => weaponDigitKeydownEvent(10)).toThrow(/out of range/);
   });
 
   it('maps held move / jump / duck / boost / bullet-time slots onto intent', () => {

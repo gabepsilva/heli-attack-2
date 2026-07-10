@@ -33,11 +33,13 @@ import {
 import { SimSession } from '../core/simSession';
 import {
   createIntentActionBuffer,
+  DEFAULT_KEY_BINDINGS,
   drainIntentActions,
   queueNextWeapon,
   queuePrevWeapon,
   queueWeaponDigit,
   sampleKeyboardMouseIntent,
+  weaponDigitKeydownEvent,
   type IntentActionBuffer,
 } from '../input/keyboardMouse';
 import { applyPlayerIntent } from '../input/playerIntent';
@@ -112,7 +114,11 @@ export class GameScene extends Phaser.Scene {
   /** Crate + chute visuals for parachuting pickups (#21). */
   private powerupSprites: Phaser.GameObjects.Container[] = [];
   private gameHud!: GameHud;
-  private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
+  /** Movement / combat keys — codes come from {@link DEFAULT_KEY_BINDINGS}. */
+  private leftKey!: Phaser.Input.Keyboard.Key;
+  private rightKey!: Phaser.Input.Keyboard.Key;
+  private jumpKey!: Phaser.Input.Keyboard.Key;
+  private duckKey!: Phaser.Input.Keyboard.Key;
   private audioHud: AudioHud | null = null;
   private gameSfx: GameSfx | null = null;
   private boostKey!: Phaser.Input.Keyboard.Key;
@@ -161,13 +167,15 @@ export class GameScene extends Phaser.Scene {
     this.createDebugBoxVisual();
     this.setupGameAudio();
 
-    this.cursors = this.input.keyboard!.createCursorKeys();
-    this.boostKey = this.input.keyboard!.addKey(
-      Phaser.Input.Keyboard.KeyCodes.CTRL,
-    );
-    this.bulletTimeKey = this.input.keyboard!.addKey(
-      Phaser.Input.Keyboard.KeyCodes.SHIFT,
-    );
+    // Bind gameplay keys from DEFAULT_KEY_BINDINGS — single source of truth (#29).
+    const kb = this.input.keyboard!;
+    const bind = DEFAULT_KEY_BINDINGS;
+    this.leftKey = kb.addKey(bind.left.code);
+    this.rightKey = kb.addKey(bind.right.code);
+    this.jumpKey = kb.addKey(bind.jump.code);
+    this.duckKey = kb.addKey(bind.duck.code);
+    this.boostKey = kb.addKey(bind.boost.code);
+    this.bulletTimeKey = kb.addKey(bind.bulletTime.code);
 
     this.add
       .text(
@@ -200,28 +208,18 @@ export class GameScene extends Phaser.Scene {
       this.session.timeScale.setTimeStep(0.5);
     });
     // Number keys 1–0 → arsenal indices 0–9 (#14) via intent action buffer (#29).
-    const digitKeyNames = [
-      'ZERO',
-      'ONE',
-      'TWO',
-      'THREE',
-      'FOUR',
-      'FIVE',
-      'SIX',
-      'SEVEN',
-      'EIGHT',
-      'NINE',
-    ] as const;
-    for (let digit = 0; digit <= 9; digit += 1) {
-      const key = digitKeyNames[digit]!;
-      this.input.keyboard?.on(`keydown-${key}`, () => {
-        queueWeaponDigit(this.intentActions, digit);
-      });
+    for (const digit of bind.weaponDigits) {
+      this.input.keyboard?.on(
+        `keydown-${weaponDigitKeydownEvent(digit)}`,
+        () => {
+          queueWeaponDigit(this.intentActions, digit);
+        },
+      );
     }
-    this.input.keyboard?.on('keydown-Q', () => {
+    this.input.keyboard?.on(`keydown-${bind.prevWeapon.event}`, () => {
       queuePrevWeapon(this.intentActions);
     });
-    this.input.keyboard?.on('keydown-E', () => {
+    this.input.keyboard?.on(`keydown-${bind.nextWeapon.event}`, () => {
       queueNextWeapon(this.intentActions);
     });
     // Flash pauseKey (80 / P) via GAME_FLOW — addKey avoids OS key-repeat strobe.
@@ -290,10 +288,10 @@ export class GameScene extends Phaser.Scene {
     const pointer = this.input.activePointer;
     const intent = sampleKeyboardMouseIntent({
       held: {
-        left: this.cursors.left.isDown,
-        right: this.cursors.right.isDown,
-        jump: this.cursors.up.isDown,
-        duck: this.cursors.down.isDown,
+        left: this.leftKey.isDown,
+        right: this.rightKey.isDown,
+        jump: this.jumpKey.isDown,
+        duck: this.duckKey.isDown,
         boost: this.boostKey.isDown,
         bulletTime: this.bulletTimeKey.isDown,
       },

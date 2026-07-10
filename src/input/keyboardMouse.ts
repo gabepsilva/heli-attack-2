@@ -2,34 +2,95 @@
  * Keyboard + mouse → {@link PlayerIntent} — issue #29.
  *
  * Pure sampling: takes abstract held/pointer/action state (no Phaser) and
- * returns intent. GameScene (or a future adapter) is responsible for reading
- * Phaser keys/pointers into that sample.
+ * returns intent. GameScene binds hardware from {@link DEFAULT_KEY_BINDINGS}
+ * (the rebind seam) and samples those keys into this module.
  *
- * Default bindings match the migration-plan fixed controls. The bindings
- * table is the seam for a future rebind UI — gameplay never sees key codes.
+ * Default bindings match the migration-plan fixed controls. Rebinding UI is
+ * out of scope, but swapping this table (or pointing the scene at another)
+ * is how a future rebind would work — gameplay never sees key codes.
  */
 
 import { createPlayerIntent, type PlayerIntent } from './playerIntent';
 
 /**
- * Fixed default controls (rebinding out of scope; table kept for later).
- * Values are human-readable labels, not Phaser key codes — adapters map
- * hardware onto the semantic slots below.
+ * One keyboard binding: numeric code for `keyboard.addKey`, plus the Phaser
+ * `keydown-${event}` suffix used for edge-triggered handlers.
+ *
+ * Codes match `Phaser.Input.Keyboard.KeyCodes` (Phaser 4) so the scene can
+ * call `addKey(binding.code)` without hardcoding CTRL/SHIFT/arrows.
+ */
+export type KeyBinding = {
+  code: number;
+  event: string;
+};
+
+/** Phaser KeyCodes.LEFT / UP / RIGHT / DOWN / CTRL / SHIFT / Q / E / 0–9. */
+const PHASER = {
+  LEFT: 37,
+  UP: 38,
+  RIGHT: 39,
+  DOWN: 40,
+  CTRL: 17,
+  SHIFT: 16,
+  Q: 81,
+  E: 69,
+  ZERO: 48,
+  ONE: 49,
+  TWO: 50,
+  THREE: 51,
+  FOUR: 52,
+  FIVE: 53,
+  SIX: 54,
+  SEVEN: 55,
+  EIGHT: 56,
+  NINE: 57,
+} as const;
+
+const WEAPON_DIGIT_EVENTS = [
+  'ZERO',
+  'ONE',
+  'TWO',
+  'THREE',
+  'FOUR',
+  'FIVE',
+  'SIX',
+  'SEVEN',
+  'EIGHT',
+  'NINE',
+] as const;
+
+/**
+ * Fixed default controls — single source of truth for GameScene key binding.
+ * Change a slot here and the shipped keyboard mapping changes with it.
  */
 export const DEFAULT_KEY_BINDINGS = {
-  left: 'ArrowLeft',
-  right: 'ArrowRight',
-  jump: 'ArrowUp',
-  duck: 'ArrowDown',
-  boost: 'Control',
-  bulletTime: 'Shift',
-  prevWeapon: 'KeyQ',
-  nextWeapon: 'KeyE',
-  /** Digits 0–9 select weapons (Flash number-key map). */
+  left: { code: PHASER.LEFT, event: 'LEFT' } satisfies KeyBinding,
+  right: { code: PHASER.RIGHT, event: 'RIGHT' } satisfies KeyBinding,
+  jump: { code: PHASER.UP, event: 'UP' } satisfies KeyBinding,
+  duck: { code: PHASER.DOWN, event: 'DOWN' } satisfies KeyBinding,
+  boost: { code: PHASER.CTRL, event: 'CTRL' } satisfies KeyBinding,
+  bulletTime: { code: PHASER.SHIFT, event: 'SHIFT' } satisfies KeyBinding,
+  prevWeapon: { code: PHASER.Q, event: 'Q' } satisfies KeyBinding,
+  nextWeapon: { code: PHASER.E, event: 'E' } satisfies KeyBinding,
+  /**
+   * Digit 0–9 → Phaser keydown event name (Flash number-key map).
+   * Index is the digit; value is the `keydown-${name}` suffix.
+   */
+  weaponDigitEvents: WEAPON_DIGIT_EVENTS,
+  /** Digits accepted by {@link queueWeaponDigit}. */
   weaponDigits: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] as const,
   /** Primary mouse button aims + fires while held. */
   fire: 'MousePrimary',
 } as const;
+
+/** Phaser `keydown-…` suffix for weapon digit 0–9. */
+export function weaponDigitKeydownEvent(digit: number): string {
+  const event = DEFAULT_KEY_BINDINGS.weaponDigitEvents[digit];
+  if (event === undefined) {
+    throw new Error(`weapon digit out of range: ${digit}`);
+  }
+  return event;
+}
 
 /** Level-triggered keys after the adapter has applied {@link DEFAULT_KEY_BINDINGS}. */
 export type KeyboardHeldSample = {
@@ -116,7 +177,7 @@ export type KeyboardMouseSample = {
 
 /**
  * Build player intent from a keyboard+mouse sample using the default
- * semantic slots (bindings table documents the hardware mapping).
+ * semantic slots (bindings table is the hardware mapping).
  */
 export function sampleKeyboardMouseIntent(
   sample: KeyboardMouseSample,
