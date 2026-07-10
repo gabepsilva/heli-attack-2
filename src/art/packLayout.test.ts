@@ -37,15 +37,15 @@ describe('atlas pack layout (issue #32)', () => {
     }
   });
 
-  it('uses 4× placeholder texture sizes when packing', () => {
+  it('uses world final 4× texture sizes when packing helis', () => {
     expect(ART_PLACEHOLDER_SCALE).toBe(4);
     const heli = textureSize(SPRITE_DEFS.find((s) => s.id === 'heli')!);
     expect(heli).toEqual({ w: 848, h: 424 });
   });
 
   it('throws when a single frame cannot fit', () => {
-    expect(() => packRects([{ id: 'huge', w: 3000, h: 10 }], 2, 2048)).toThrow(
-      /exceeds atlas max/,
-    );
+    expect(() =>
+      packRects([{ id: 'huge', w: 5000, h: 10 }], 2, ATLAS_MAX_SIZE),
+    ).toThrow(/exceeds atlas max/);
   });
 });

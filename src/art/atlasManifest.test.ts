@@ -10,7 +10,7 @@ import {
   type AtlasJson,
 } from './atlasManifest';
 import { renderArtSpecMarkdown } from './artSpec';
-import { SPRITE_DEFS, getSpriteDef, textureSize } from './catalog';
+import { SPRITE_DEFS, textureSize } from './catalog';
 
 function loadCommittedAtlas(): AtlasJson {
   const path = resolve(
@@ -20,7 +20,7 @@ function loadCommittedAtlas(): AtlasJson {
   return JSON.parse(readFileSync(path, 'utf8')) as AtlasJson;
 }
 
-describe('committed atlas manifest (issue #32/#33 — scene renders via atlas)', () => {
+describe('committed atlas manifest (issue #32/#33/#34 — scene renders via atlas)', () => {
   it('exposes load paths for Phaser load.atlas', () => {
     expect(atlasLoadPaths()).toEqual({
       key: ATLAS_KEY,
@@ -67,7 +67,7 @@ describe('committed atlas manifest (issue #32/#33 — scene renders via atlas)',
   });
 });
 
-describe('ART-SPEC.md (issue #32/#33 — documented working process)', () => {
+describe('ART-SPEC.md (issue #32/#33/#34 — documented working process)', () => {
   it('documents every sprite dimension, pivot, and add-sprite steps', () => {
     const md = renderArtSpecMarkdown();
     const committed = readFileSync(
@@ -89,10 +89,12 @@ describe('ART-SPEC.md (issue #32/#33 — documented working process)', () => {
     expect(md).toContain('Adding a new sprite');
     expect(md).toContain('npm run art:pack');
     expect(md).toContain('npm run art:player');
+    expect(md).toContain('npm run art:world');
     expect(md).toContain(`**${PLAYER.spriteW}×${PLAYER.spriteH}**`);
-    expect(md).toContain(getSpriteDef('player_duck').role);
-    expect(md).toContain('player_hurt');
-    expect(md).toContain('player_death');
-    expect(md).toContain('final hi-res');
+    expect(md).toContain('heli_strafe');
+    expect(md).toContain('explosion');
+    expect(md).toContain('muzzle_flash');
+    expect(md).toContain('public/art/bg.png');
+    expect(md).toContain('All catalog frames are **final**');
   });
 });

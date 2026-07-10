@@ -1,10 +1,10 @@
 import Phaser from 'phaser';
-import { getSpriteDef, type SpriteId } from '../art/catalog';
+import { getSpriteDef, heliFrameForLook, type SpriteId } from '../art/catalog';
 import { placeOnCenter, playerSpritePlacement } from '../art/spritePlacement';
 import { AudioHud } from '../audio/audioHud';
 import { getGameAudio } from '../audio/gameAudio';
 import { GameSfx } from '../audio/gameSfx';
-import { ATLAS_KEY } from '../config/art';
+import { ATLAS_KEY, BG_IMAGE_KEY } from '../config/art';
 import { isPlayerHurtFlashing } from '../combat/playerHealth';
 import { playerPowerupAlpha } from '../combat/powerupEffects';
 import { getActiveWeaponDef } from '../combat/weaponInventory';
@@ -14,11 +14,8 @@ import {
   selectPlayerAnimFrame,
 } from '../player/playerAnim';
 import {
-  BULLET,
-  ENEMY_BULLET,
   GAME_FLOW,
   GUN,
-  HELI_LOOK_TINT,
   PLAYER,
   POWERUP,
   POWERUP_DROP,
@@ -74,33 +71,32 @@ import {
   isLevelSolid,
 } from '../world/level1';
 
-const TILE_COLOR = 0x3d5a80;
 const BOX_COLOR = 0xe09f3e;
 const BOX_DRAG_COLOR = 0xf4a261;
 const PLAYER_HITBOX_STROKE = 0xd8f3dc;
-const GUN_COLOR = 0xc9ada7;
-const GUN_STROKE = 0xf2e9e4;
-const MUZZLE_COLOR = 0xff6b6b;
-const BULLET_COLOR = 0xffe066;
-const ENEMY_BULLET_COLOR = 0xff6b6b;
-const EXPLOSION_COLOR = 0xff9f1c;
 const POWERUP_HEALTH_COLOR = 0x7dcfb6;
 const POWERUP_WEAPON_COLOR = 0xffe066;
 const POWERUP_STATE_COLOR = 0xc77dff;
 const POWERUP_CHUTE_COLOR = 0xf8f9fa;
-const HELI_FRAME = 'heli';
 const HELI_HIT_FRAME = 'heli_hit';
 const POWERUP_FRAME = 'powerup';
+const WEAPON_FRAME = 'weapon_machinegun';
+const BULLET_PLAYER_FRAME = 'bullet_player';
+const BULLET_ENEMY_FRAME = 'bullet_enemy';
+const MUZZLE_FRAME = 'muzzle_flash';
+const EXPLOSION_FRAME = 'explosion';
+const TILE_FRAME = 'tile_floor';
 
 /**
  * Thin Phaser shell: banks render deltas into a 30 Hz fixed sim, draws the
- * original level layout (placeholder tiles), hosts a controllable player
- * (←/→ walk, ↑ jump, ↓ duck, Ctrl boost, Shift bullet-time, mouse aim,
+ * original level layout with final hi-res tiles (#34), hosts a controllable
+ * player (←/→ walk, ↑ jump, ↓ duck, Ctrl boost, Shift bullet-time, mouse aim,
  * hold-to-fire, weapon switch via 1–0 / Q–E (#14), pooled bullets) rendered
  * from the packed atlas with final hi-res player animations (#32/#33), shootable
- * heli variants with hit flash / death boom (#12/#13/#20), parachuting powerup
- * crates (#21), full in-game HUD (#23), menu/pause/game-over session loop (#24),
- * and a draggable debug box. Game logic lives in plain modules under src/.
+ * heli variants with hit flash / death boom (#12/#13/#20/#34), parachuting
+ * powerup crates (#21), full in-game HUD (#23), menu/pause/game-over session
+ * loop (#24), and a draggable debug box. Game logic lives in plain modules
+ * under src/.
  *
  * Input (#29/#30/#31): keyboard/mouse, on-screen touch, and gamepad feed the
  * intent layer; gameplay reads {@link applyPlayerIntent} output on the session
@@ -144,16 +140,16 @@ export class GameScene extends Phaser.Scene {
   /** Flash nested walk-cycle phase (0..walk.length-1). */
   private playerWalkPhase = 0;
   private playerAnimFrame: SpriteId = 'player_idle';
-  private gunRect!: Phaser.GameObjects.Rectangle;
-  private muzzleDot!: Phaser.GameObjects.Arc;
+  private gunSprite!: Phaser.GameObjects.Image;
+  private muzzleSprite!: Phaser.GameObjects.Image;
   /** One visual per pool slot — toggled visible when the slot is active. */
-  private bulletDots: Phaser.GameObjects.Arc[] = [];
+  private bulletSprites: Phaser.GameObjects.Image[] = [];
   /** Enemy return-fire visuals (#18). */
-  private enemyBulletDots: Phaser.GameObjects.Arc[] = [];
+  private enemyBulletSprites: Phaser.GameObjects.Image[] = [];
   /** One visual per concurrent heli slot (#19 treadmill can fill several). */
   private heliSprites: Phaser.GameObjects.Image[] = [];
   /** One visual per in-flight explosion (kills can overlap). */
-  private explosionSprites: Phaser.GameObjects.Arc[] = [];
+  private explosionSprites: Phaser.GameObjects.Image[] = [];
   /** Crate + chute visuals for parachuting pickups (#21). */
   private powerupSprites: Phaser.GameObjects.Container[] = [];
   private gameHud!: GameHud;
@@ -199,6 +195,12 @@ export class GameScene extends Phaser.Scene {
 
     this.arenaOriginX = Math.floor((GAME_WIDTH - LEVEL1_WIDTH_PX) / 2);
     this.arenaOriginY = Math.floor((GAME_HEIGHT - LEVEL1_HEIGHT_PX) / 2) - 40;
+
+    // Full-bleed desert plate behind the arena (#34).
+    this.add
+      .image(GAME_WIDTH / 2, GAME_HEIGHT / 2, BG_IMAGE_KEY)
+      .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
+      .setDepth(-10);
 
     this.drawArena();
     this.createPlayerVisual();
@@ -543,36 +545,23 @@ export class GameScene extends Phaser.Scene {
 
   private drawArena(): void {
     const map = this.session.map;
-    const g = this.add.graphics();
-    g.fillStyle(TILE_COLOR, 1);
+    const tileDef = getSpriteDef(TILE_FRAME);
 
     for (let row = 0; row < map.height; row += 1) {
       for (let col = 0; col < map.width; col += 1) {
         if (!isLevelSolid(map, col, row)) {
           continue;
         }
-        g.fillRect(
-          this.arenaOriginX + col * WORLD.tile,
-          this.arenaOriginY + row * WORLD.tile,
-          WORLD.tile,
-          WORLD.tile,
-        );
-      }
-    }
-
-    // Subtle grid outline so 50px tiles are visible.
-    g.lineStyle(1, 0x1b263b, 0.6);
-    for (let row = 0; row < map.height; row += 1) {
-      for (let col = 0; col < map.width; col += 1) {
-        if (!isLevelSolid(map, col, row)) {
-          continue;
-        }
-        g.strokeRect(
-          this.arenaOriginX + col * WORLD.tile,
-          this.arenaOriginY + row * WORLD.tile,
-          WORLD.tile,
-          WORLD.tile,
-        );
+        this.add
+          .image(
+            this.arenaOriginX + col * WORLD.tile,
+            this.arenaOriginY + row * WORLD.tile,
+            ATLAS_KEY,
+            TILE_FRAME,
+          )
+          .setOrigin(tileDef.pivot.x, tileDef.pivot.y)
+          .setDisplaySize(WORLD.tile, WORLD.tile)
+          .setDepth(0);
       }
     }
   }
@@ -648,25 +637,30 @@ export class GameScene extends Phaser.Scene {
 
   private createGunVisual(): void {
     const pivot = this.session.player.gunPivot;
-    // Rectangle origin is center by default; shift so the grip (pivotX) sits
-    // on the gun pivot — matches Phaser Image.setOrigin(GUN.pivotX, pivotY).
-    this.gunRect = this.add
-      .rectangle(
+    const gunDef = getSpriteDef(WEAPON_FRAME);
+    this.gunSprite = this.add
+      .image(
         this.arenaOriginX + pivot.x,
         this.arenaOriginY + pivot.y,
-        GUN.spriteW,
-        GUN.spriteH,
-        GUN_COLOR,
+        ATLAS_KEY,
+        WEAPON_FRAME,
       )
-      .setStrokeStyle(1, GUN_STROKE)
-      .setOrigin(GUN.pivotX, GUN.pivotY);
+      .setOrigin(gunDef.pivot.x, gunDef.pivot.y)
+      .setDisplaySize(GUN.spriteW, GUN.spriteH)
+      .setDepth(20);
 
-    this.muzzleDot = this.add.circle(
-      this.arenaOriginX + this.session.player.muzzle.x,
-      this.arenaOriginY + this.session.player.muzzle.y,
-      3,
-      MUZZLE_COLOR,
-    );
+    const muzzleDef = getSpriteDef(MUZZLE_FRAME);
+    this.muzzleSprite = this.add
+      .image(
+        this.arenaOriginX + this.session.player.muzzle.x,
+        this.arenaOriginY + this.session.player.muzzle.y,
+        ATLAS_KEY,
+        MUZZLE_FRAME,
+      )
+      .setOrigin(muzzleDef.pivot.x, muzzleDef.pivot.y)
+      .setDisplaySize(18, 18)
+      .setDepth(21)
+      .setVisible(false);
   }
 
   private syncGunVisual(): void {
@@ -674,34 +668,49 @@ export class GameScene extends Phaser.Scene {
     const pivot = player.gunPivot;
     const aim = player.gunAim;
 
-    this.gunRect.setPosition(
+    this.gunSprite.setPosition(
       this.arenaOriginX + pivot.x,
       this.arenaOriginY + pivot.y,
     );
-    this.gunRect.setAngle(aim.rotationDeg);
+    this.gunSprite.setAngle(aim.rotationDeg);
     // Flash `_yscale = -100` when aiming left — Phaser flipY.
-    this.gunRect.setScale(1, aim.flipY ? -1 : 1);
+    this.gunSprite.setScale(1, aim.flipY ? -1 : 1);
 
-    this.muzzleDot.setPosition(
+    this.muzzleSprite.setPosition(
       this.arenaOriginX + player.muzzle.x,
       this.arenaOriginY + player.muzzle.y,
     );
+    this.muzzleSprite.setAngle(aim.rotationDeg);
+    // Brief flash while reloadTime is still near zero after a shot.
+    const firing =
+      this.session.playerHealth.alive && this.session.weapon.reloadTime < 3;
+    this.muzzleSprite.setVisible(firing);
   }
 
   private createBulletVisuals(): void {
-    this.bulletDots = [];
+    this.bulletSprites = [];
+    const playerDef = getSpriteDef(BULLET_PLAYER_FRAME);
     for (let i = 0; i < this.session.bullets.capacity; i += 1) {
-      const dot = this.add
-        .circle(0, 0, BULLET.radius, BULLET_COLOR)
-        .setVisible(false);
-      this.bulletDots.push(dot);
+      this.bulletSprites.push(
+        this.add
+          .image(0, 0, ATLAS_KEY, BULLET_PLAYER_FRAME)
+          .setOrigin(playerDef.pivot.x, playerDef.pivot.y)
+          .setDisplaySize(playerDef.originalW, playerDef.originalH)
+          .setDepth(15)
+          .setVisible(false),
+      );
     }
-    this.enemyBulletDots = [];
+    this.enemyBulletSprites = [];
+    const enemyDef = getSpriteDef(BULLET_ENEMY_FRAME);
     for (let i = 0; i < this.session.enemyBullets.capacity; i += 1) {
-      const dot = this.add
-        .circle(0, 0, ENEMY_BULLET.radius, ENEMY_BULLET_COLOR)
-        .setVisible(false);
-      this.enemyBulletDots.push(dot);
+      this.enemyBulletSprites.push(
+        this.add
+          .image(0, 0, ATLAS_KEY, BULLET_ENEMY_FRAME)
+          .setOrigin(enemyDef.pivot.x, enemyDef.pivot.y)
+          .setDisplaySize(enemyDef.originalW, enemyDef.originalH)
+          .setDepth(15)
+          .setVisible(false),
+      );
     }
   }
 
@@ -709,16 +718,17 @@ export class GameScene extends Phaser.Scene {
     const slots = this.session.bullets.slots;
     for (let i = 0; i < slots.length; i += 1) {
       const bullet = slots[i]!;
-      const dot = this.bulletDots[i]!;
+      const sprite = this.bulletSprites[i]!;
       if (!bullet.active) {
-        dot.setVisible(false);
+        sprite.setVisible(false);
         continue;
       }
-      dot.setVisible(true);
-      dot.setPosition(
+      sprite.setVisible(true);
+      sprite.setPosition(
         this.arenaOriginX + bullet.x,
         this.arenaOriginY + bullet.y,
       );
+      sprite.setAngle((Math.atan2(bullet.vy, bullet.vx) * 180) / Math.PI);
     }
   }
 
@@ -726,16 +736,17 @@ export class GameScene extends Phaser.Scene {
     const slots = this.session.enemyBullets.slots;
     for (let i = 0; i < slots.length; i += 1) {
       const bullet = slots[i]!;
-      const dot = this.enemyBulletDots[i]!;
+      const sprite = this.enemyBulletSprites[i]!;
       if (!bullet.active) {
-        dot.setVisible(false);
+        sprite.setVisible(false);
         continue;
       }
-      dot.setVisible(true);
-      dot.setPosition(
+      sprite.setVisible(true);
+      sprite.setPosition(
         this.arenaOriginX + bullet.x,
         this.arenaOriginY + bullet.y,
       );
+      sprite.setAngle((Math.atan2(bullet.vy, bullet.vx) * 180) / Math.PI);
     }
   }
 
@@ -743,7 +754,7 @@ export class GameScene extends Phaser.Scene {
     // Pool sized for max concurrent + a couple spare explosion slots (#19).
     const heliPool = 8;
     const boomPool = 8;
-    const def = getSpriteDef(HELI_FRAME);
+    const def = getSpriteDef('heli');
     const place = placeOnCenter(0, 0, def.pivot, {
       w: def.originalW,
       h: def.originalH,
@@ -752,17 +763,22 @@ export class GameScene extends Phaser.Scene {
     for (let i = 0; i < heliPool; i += 1) {
       this.heliSprites.push(
         this.add
-          .image(0, 0, ATLAS_KEY, HELI_FRAME)
+          .image(0, 0, ATLAS_KEY, 'heli')
           .setOrigin(place.originX, place.originY)
           .setDisplaySize(place.displayW, place.displayH)
-          .setTint(HELI_LOOK_TINT[0])
           .setVisible(false),
       );
     }
+    const boomDef = getSpriteDef(EXPLOSION_FRAME);
     this.explosionSprites = [];
     for (let i = 0; i < boomPool; i += 1) {
       this.explosionSprites.push(
-        this.add.circle(0, 0, 40, EXPLOSION_COLOR, 0.85).setVisible(false),
+        this.add
+          .image(0, 0, ATLAS_KEY, EXPLOSION_FRAME)
+          .setOrigin(boomDef.pivot.x, boomDef.pivot.y)
+          .setDisplaySize(120, 120)
+          .setDepth(25)
+          .setVisible(false),
       );
     }
   }
@@ -814,7 +830,7 @@ export class GameScene extends Phaser.Scene {
         continue;
       }
       const flashing = heli.hitFlashRemaining > 0;
-      const frame = flashing ? HELI_HIT_FRAME : HELI_FRAME;
+      const frame = flashing ? HELI_HIT_FRAME : heliFrameForLook(heli.look);
       const def = getSpriteDef(frame);
       const place = placeOnCenter(heli.x, heli.y, def.pivot, {
         w: def.originalW,
@@ -829,9 +845,8 @@ export class GameScene extends Phaser.Scene {
         this.arenaOriginY + place.y,
       );
       sprite.setAngle(heli.rotationDeg);
-      // Look tint distinguishes hover vs strafe (#20); flash goes white.
-      const lookTint = HELI_LOOK_TINT[heli.look] ?? HELI_LOOK_TINT[0];
-      sprite.setTint(flashing ? 0xffffff : lookTint);
+      // Hit flash uses the dedicated white frame; look variants are redrawn.
+      sprite.clearTint();
     }
 
     const booms = this.session.explosions;

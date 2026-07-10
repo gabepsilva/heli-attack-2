@@ -1,14 +1,15 @@
 /**
- * Sprite catalog for the art pipeline (#32 / #33).
- * Non-player `sourceFile` names match iopred/heliattack `ha2/assets` (gitignored).
- * Player frames are final redraws under {@link ART_PLAYER_FINAL_DIR} (#33).
- * Frame names are the atlas keys used by Phaser (`load.atlas` hash format).
+ * Sprite catalog for the art pipeline (#32 / #33 / #34).
+ * Every entry is a committed final redraw (`final: true`) — no placeholders.
+ * Player frames live under {@link ART_PLAYER_FINAL_DIR} (8×); world frames
+ * under {@link ART_WORLD_FINAL_DIR} (4×). Frame names are Phaser atlas keys.
  */
 
 import {
-  ART_PLACEHOLDER_SCALE,
   ART_PLAYER_FINAL_DIR,
   ART_PLAYER_FINAL_SCALE,
+  ART_WORLD_FINAL_DIR,
+  ART_WORLD_FINAL_SCALE,
 } from '../config/art';
 import { PLAYER, WORLD } from '../config/constants';
 
@@ -20,8 +21,8 @@ export type SpriteDef = Readonly<{
   id: string;
   /**
    * Source PNG basename.
-   * Placeholders: under `reference/ha2-source/gfx/`.
-   * Final player: under {@link ART_PLAYER_FINAL_DIR}.
+   * Player: under {@link ART_PLAYER_FINAL_DIR}.
+   * World: under {@link ART_WORLD_FINAL_DIR}.
    */
   sourceFile: string;
   /** Original Flash-era pixel size (art bible / pose reference). */
@@ -33,14 +34,13 @@ export type SpriteDef = Readonly<{
   role: string;
   /**
    * When true, the packer loads the committed final PNG (no placeholder
-   * upscale). Player frames are final after #33.
+   * upscale). All catalog entries are final after #34.
    */
   final?: boolean;
 }>;
 
 /**
- * Curated atlas set. Player entries are final hi-res redraws (#33);
- * everything else remains a 4× placeholder until #34.
+ * Curated atlas set — all final hi-res redraws (#33 player, #34 world).
  */
 export const SPRITE_DEFS = [
   {
@@ -121,7 +121,17 @@ export const SPRITE_DEFS = [
     originalW: 212,
     originalH: 106,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Enemy helicopter',
+    role: 'Enemy helicopter look 0 / hover (final hi-res; warm desert)',
+    final: true,
+  },
+  {
+    id: 'heli_strafe',
+    sourceFile: 'heli_strafe.png',
+    originalW: 212,
+    originalH: 106,
+    pivot: { x: 0.5, y: 0.5 },
+    role: 'Enemy helicopter look 1 / strafe (final hi-res; cool steel)',
+    final: true,
   },
   {
     id: 'heli_hit',
@@ -129,7 +139,8 @@ export const SPRITE_DEFS = [
     originalW: 212,
     originalH: 106,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Helicopter damaged flash',
+    role: 'Helicopter damaged flash (final hi-res)',
+    final: true,
   },
   {
     id: 'heli_destroyed',
@@ -137,7 +148,8 @@ export const SPRITE_DEFS = [
     originalW: 173,
     originalH: 89,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Helicopter wreck',
+    role: 'Helicopter wreck (final hi-res)',
+    final: true,
   },
   {
     id: 'enemy_guy',
@@ -145,7 +157,8 @@ export const SPRITE_DEFS = [
     originalW: 25,
     originalH: 50,
     pivot: { x: 0.5, y: 1 },
-    role: 'Paratrooper / ground enemy',
+    role: 'Paratrooper / ground enemy (final hi-res)',
+    final: true,
   },
   {
     id: 'bullet_player',
@@ -153,7 +166,8 @@ export const SPRITE_DEFS = [
     originalW: 10,
     originalH: 9,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Player projectile',
+    role: 'Player projectile (final hi-res)',
+    final: true,
   },
   {
     id: 'bullet_enemy',
@@ -161,7 +175,8 @@ export const SPRITE_DEFS = [
     originalW: 10,
     originalH: 9,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Enemy projectile',
+    role: 'Enemy projectile (final hi-res)',
+    final: true,
   },
   {
     id: 'weapon_machinegun',
@@ -169,7 +184,17 @@ export const SPRITE_DEFS = [
     originalW: 29,
     originalH: 16,
     pivot: { x: 0.2, y: 0.5 },
-    role: 'Starting machine gun',
+    role: 'Starting machine gun (final hi-res)',
+    final: true,
+  },
+  {
+    id: 'muzzle_flash',
+    sourceFile: 'muzzle_flash.png',
+    originalW: 16,
+    originalH: 16,
+    pivot: { x: 0.5, y: 0.5 },
+    role: 'Weapon muzzle flash (final hi-res)',
+    final: true,
   },
   {
     id: 'grenade',
@@ -177,7 +202,8 @@ export const SPRITE_DEFS = [
     originalW: 19,
     originalH: 11,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Grenade projectile',
+    role: 'Grenade projectile (final hi-res)',
+    final: true,
   },
   {
     id: 'rocket',
@@ -185,7 +211,8 @@ export const SPRITE_DEFS = [
     originalW: 21,
     originalH: 15,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Rocket projectile',
+    role: 'Rocket projectile (final hi-res)',
+    final: true,
   },
   {
     id: 'smoke',
@@ -193,7 +220,8 @@ export const SPRITE_DEFS = [
     originalW: 28,
     originalH: 27,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Smoke VFX',
+    role: 'Smoke VFX (final hi-res)',
+    final: true,
   },
   {
     id: 'blood',
@@ -201,7 +229,17 @@ export const SPRITE_DEFS = [
     originalW: 30,
     originalH: 30,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Hit / blood VFX',
+    role: 'Hit / blood VFX (final hi-res)',
+    final: true,
+  },
+  {
+    id: 'explosion',
+    sourceFile: 'explosion.png',
+    originalW: 187,
+    originalH: 186,
+    pivot: { x: 0.5, y: 0.5 },
+    role: 'Heli death explosion (final hi-res; half Flash bigboom)',
+    final: true,
   },
   {
     id: 'powerup',
@@ -209,7 +247,8 @@ export const SPRITE_DEFS = [
     originalW: 33,
     originalH: 32,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Powerup crate base',
+    role: 'Powerup crate base (final hi-res)',
+    final: true,
   },
   {
     id: 'tile_floor',
@@ -217,7 +256,8 @@ export const SPRITE_DEFS = [
     originalW: 52,
     originalH: 52,
     pivot: { x: 0, y: 0 },
-    role: 'Solid floor tile (maps to WORLD.tile in game space)',
+    role: 'Solid floor tile (final hi-res; maps to WORLD.tile)',
+    final: true,
   },
 ] as const satisfies readonly SpriteDef[];
 
@@ -256,6 +296,20 @@ export const PLAYER_FINAL_FRAME_IDS: readonly SpriteId[] = [
   PLAYER_ANIM_FRAMES.death,
 ];
 
+/**
+ * Heli look → atlas frame (#20 / #34).
+ * Look 0 = hover (warm desert), look 1 = strafe (cool steel).
+ */
+export const HELI_LOOK_FRAMES = [
+  'heli',
+  'heli_strafe',
+] as const satisfies readonly SpriteId[];
+
+/** World (non-player) final frame ids — acceptance: zero placeholders (#34). */
+export const WORLD_FINAL_FRAME_IDS: readonly SpriteId[] = SPRITE_DEFS.filter(
+  (d) => !d.id.startsWith('player_'),
+).map((d) => d.id);
+
 export function getSpriteDef(id: SpriteId): SpriteDef {
   const def = SPRITE_DEFS.find((s) => s.id === id);
   if (!def) {
@@ -273,20 +327,47 @@ export function isFinalSprite(def: SpriteDef): boolean {
   return def.final === true;
 }
 
+/** True when every catalog sprite is a committed final redraw (#34). */
+export function catalogHasNoPlaceholders(): boolean {
+  return SPRITE_DEFS.every((d) => isFinalSprite(d));
+}
+
 /** Repo-relative path to a final player source PNG. */
 export function finalPlayerSourcePath(def: SpriteDef): string {
   return `${ART_PLAYER_FINAL_DIR}/${def.sourceFile}`;
 }
 
+/** Repo-relative path to a final world source PNG. */
+export function finalWorldSourcePath(def: SpriteDef): string {
+  return `${ART_WORLD_FINAL_DIR}/${def.sourceFile}`;
+}
+
+/** Repo-relative path to the committed final source for a catalog entry. */
+export function finalSourcePath(def: SpriteDef): string {
+  if (def.id.startsWith('player_')) {
+    return finalPlayerSourcePath(def);
+  }
+  return finalWorldSourcePath(def);
+}
+
+/** Texture scale for a catalog entry (player 8×, world 4×). */
+export function textureScaleFor(def: SpriteDef): number {
+  if (!isFinalSprite(def)) {
+    // Legacy path — catalog no longer ships placeholders after #34.
+    return ART_WORLD_FINAL_SCALE;
+  }
+  return def.id.startsWith('player_')
+    ? ART_PLAYER_FINAL_SCALE
+    : ART_WORLD_FINAL_SCALE;
+}
+
 /**
  * Texture pixel size in the packed atlas.
- * Final player frames use {@link ART_PLAYER_FINAL_SCALE}; placeholders use
- * {@link ART_PLACEHOLDER_SCALE}.
+ * Final player frames use {@link ART_PLAYER_FINAL_SCALE}; world finals use
+ * {@link ART_WORLD_FINAL_SCALE}.
  */
 export function textureSize(def: SpriteDef): { w: number; h: number } {
-  const scale = isFinalSprite(def)
-    ? ART_PLAYER_FINAL_SCALE
-    : ART_PLACEHOLDER_SCALE;
+  const scale = textureScaleFor(def);
   return {
     w: def.originalW * scale,
     h: def.originalH * scale,
@@ -305,5 +386,17 @@ export function gameDrawSize(def: SpriteDef): { w: number; h: number } {
   if (def.id === 'tile_floor') {
     return { w: WORLD.tile, h: WORLD.tile };
   }
+  if (def.id === 'explosion') {
+    // Flash bigboom ~374px; catalog stores half-res source, draw at full feel.
+    return { w: 120, h: 120 };
+  }
+  if (def.id === 'muzzle_flash') {
+    return { w: 18, h: 18 };
+  }
   return { w: def.originalW, h: def.originalH };
+}
+
+/** Atlas frame for a heli look index (#20/#34). */
+export function heliFrameForLook(look: number): SpriteId {
+  return HELI_LOOK_FRAMES[look] ?? HELI_LOOK_FRAMES[0];
 }
