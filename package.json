@@ -13,6 +13,7 @@
     "format:check": "prettier --check .",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
+    "art:player": "python3 scripts/art/generate-player-final.py",
     "art:pack": "node scripts/art/pack-atlas.mjs",
     "audio:transcode": "node scripts/audio/transcode-wavs.mjs",
     "prepare": "node scripts/install-git-hooks.mjs"

@@ -1,12 +1,18 @@
 import Phaser from 'phaser';
-import { getSpriteDef, PLAYER_PLACEHOLDER_FRAME } from '../art/catalog';
+import { getSpriteDef, type SpriteId } from '../art/catalog';
 import { placeOnCenter, playerSpritePlacement } from '../art/spritePlacement';
 import { AudioHud } from '../audio/audioHud';
 import { getGameAudio } from '../audio/gameAudio';
 import { GameSfx } from '../audio/gameSfx';
 import { ATLAS_KEY } from '../config/art';
+import { isPlayerHurtFlashing } from '../combat/playerHealth';
 import { playerPowerupAlpha } from '../combat/powerupEffects';
 import { getActiveWeaponDef } from '../combat/weaponInventory';
+import {
+  advanceWalkPhase,
+  playerAnimMoving,
+  selectPlayerAnimFrame,
+} from '../player/playerAnim';
 import {
   BULLET,
   ENEMY_BULLET,
@@ -91,10 +97,10 @@ const POWERUP_FRAME = 'powerup';
  * original level layout (placeholder tiles), hosts a controllable player
  * (←/→ walk, ↑ jump, ↓ duck, Ctrl boost, Shift bullet-time, mouse aim,
  * hold-to-fire, weapon switch via 1–0 / Q–E (#14), pooled bullets) rendered
- * from the packed atlas (#32), shootable heli variants with hit flash / death
- * boom (#12/#13/#20), parachuting powerup crates (#21), full in-game HUD
- * (#23), menu/pause/game-over session loop (#24), and a draggable debug box.
- * Game logic lives in plain modules under src/.
+ * from the packed atlas with final hi-res player animations (#32/#33), shootable
+ * heli variants with hit flash / death boom (#12/#13/#20), parachuting powerup
+ * crates (#21), full in-game HUD (#23), menu/pause/game-over session loop (#24),
+ * and a draggable debug box. Game logic lives in plain modules under src/.
  *
  * Input (#29/#30/#31): keyboard/mouse, on-screen touch, and gamepad feed the
  * intent layer; gameplay reads {@link applyPlayerIntent} output on the session
@@ -135,6 +141,9 @@ export class GameScene extends Phaser.Scene {
   private boxRect!: Phaser.GameObjects.Rectangle;
   private playerSprite!: Phaser.GameObjects.Image;
   private playerHitbox!: Phaser.GameObjects.Rectangle;
+  /** Flash nested walk-cycle phase (0..walk.length-1). */
+  private playerWalkPhase = 0;
+  private playerAnimFrame: SpriteId = 'player_idle';
   private gunRect!: Phaser.GameObjects.Rectangle;
   private muzzleDot!: Phaser.GameObjects.Arc;
   /** One visual per pool slot — toggled visible when the slot is active. */
@@ -444,6 +453,18 @@ export class GameScene extends Phaser.Scene {
     const ticksBefore = this.session.simTickCount;
     this.session.update(delta);
     const simSteps = this.session.simTickCount - ticksBefore;
+    // Advance walk cycle once per sim move tick while horizontally moving
+    // (Flash `gfx.gfx.nextFrame()` under walk parent frame 4).
+    if (simSteps > 0) {
+      const moving = playerAnimMoving(this.session.player.body.vx);
+      for (let i = 0; i < simSteps; i += 1) {
+        this.playerWalkPhase = advanceWalkPhase(
+          this.playerWalkPhase,
+          moving,
+          true,
+        );
+      }
+    }
     this.gameSfx?.drainAndPlay(this.session.drainAudioEvents(), {
       simTicks: simSteps,
     });
@@ -556,9 +577,27 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private resolvePlayerAnimFrame(): SpriteId {
+    const pl = this.session.player;
+    const health = this.session.playerHealth;
+    return selectPlayerAnimFrame({
+      ducking: pl.ducking,
+      jump: pl.jumpState.jump,
+      jump2: pl.jumpState.jump2,
+      moving: playerAnimMoving(pl.body.vx),
+      hurt:
+        health.alive &&
+        (isPlayerHurtFlashing(health) || health.iFramesRemaining > 0),
+      dead: !health.alive || this.flow.phase === 'dying',
+      walkPhase: this.playerWalkPhase,
+    });
+  }
+
   private createPlayerVisual(): void {
+    this.playerWalkPhase = 0;
+    this.playerAnimFrame = this.resolvePlayerAnimFrame();
     const body = this.session.player.body;
-    const def = getSpriteDef(PLAYER_PLACEHOLDER_FRAME);
+    const def = getSpriteDef(this.playerAnimFrame);
     const place = playerSpritePlacement(body, def);
 
     this.playerSprite = this.add
@@ -566,7 +605,7 @@ export class GameScene extends Phaser.Scene {
         this.arenaOriginX + place.x,
         this.arenaOriginY + place.y,
         ATLAS_KEY,
-        PLAYER_PLACEHOLDER_FRAME,
+        this.playerAnimFrame,
       )
       .setOrigin(place.originX, place.originY)
       .setDisplaySize(place.displayW, place.displayH);
@@ -585,8 +624,16 @@ export class GameScene extends Phaser.Scene {
 
   private syncPlayerVisual(): void {
     const body = this.session.player.body;
-    const def = getSpriteDef(PLAYER_PLACEHOLDER_FRAME);
+    const frame = this.resolvePlayerAnimFrame();
+    const def = getSpriteDef(frame);
     const place = playerSpritePlacement(body, def);
+
+    if (frame !== this.playerAnimFrame) {
+      this.playerAnimFrame = frame;
+      this.playerSprite.setTexture(ATLAS_KEY, frame);
+      this.playerSprite.setOrigin(place.originX, place.originY);
+      this.playerSprite.setDisplaySize(place.displayW, place.displayH);
+    }
 
     this.playerSprite.setPosition(
       this.arenaOriginX + place.x,

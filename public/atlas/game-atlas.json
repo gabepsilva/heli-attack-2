@@ -1,8 +1,56 @@
 {
   "frames": {
-    "heli": {
+    "player_jump": {
       "frame": {
         "x": 2,
+        "y": 2,
+        "w": 200,
+        "h": 440
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 200,
+        "h": 440
+      },
+      "sourceSize": {
+        "w": 200,
+        "h": 440
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "player_jump2": {
+      "frame": {
+        "x": 204,
+        "y": 2,
+        "w": 200,
+        "h": 440
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 200,
+        "h": 440
+      },
+      "sourceSize": {
+        "w": 200,
+        "h": 440
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "heli": {
+      "frame": {
+        "x": 406,
         "y": 2,
         "w": 848,
         "h": 424
@@ -26,94 +74,190 @@
     },
     "heli_hit": {
       "frame": {
-        "x": 852,
-        "y": 2,
-        "w": 848,
-        "h": 424
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 848,
-        "h": 424
-      },
-      "sourceSize": {
-        "w": 848,
-        "h": 424
-      },
-      "pivot": {
-        "x": 0.5,
-        "y": 0.5
-      }
-    },
-    "heli_destroyed": {
-      "frame": {
         "x": 2,
-        "y": 428,
-        "w": 692,
-        "h": 356
+        "y": 444,
+        "w": 848,
+        "h": 424
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 692,
-        "h": 356
+        "w": 848,
+        "h": 424
       },
       "sourceSize": {
-        "w": 692,
-        "h": 356
+        "w": 848,
+        "h": 424
       },
       "pivot": {
         "x": 0.5,
         "y": 0.5
       }
     },
-    "player_jump": {
+    "player_death": {
       "frame": {
-        "x": 696,
-        "y": 428,
-        "w": 100,
-        "h": 220
+        "x": 852,
+        "y": 444,
+        "w": 320,
+        "h": 392
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 100,
-        "h": 220
+        "w": 320,
+        "h": 392
       },
       "sourceSize": {
-        "w": 100,
-        "h": 220
+        "w": 320,
+        "h": 392
       },
       "pivot": {
         "x": 0.5,
         "y": 1
       }
     },
-    "player_jump2": {
+    "player_idle": {
       "frame": {
-        "x": 798,
-        "y": 428,
-        "w": 100,
-        "h": 220
+        "x": 1174,
+        "y": 444,
+        "w": 192,
+        "h": 392
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 100,
-        "h": 220
+        "w": 192,
+        "h": 392
       },
       "sourceSize": {
-        "w": 100,
-        "h": 220
+        "w": 192,
+        "h": 392
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "player_step1": {
+      "frame": {
+        "x": 1368,
+        "y": 444,
+        "w": 192,
+        "h": 392
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 192,
+        "h": 392
+      },
+      "sourceSize": {
+        "w": 192,
+        "h": 392
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "player_step2": {
+      "frame": {
+        "x": 1562,
+        "y": 444,
+        "w": 192,
+        "h": 392
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 192,
+        "h": 392
+      },
+      "sourceSize": {
+        "w": 192,
+        "h": 392
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "player_hurt": {
+      "frame": {
+        "x": 1756,
+        "y": 444,
+        "w": 192,
+        "h": 392
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 192,
+        "h": 392
+      },
+      "sourceSize": {
+        "w": 192,
+        "h": 392
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "heli_destroyed": {
+      "frame": {
+        "x": 2,
+        "y": 870,
+        "w": 692,
+        "h": 356
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 692,
+        "h": 356
+      },
+      "sourceSize": {
+        "w": 692,
+        "h": 356
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "player_duck": {
+      "frame": {
+        "x": 696,
+        "y": 870,
+        "w": 200,
+        "h": 312
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 200,
+        "h": 312
+      },
+      "sourceSize": {
+        "w": 200,
+        "h": 312
       },
       "pivot": {
         "x": 0.5,
@@ -122,8 +266,8 @@
     },
     "tile_floor": {
       "frame": {
-        "x": 900,
-        "y": 428,
+        "x": 898,
+        "y": 870,
         "w": 208,
         "h": 208
       },
@@ -146,8 +290,8 @@
     },
     "enemy_guy": {
       "frame": {
-        "x": 1110,
-        "y": 428,
+        "x": 1108,
+        "y": 870,
         "w": 100,
         "h": 200
       },
@@ -162,102 +306,6 @@
       "sourceSize": {
         "w": 100,
         "h": 200
-      },
-      "pivot": {
-        "x": 0.5,
-        "y": 1
-      }
-    },
-    "player_idle": {
-      "frame": {
-        "x": 1212,
-        "y": 428,
-        "w": 96,
-        "h": 196
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 96,
-        "h": 196
-      },
-      "sourceSize": {
-        "w": 96,
-        "h": 196
-      },
-      "pivot": {
-        "x": 0.5,
-        "y": 1
-      }
-    },
-    "player_step1": {
-      "frame": {
-        "x": 1310,
-        "y": 428,
-        "w": 96,
-        "h": 196
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 96,
-        "h": 196
-      },
-      "sourceSize": {
-        "w": 96,
-        "h": 196
-      },
-      "pivot": {
-        "x": 0.5,
-        "y": 1
-      }
-    },
-    "player_step2": {
-      "frame": {
-        "x": 1408,
-        "y": 428,
-        "w": 96,
-        "h": 196
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 96,
-        "h": 196
-      },
-      "sourceSize": {
-        "w": 96,
-        "h": 196
-      },
-      "pivot": {
-        "x": 0.5,
-        "y": 1
-      }
-    },
-    "player_duck": {
-      "frame": {
-        "x": 1506,
-        "y": 428,
-        "w": 100,
-        "h": 156
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 100,
-        "h": 156
-      },
-      "sourceSize": {
-        "w": 100,
-        "h": 156
       },
       "pivot": {
         "x": 0.5,
@@ -266,8 +314,8 @@
     },
     "powerup": {
       "frame": {
-        "x": 1608,
-        "y": 428,
+        "x": 1210,
+        "y": 870,
         "w": 132,
         "h": 128
       },
@@ -290,8 +338,8 @@
     },
     "blood": {
       "frame": {
-        "x": 1742,
-        "y": 428,
+        "x": 1344,
+        "y": 870,
         "w": 120,
         "h": 120
       },
@@ -314,8 +362,8 @@
     },
     "smoke": {
       "frame": {
-        "x": 1864,
-        "y": 428,
+        "x": 1466,
+        "y": 870,
         "w": 112,
         "h": 108
       },
@@ -338,8 +386,8 @@
     },
     "weapon_machinegun": {
       "frame": {
-        "x": 2,
-        "y": 786,
+        "x": 1580,
+        "y": 870,
         "w": 116,
         "h": 64
       },
@@ -362,8 +410,8 @@
     },
     "rocket": {
       "frame": {
-        "x": 120,
-        "y": 786,
+        "x": 1698,
+        "y": 870,
         "w": 84,
         "h": 60
       },
@@ -386,8 +434,8 @@
     },
     "grenade": {
       "frame": {
-        "x": 206,
-        "y": 786,
+        "x": 1784,
+        "y": 870,
         "w": 76,
         "h": 44
       },
@@ -410,8 +458,8 @@
     },
     "bullet_player": {
       "frame": {
-        "x": 284,
-        "y": 786,
+        "x": 1862,
+        "y": 870,
         "w": 40,
         "h": 36
       },
@@ -434,8 +482,8 @@
     },
     "bullet_enemy": {
       "frame": {
-        "x": 326,
-        "y": 786,
+        "x": 1904,
+        "y": 870,
         "w": 40,
         "h": 36
       },
@@ -459,12 +507,12 @@
   },
   "meta": {
     "app": "heli-attack-2/scripts/art/pack-atlas.mjs",
-    "version": "1.0",
+    "version": "1.1",
     "image": "game-atlas.png",
     "format": "RGBA8888",
     "size": {
       "w": 2048,
-      "h": 1024
+      "h": 2048
     },
     "scale": "1"
   }
