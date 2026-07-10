@@ -17,6 +17,7 @@ import {
   BULLET,
   ENEMY_BULLET,
   GUN,
+  HELI_LOOK_TINT,
   PLAYER,
   SIM_HZ,
   WORLD,
@@ -41,7 +42,6 @@ const GUN_STROKE = 0xf2e9e4;
 const MUZZLE_COLOR = 0xff6b6b;
 const BULLET_COLOR = 0xffe066;
 const ENEMY_BULLET_COLOR = 0xff6b6b;
-const HELI_TINT = 0xffffff;
 const EXPLOSION_COLOR = 0xff9f1c;
 const SCORE_COLOR = '#ffe066';
 const HEALTH_COLOR = '#7dcfb6';
@@ -54,8 +54,8 @@ const HELI_HIT_FRAME = 'heli_hit';
  * original level layout (placeholder tiles), hosts a controllable player
  * (←/→ walk, ↑ jump, ↓ duck, Ctrl boost, mouse aim, hold-to-fire, weapon
  * switch via 1–0 / Q–E (#14), pooled bullets) rendered from the packed atlas
- * (#32), a shootable heli with hit flash / death boom / score HUD (#12/#13),
- * and a draggable debug box.
+ * (#32), shootable heli variants with hit flash / death boom / score HUD
+ * (#12/#13/#20), and a draggable debug box.
  * Game logic lives in plain modules under src/.
  *
  * Audio (#26): click plays the test SFX after Boot unlock; DOM HUD owns
@@ -475,7 +475,7 @@ export class GameScene extends Phaser.Scene {
           .image(0, 0, ATLAS_KEY, HELI_FRAME)
           .setOrigin(place.originX, place.originY)
           .setDisplaySize(place.displayW, place.displayH)
-          .setTint(HELI_TINT)
+          .setTint(HELI_LOOK_TINT[0])
           .setVisible(false),
       );
     }
@@ -588,8 +588,9 @@ export class GameScene extends Phaser.Scene {
         this.arenaOriginY + place.y,
       );
       sprite.setAngle(heli.rotationDeg);
-      // Brighten during flash so the hit reads even if frames look similar.
-      sprite.setTint(flashing ? 0xffffff : HELI_TINT);
+      // Look tint distinguishes hover vs strafe (#20); flash goes white.
+      const lookTint = HELI_LOOK_TINT[heli.look] ?? HELI_LOOK_TINT[0];
+      sprite.setTint(flashing ? 0xffffff : lookTint);
     }
 
     const booms = this.session.explosions;
