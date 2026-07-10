@@ -131,10 +131,38 @@ export const HELI = {
    * Fires when the counter modulo this equals 1.
    */
   fireIntervalFrames: 16,
+  /**
+   * Floor of Flash `Math.max(10,16-level)` — fire never faster than this.
+   */
+  fireIntervalMin: 10,
   /** Flash gun turn: `dif/Math.max(1,10-level)` at level 0. */
   gunTurnDivisor: 10,
+  /** Floor of Flash `Math.max(1,10-level)`. */
+  gunTurnDivisorMin: 1,
   /** Muzzle distance from heli center along the barrel (px). */
   muzzleOffset: 40,
+} as const;
+
+/**
+ * Replacement spawn treadmill + difficulty ramp (#19).
+ *
+ * Flash always calls `addEnemy(300)` on kill (1:1 replacement) and raises
+ * `level` when `score > nextLevel` (starts at 10000, doubles). Concurrent
+ * pressure in this port also grows with kill count so the sky fills over a
+ * long run — matching the ticket AC while keeping Flash level thresholds.
+ */
+export const HELI_SPAWN = {
+  /** Opening concurrent population (first `addEnemy` after drop-in). */
+  initialConcurrent: 1,
+  /**
+   * Extra concurrent heli every N kills (`rthelis`). Matches Flash's
+   * every-3-kills powerup cadence so pressure steps up on a familiar rhythm.
+   */
+  killsPerExtraHeli: 3,
+  /** Soft cap so late-game stays readable. */
+  maxConcurrent: 6,
+  /** Flash `nextLevel = 10000` — first score threshold for `level++`. */
+  firstLevelScore: 10000,
 } as const;
 
 /**

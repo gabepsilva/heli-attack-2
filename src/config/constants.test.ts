@@ -6,6 +6,7 @@ import {
   GUN,
   HEALTH_PICKUP,
   HELI,
+  HELI_SPAWN,
   PLAYER,
   PLAYER_COMBAT,
   PLAYER_DEFAULTS,
@@ -81,8 +82,16 @@ describe('config/constants (spec seed)', () => {
       explosionDurationFrames: 20,
       hitFlashFrames: 1,
       fireIntervalFrames: 16,
+      fireIntervalMin: 10,
       gunTurnDivisor: 10,
+      gunTurnDivisorMin: 1,
       muzzleOffset: 40,
+    });
+    expect(HELI_SPAWN).toEqual({
+      initialConcurrent: 1,
+      killsPerExtraHeli: 3,
+      maxConcurrent: 6,
+      firstLevelScore: 10000,
     });
     expect(SCORE).toEqual({ displayScale: 100 });
     expect(POWERUP_FRAMES).toBe(500);
