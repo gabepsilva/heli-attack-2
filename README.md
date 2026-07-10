@@ -97,7 +97,12 @@ npm run typecheck # strict TypeScript check
 npm run lint      # ESLint (type-aware)
 npm run format    # Prettier --write (format:check to verify only)
 npm test          # Vitest (test:watch for watch mode)
+npm run audio:transcode  # WAV → public/audio (.ogg/.webm/.mp3); needs ffmpeg
 ```
+
+Web-ready SFX live in `public/audio/` (committed). Source WAVs stay gitignored under
+`reference/ha2-source/wav/` — pull from [iopred/heliattack](https://github.com/iopred/heliattack)
+`ha2/assets/helisounds` when regenerating, then run `npm run audio:transcode`.
 
 CI runs typecheck, lint, format check, tests, and build on every PR.
 

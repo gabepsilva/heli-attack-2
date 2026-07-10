@@ -1,4 +1,7 @@
 import Phaser from 'phaser';
+import { AudioHud } from '../audio/audioHud';
+import { getGameAudio } from '../audio/gameAudio';
+import { AUDIO_TEST_SFX_ID } from '../config/audio';
 import { PLAYER, SIM_HZ, WORLD } from '../config/constants';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/game';
 import { SCENE_KEYS } from '../config/scenes';
@@ -26,6 +29,9 @@ const PLAYER_STROKE = 0xd8f3dc;
  * Thin Phaser shell: banks render deltas into a 30 Hz fixed sim, draws the
  * hand-authored tile arena, hosts a controllable player (←/→ walk), and a
  * draggable debug box. Game logic lives in plain modules under src/.
+ *
+ * Audio (#26): click plays the test SFX after Boot unlock; DOM HUD owns
+ * master volume + mute. Pooling / gain math lives in {@link AudioManager}.
  */
 export class GameScene extends Phaser.Scene {
   private readonly session = new SimSession();
@@ -37,6 +43,7 @@ export class GameScene extends Phaser.Scene {
   private boxRect!: Phaser.GameObjects.Rectangle;
   private playerRect!: Phaser.GameObjects.Rectangle;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
+  private audioHud: AudioHud | null = null;
   private arenaOriginX = 0;
   private arenaOriginY = 0;
 
@@ -47,6 +54,7 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     // Phaser reuses this instance across scene.start — only create() re-runs.
     this.session.reset();
+    this.audioHud?.destroy();
 
     this.cameras.main.setBackgroundColor('#0d1b2a');
 
@@ -57,11 +65,12 @@ export class GameScene extends Phaser.Scene {
     this.drawArena();
     this.createPlayerVisual();
     this.createDebugBoxVisual();
+    this.setupAudioDemo();
 
     this.cursors = this.input.keyboard!.createCursorKeys();
 
     this.add
-      .text(GAME_WIDTH / 2, 28, 'Walk ←/→ — watch vx ramp & decay', {
+      .text(GAME_WIDTH / 2, 28, 'Walk ←/→ — click for test SFX', {
         fontFamily: 'Arial, Helvetica, sans-serif',
         fontSize: '36px',
         color: '#f5f5f5',
@@ -76,7 +85,7 @@ export class GameScene extends Phaser.Scene {
     this.add.text(
       40,
       GAME_HEIGHT - 60,
-      '←/→ walk · drag box · 1/2 = timeStep 1.0/0.5 · Esc → BootScene',
+      '←/→ walk · click SFX · drag box · 1/2 = timeStep · Esc → Boot',
       { ...HUD_STYLE, fontSize: '20px', color: '#9ab' },
     );
 
@@ -88,6 +97,31 @@ export class GameScene extends Phaser.Scene {
     });
     this.input.keyboard?.on('keydown-ESC', () => {
       this.scene.start(SCENE_KEYS.Boot);
+    });
+
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.audioHud?.destroy();
+      this.audioHud = null;
+    });
+  }
+
+  private setupAudioDemo(): void {
+    const audio = getGameAudio();
+    this.audioHud = new AudioHud({ audio });
+
+    void (async () => {
+      if (!audio.isUnlocked()) {
+        await audio.unlock();
+      }
+      if (!audio.hasBuffer(AUDIO_TEST_SFX_ID)) {
+        await audio.load(AUDIO_TEST_SFX_ID);
+      }
+      this.audioHud?.refreshStatus();
+    })();
+
+    this.input.on('pointerdown', () => {
+      audio.play(AUDIO_TEST_SFX_ID);
+      this.audioHud?.refreshStatus();
     });
   }
 
