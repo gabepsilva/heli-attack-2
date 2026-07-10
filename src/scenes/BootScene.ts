@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { atlasLoadPaths } from '../art/atlasManifest';
+import { AUDIO_TEST_SFX_ID } from '../config/audio';
 import {
   BOOT_BACKGROUND_COLOR,
   BOOT_TITLE,
@@ -8,6 +9,7 @@ import {
   GAME_WIDTH,
 } from '../config/game';
 import { SCENE_KEYS } from '../config/scenes';
+import { getGameAudio } from '../audio/gameAudio';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -30,7 +32,7 @@ export class BootScene extends Phaser.Scene {
       .text(
         GAME_WIDTH / 2,
         GAME_HEIGHT / 2 + 80,
-        'Press SPACE or click to start',
+        'Press SPACE or click to start (unlocks audio)',
         {
           fontFamily: 'Arial, Helvetica, sans-serif',
           fontSize: '32px',
@@ -39,11 +41,19 @@ export class BootScene extends Phaser.Scene {
       )
       .setOrigin(0.5);
 
-    this.input.keyboard?.once('keydown-SPACE', () => {
-      this.scene.start(SCENE_KEYS.Game);
-    });
-    this.input.once('pointerdown', () => {
-      this.scene.start(SCENE_KEYS.Game);
-    });
+    const startGame = (): void => {
+      const audio = getGameAudio();
+      void audio.unlock().then(async () => {
+        try {
+          await audio.load(AUDIO_TEST_SFX_ID);
+        } catch {
+          // Demo still runs if a format fails; GameScene will retry.
+        }
+        this.scene.start(SCENE_KEYS.Game);
+      });
+    };
+
+    this.input.keyboard?.once('keydown-SPACE', startGame);
+    this.input.once('pointerdown', startGame);
   }
 }

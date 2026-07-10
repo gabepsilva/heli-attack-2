@@ -25,9 +25,24 @@ export default tseslint.config(
     },
   },
   {
-    // Config files aren't part of tsconfig's project — lint without type info.
-    files: ['*.config.ts', '*.config.js'],
+    // Root / scripts TS lives in tsconfig.node.json — lint without type info
+    // so we don't require the project service to merge both configs.
+    files: [
+      '*.config.ts',
+      '*.config.js',
+      'scripts/**/*.ts',
+      'scripts/**/*.mjs',
+    ],
     ...tseslint.configs.disableTypeChecked,
+  },
+  {
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        process: 'readonly',
+        console: 'readonly',
+      },
+    },
   },
   prettier,
 );
