@@ -134,16 +134,53 @@ describe('config/cameraFeel (#36)', () => {
     expect(CAMERA_FEEL.vignetteStrengthIdle).toBe(0.06);
     expect(CAMERA_FEEL.vignetteFadeMs).toBe(420);
     expect(CAMERA_FEEL.vignetteHurtColor).toBe(0x6a0000);
-    expect(CAMERA_FEEL.hurtFlashDurationMs).toBe(80);
-    expect(CAMERA_FEEL.hurtFlashRed).toBe(220);
-    expect(CAMERA_FEEL.hurtFlashGreen).toBe(40);
-    expect(CAMERA_FEEL.hurtFlashBlue).toBe(40);
+    // #99: one Flash stage frame @ 30 fps (hitColor for lasthealth > health).
+    expect(CAMERA_FEEL.hurtFlashDurationMs).toBe(33);
+    expect(CAMERA_FEEL.hurtFlashDurationMs).toBe(Math.round(1000 / 30));
+    // Flash hitColor rb=150 red offset → Phaser flash RGB (150, 0, 0).
+    expect(CAMERA_FEEL.hurtFlashRed).toBe(150);
+    expect(CAMERA_FEEL.hurtFlashGreen).toBe(0);
+    expect(CAMERA_FEEL.hurtFlashBlue).toBe(0);
 
     expect(vignetteStrengthOnHurt('medium')).toBe(0.42);
     expect(vignetteStrengthIdle('medium')).toBe(0.06);
-    expect(hurtFlashMs('medium')).toBe(80);
+    expect(hurtFlashMs('medium')).toBe(33);
     expect(vignetteStrengthOnHurt('off')).toBe(0);
     expect(hurtFlashMs('off')).toBe(0);
+  });
+
+  it('hurt flash is a one-frame Flash blink scaled by intensity (#99)', () => {
+    // Medium = exact Flash one-frame duration; must stay a quick blink.
+    expect(hurtFlashMs('medium')).toBe(CAMERA_FEEL.hurtFlashDurationMs);
+    expect(CAMERA_FEEL.hurtFlashDurationMs).toBeLessThan(50);
+    // Former remake value (80 ms) was too long — assert we stayed snappy.
+    expect(CAMERA_FEEL.hurtFlashDurationMs).toBeLessThan(80);
+
+    // Intensity ladder: Off disables; Low/High scale the base blink.
+    expect(hurtFlashMs('off')).toBe(0);
+    expect(hurtFlashMs('low')).toBe(
+      Math.round(CAMERA_FEEL.hurtFlashDurationMs * 0.45),
+    );
+    expect(hurtFlashMs('low')).toBe(15);
+    expect(hurtFlashMs('high')).toBe(
+      Math.round(CAMERA_FEEL.hurtFlashDurationMs * 1.25),
+    );
+    expect(hurtFlashMs('high')).toBe(41);
+
+    // Low/High remain short blinks (not a long fade).
+    expect(hurtFlashMs('low')).toBeGreaterThan(0);
+    expect(hurtFlashMs('low')).toBeLessThan(CAMERA_FEEL.hurtFlashDurationMs);
+    expect(hurtFlashMs('high')).toBeGreaterThan(
+      CAMERA_FEEL.hurtFlashDurationMs,
+    );
+    expect(hurtFlashMs('high')).toBeLessThan(80);
+
+    // Weapon-hit flash timings are unchanged by the hurt-flash retune.
+    expect(CAMERA_FEEL.hitFlashDurationMsMin).toBe(40);
+    expect(CAMERA_FEEL.hitFlashDurationMsMax).toBe(90);
+    expect(CAMERA_FEEL.hitFlashRed).toBe(255);
+    expect(CAMERA_FEEL.hitFlashGreen).toBe(255);
+    expect(CAMERA_FEEL.hitFlashBlue).toBe(245);
   });
 
   it('keeps camera lead subtle and intensity-scaled', () => {

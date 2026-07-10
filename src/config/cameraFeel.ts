@@ -77,11 +77,20 @@ export const CAMERA_FEEL = {
   hitFlashRed: 255,
   hitFlashGreen: 255,
   hitFlashBlue: 245,
-  /** Player-hurt flash (red tint). */
-  hurtFlashDurationMs: 80,
-  hurtFlashRed: 220,
-  hurtFlashGreen: 40,
-  hurtFlashBlue: 40,
+  /**
+   * Player-hurt flash — Flash `heroAction` applies `hitColor` for exactly one
+   * stage frame when `lasthealth > health`, then restores `normalColor`
+   * (`reference/spec/heli2-actionscript.txt`). One frame at the Flash / sim
+   * rate (30 fps) is `1000/30` ms → 33 ms for Phaser `cam.flash`.
+   */
+  hurtFlashDurationMs: 33,
+  /**
+   * Phaser flash RGB approximating Flash `hitColor`
+   * `{ ra:100, rb:150, ga:100, gb:0, ba:100, bb:0 }` (red offset +150).
+   */
+  hurtFlashRed: 150,
+  hurtFlashGreen: 0,
+  hurtFlashBlue: 0,
 
   // --- Damage vignette (Phaser Filters.Vignette) ---
   vignetteRadius: 0.55,
@@ -234,7 +243,11 @@ export function hitFlashMsForDamage(
   return Math.round(ms * scale);
 }
 
-/** Hurt-flash duration (ms) when the player takes damage. */
+/**
+ * Hurt-flash duration (ms) when the player takes damage.
+ * Medium intensity = one Flash frame (`hurtFlashDurationMs`); Off disables;
+ * Low / High scale the blink while keeping it a short snappy flash (#99).
+ */
 export function hurtFlashMs(
   intensity: CameraFeelIntensity = CAMERA_FEEL.defaultIntensity,
 ): number {
