@@ -47,7 +47,15 @@ export const WORLD_DEFAULTS = {
   timeStep: 1,
 } as const;
 
-/** Immutable spec seed for player physics (issue #8 reset target). */
+/**
+ * Immutable spec seed for player physics (issue #8 reset target).
+ *
+ * Horizontal walk values match Flash `heroAction` exactly (issue #94) — do
+ * **not** bump {@link PLAYER_DEFAULTS.walkCap} to 6 for “snappier” feel:
+ * - walkAccel / friction: ±1 per move-frame
+ * - walkCap: ±5 (input accel ceiling)
+ * - hardCap: ±6 (knockback overflow decays 1/frame toward this, not an instant clamp)
+ */
 export const PLAYER_DEFAULTS = {
   health: 100,
   walkAccel: 1,
