@@ -4,7 +4,10 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { getActiveWeaponDef } from '../combat/weaponInventory';
+import {
+  createWeaponInventory,
+  getActiveWeaponDef,
+} from '../combat/weaponInventory';
 import { TOUCH_AIM_RANGE_PX, TOUCH_DEADZONE } from '../config/touch';
 import { SimSession } from '../core/simSession';
 import { applyPlayerIntent, createPlayerIntent } from './playerIntent';
@@ -187,6 +190,7 @@ describe('touchControls sampler (issue #30)', () => {
   it('touch sample → applyPlayerIntent drives a full control set (AC: session via touch)', () => {
     // Acceptance: every gameplay action needed for a run is reachable from touch.
     const session = new SimSession();
+    session.inventory = createWeaponInventory({ testGrant: true });
     const body = session.player.body;
     const intent = sampleTouchIntent(
       sample({
@@ -214,7 +218,7 @@ describe('touchControls sampler (issue #30)', () => {
     expect(session.player.mouse.x).toBe(
       body.x + body.w / 2 + TOUCH_AIM_RANGE_PX,
     );
-    // nextWeapon from MachineGun → AkimboMac10
+    // nextWeapon from MachineGun → AkimboMac10 (with test arsenal)
     expect(getActiveWeaponDef(session.inventory).name).toBe('AkimboMac10');
   });
 });

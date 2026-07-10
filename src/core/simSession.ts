@@ -232,10 +232,10 @@ export class SimSession {
   bulletTimeHeld = false;
 
   /**
-   * Full arsenal inventory (#14) — test-grants pickup ammo so number-key /
-   * next-prev switching is playable before drops (#21).
+   * Run arsenal (#14 / #92) — MachineGun only at start; other slots unlock
+   * when weapon crates grant ammo. `testGrant` stays out of normal play.
    */
-  inventory: WeaponInventory = createWeaponInventory({ testGrant: true });
+  inventory: WeaponInventory = createWeaponInventory();
 
   /** Active gun slot — Flash `this.guns[this.cgun]`. */
   get weapon(): WeaponState {
@@ -264,7 +264,7 @@ export class SimSession {
     this.fireHeld = false;
     this.bulletTimeHeld = false;
     this.bulletTime = createBulletTimeState();
-    this.inventory = createWeaponInventory({ testGrant: true });
+    this.inventory = createWeaponInventory();
     this.heliSpawn = createHeliSpawnState();
     this.helicopters = [];
     ensureHeliPopulation(

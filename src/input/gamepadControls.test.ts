@@ -4,7 +4,10 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { getActiveWeaponDef } from '../combat/weaponInventory';
+import {
+  createWeaponInventory,
+  getActiveWeaponDef,
+} from '../combat/weaponInventory';
 import {
   DEFAULT_GAMEPAD_BINDINGS,
   GAMEPAD_AIM_RANGE_PX,
@@ -308,6 +311,7 @@ describe('gamepadControls sampler (issue #31)', () => {
   it('gamepad sample → applyPlayerIntent drives a full control set (AC: session via controller)', () => {
     // Acceptance: every gameplay action needed for a run is reachable from pad.
     const session = new SimSession();
+    session.inventory = createWeaponInventory({ testGrant: true });
     const body = session.player.body;
     const intent = sampleGamepadIntent(
       sample({
@@ -336,7 +340,7 @@ describe('gamepadControls sampler (issue #31)', () => {
     expect(session.player.mouse.x).toBe(
       body.x + body.w / 2 + GAMEPAD_AIM_RANGE_PX,
     );
-    // nextWeapon from MachineGun → AkimboMac10
+    // nextWeapon from MachineGun → AkimboMac10 (with test arsenal)
     expect(getActiveWeaponDef(session.inventory).name).toBe('AkimboMac10');
   });
 

@@ -1,8 +1,12 @@
 /**
- * Weapon inventory switching — unit tests for issue #14 acceptance criteria.
+ * Weapon inventory switching — unit tests for issue #14 / #92 acceptance criteria.
  *
- * AC: Cycling changes the active weapon
- * AC: Each tracks its own ammo/reload; switching is instant
+ * AC (#14): Cycling changes the active weapon
+ * AC (#14): Each tracks its own ammo/reload; switching is instant
+ * AC (#92): Fresh runs begin with MachineGun only; no pre-granted ammo
+ * AC (#92): Other weapons appear only after a pickup grants ammo
+ * AC (#92): Switch / cycle skips empty slots
+ * AC (#92): testGrant stays out of normal play
  */
 
 import { describe, expect, it } from 'vitest';
@@ -47,7 +51,7 @@ describe('weapon inventory switching (issue #14)', () => {
     expect(getActiveWeaponDef(inv)).toBe(WEAPONS[0]);
   });
 
-  it('test-grants Flash pickup ammo on weapons 1–12', () => {
+  it('test-grants Flash pickup ammo on weapons 1–12 (dev helper only)', () => {
     const inv = createWeaponInventory({ testGrant: true });
     for (const [index, ammo] of Object.entries(WEAPON_PICKUP_AMMO)) {
       const i = Number(index);
@@ -195,5 +199,50 @@ describe('weapon inventory switching (issue #14)', () => {
     expect(selectWeapon(inv, 1)).toBe(true);
     expect(stepWeaponFire(getActiveWeapon(inv), true, WEAPONS[1])).toBe(true);
     expect(totalInventoryShots(inv)).toBe(2);
+  });
+});
+
+describe('start run with only MachineGun (issue #92)', () => {
+  it('default inventory: only MachineGun is owned/selectable; slots 1–12 have 0 ammo', () => {
+    const inv = createWeaponInventory();
+    expect(inv.activeIndex).toBe(0);
+    expect(getActiveWeaponDef(inv).name).toBe('MachineGun');
+    expect(inv.slots[0]!.bullets).toBe(Number.POSITIVE_INFINITY);
+    expect(isWeaponOwned(inv, 0)).toBe(true);
+
+    for (let i = 1; i < PREDATOR_WEAPON_INDEX; i += 1) {
+      expect(inv.slots[i]!.bullets).toBe(0);
+      expect(isWeaponOwned(inv, i)).toBe(false);
+      expect(selectWeapon(inv, i)).toBe(false);
+      expect(selectWeaponByDigitKey(inv, i === 9 ? 0 : i + 1)).toBe(false);
+    }
+    expect(inv.activeIndex).toBe(0);
+  });
+
+  it('pickup grant unlocks a slot with exact Flash ammo; cycle then visits it', () => {
+    const inv = createWeaponInventory();
+    expect(nextWeapon(inv)).toBe(true);
+    expect(inv.activeIndex).toBe(0); // only MG — cycle stays put
+
+    grantWeaponAmmo(inv, 2, WEAPON_PICKUP_AMMO[2]!);
+    expect(inv.slots[2]!.bullets).toBe(14);
+    expect(isWeaponOwned(inv, 2)).toBe(true);
+    expect(selectWeapon(inv, 2)).toBe(true);
+    expect(getActiveWeaponDef(inv).name).toBe('Shotgun');
+
+    expect(nextWeapon(inv)).toBe(true);
+    expect(inv.activeIndex).toBe(0);
+    expect(nextWeapon(inv)).toBe(true);
+    expect(inv.activeIndex).toBe(2);
+  });
+
+  it('testGrant is opt-in and differs from the default fresh-run inventory', () => {
+    const normal = createWeaponInventory();
+    const granted = createWeaponInventory({ testGrant: true });
+    expect(normal.slots[1]!.bullets).toBe(0);
+    expect(granted.slots[1]!.bullets).toBe(WEAPON_PICKUP_AMMO[1]);
+    expect(granted.slots[1]!.bullets).toBe(50);
+    expect(isWeaponOwned(normal, 1)).toBe(false);
+    expect(isWeaponOwned(granted, 1)).toBe(true);
   });
 });
