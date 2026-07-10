@@ -9,7 +9,7 @@ import { PLAYER } from '../config/constants';
  * (`!jump || !jump2`) and `!hjump`, fires `vy = {@link PLAYER.boostVel}` (−32),
  * zeroes the meter, and marks `hjump` so it cannot re-fire until landing.
  *
- * {@link BoostState.charge} is the raw meter (0..150) for a future HUD.
+ * {@link BoostState.charge} is the raw meter (0..150) for the HUD (#23).
  */
 export type BoostState = {
   /** Charge meter frames (0..{@link PLAYER.boostChargeFrames}). */
@@ -40,7 +40,7 @@ export function createBoostState(): BoostState {
   };
 }
 
-/** Charge fraction 0..1 for a future HUD meter. */
+/** Charge fraction 0..1 for the HUD meter (#23). */
 export function boostChargeRatio(state: BoostState): number {
   return state.charge / PLAYER.boostChargeFrames;
 }

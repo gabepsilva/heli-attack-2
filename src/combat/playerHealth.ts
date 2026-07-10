@@ -124,7 +124,7 @@ export function playerHealthFraction(state: PlayerHealthState): number {
   return Math.max(0, Math.min(1, state.health / state.maxHealth));
 }
 
-/** Temporary HUD string until #23 owns the real health bar. */
+/** Health HUD string (also used by {@link buildHudSnapshot} labels). */
 export function formatHealthHud(state: PlayerHealthState): string {
   if (!state.alive) {
     return 'Health: DEAD';
