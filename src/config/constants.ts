@@ -6,6 +6,11 @@
  * live {@link TimeScale} instance. Entity motion must multiply by the live
  * `timeScale.timeStep` — never by `WORLD.timeStep` directly — or bullet-time
  * / TimeRift will silently no-op for that entity.
+ *
+ * {@link WORLD} and {@link PLAYER} are **mutable** so the debug tuning harness
+ * (#8) can edit gravity / jump / walk values at runtime. Spec seeds live in
+ * {@link WORLD_DEFAULTS} / {@link PLAYER_DEFAULTS}; call
+ * {@link resetPhysicsConstants} to restore them.
  */
 
 /** Fixed simulation rate matching the original Flash stage framerate. */
@@ -17,7 +22,8 @@ export const SIM_DT = 1 / SIM_HZ;
 /** Duration of one sim tick in milliseconds (for Phaser delta conversion). */
 export const SIM_DT_MS = 1000 / SIM_HZ;
 
-export const WORLD = {
+/** Immutable spec seed for world physics (issue #8 reset target). */
+export const WORLD_DEFAULTS = {
   tile: 50,
   gravity: 1,
   terminal: 50,
@@ -28,7 +34,8 @@ export const WORLD = {
   timeStep: 1,
 } as const;
 
-export const PLAYER = {
+/** Immutable spec seed for player physics (issue #8 reset target). */
+export const PLAYER_DEFAULTS = {
   health: 100,
   walkAccel: 1,
   walkCap: 5,
@@ -46,10 +53,74 @@ export const PLAYER = {
   duckScale: 2 / 3,
 } as const;
 
+/** Live world constants — numeric fields are mutable for the tuning harness. */
+export type WorldConstants = {
+  tile: number;
+  gravity: number;
+  terminal: number;
+  timeStep: number;
+};
+
+/** Live player constants — numeric fields are mutable for the tuning harness. */
+export type PlayerConstants = {
+  health: number;
+  walkAccel: number;
+  walkCap: number;
+  hardCap: number;
+  friction: number;
+  jumpVel: number;
+  jumpHoldFrames: number;
+  doubleJump: boolean;
+  boostVel: number;
+  boostChargeFrames: number;
+  boxW: number;
+  boxH: number;
+  spriteW: number;
+  spriteH: number;
+  duckScale: number;
+};
+
+/** Live world constants — mutated by the physics tuning harness. */
+export const WORLD: WorldConstants = { ...WORLD_DEFAULTS };
+
+/** Live player constants — mutated by the physics tuning harness. */
+export const PLAYER: PlayerConstants = { ...PLAYER_DEFAULTS };
+
+/** Restore {@link WORLD} and {@link PLAYER} to the exact spec seeds. */
+export function resetPhysicsConstants(): void {
+  Object.assign(WORLD, WORLD_DEFAULTS);
+  Object.assign(PLAYER, PLAYER_DEFAULTS);
+}
+
 export const HELI = {
   hp: 300,
   bulletSpeed: 7,
   aimSpreadDeg: 10,
+} as const;
+
+/**
+ * Held starting gun (machine gun). Size/pivot match Flash `machineGun.png`
+ * (29×16, grip at 0.2×0.5). Attach is the grip offset from the player AABB
+ * top-left (chest mount). Aim turn rate matches Flash `dif/2*timeStep`.
+ */
+export const GUN = {
+  /** Grip offset from player AABB top-left → gun pivot (world, unrotated). */
+  attachX: 5,
+  attachY: 16,
+  /** Machine-gun draw size (Flash `machineGun.png`). */
+  spriteW: 29,
+  spriteH: 16,
+  /** Normalized Phaser origin — grip-biased. */
+  pivotX: 0.2,
+  pivotY: 0.5,
+  /**
+   * Muzzle tip in gun-local space relative to the grip pivot, along +X barrel.
+   * `(1 - pivotX) * spriteW` = distance from grip to the sprite's right edge.
+   */
+  muzzleLocalX: (1 - 0.2) * 29,
+  muzzleLocalY: 0,
+  /** Flash: `gun._rotation += dif / turnDivisor * timeStep`. */
+  turnDivisor: 2,
 } as const;
 
 /** Timed "state" powerups each last this many sim frames (~16.7s @30Hz). */
@@ -74,4 +145,35 @@ export const BULLET_TIME = {
   refillPerKill: 250 / 3,
   minScale: 0.2,
   easePerFrame: 0.1,
+} as const;
+
+/**
+ * Starting arsenal entry (MachineGun). Full table lands with #14–#17;
+ * #10/#11 only need the starter for default projectile speed/damage/reload.
+ */
+export const WEAPONS = [
+  { name: 'MachineGun', reload: 5, speed: 8, damage: 10 },
+] as const;
+
+/**
+ * Pooled projectile defaults (#10). Speed/damage match MachineGun; cull margin
+ * matches Flash ±1 tile past the camera/arena edge. Capacity is fixed — the
+ * pool never grows after construction (zero per-shot allocation).
+ */
+export const BULLET = {
+  /** MachineGun projectile speed (px per sim frame). */
+  defaultSpeed: WEAPONS[0].speed,
+  /** MachineGun damage per hit. */
+  defaultDamage: WEAPONS[0].damage,
+  /**
+   * Max age in sim frames before forced recycle (safety net beyond off-screen
+   * cull). Arena diagonal ≈ 1442 px / speed 8 ≈ 180 frames; pad for slow guns.
+   */
+  maxLifetimeFrames: 300,
+  /** Extra px beyond arena AABB before off-screen cull (Flash ±1 tile). */
+  cullMargin: WORLD.tile,
+  /** Fixed preallocated pool size — never grows on acquire. */
+  poolCapacity: 64,
+  /** Placeholder draw radius (px). */
+  radius: 3,
 } as const;

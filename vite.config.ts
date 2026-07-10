@@ -4,6 +4,7 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   base: './',
   test: {
+    include: ['src/**/*.test.ts', 'scripts/**/*.test.ts'],
     coverage: {
       provider: 'v8',
       // Scenes and the entry point are Phaser-bound (need a browser) and are

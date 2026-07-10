@@ -81,10 +81,17 @@ The original code and assets in `reference/` are **GPL-3.0**. Two implications:
 
 ## Status
 
-🚧 **M0 scaffold in progress** ([#1](https://github.com/gabepsilva/heli-attack-2/issues/1)).
+🚧 **M0 foundation** — scaffold ([#1](https://github.com/gabepsilva/heli-attack-2/issues/1))
+and local tooling ([#2](https://github.com/gabepsilva/heli-attack-2/issues/2)).
 All 42 implementation tickets are tracked as
 [GitHub issues](https://github.com/gabepsilva/heli-attack-2/issues) across
 milestones M0–M11.
+
+## License
+
+Application code in this repository is **MIT** (see [`LICENSE`](LICENSE)).
+Original Flash reference material under `reference/` remains **GPL-3.0** and is
+not shipped in production builds — see the licensing note above.
 
 ## Getting started
 
@@ -93,7 +100,7 @@ npm install
 npm run dev       # Vite dev server with HMR (http://localhost:5173)
 npm run build     # typecheck + production web build → dist/
 npm run preview   # serve dist/ locally (http://localhost:4173)
-npm run typecheck # strict TypeScript check
+npm run typecheck # strict TS check (src + vite.config.ts)
 npm run lint      # ESLint (type-aware)
 npm run format    # Prettier --write (format:check to verify only)
 npm test          # Vitest (test:watch for watch mode)
@@ -103,6 +110,11 @@ npm run audio:transcode  # WAV → public/audio (.ogg/.webm/.mp3); needs ffmpeg
 Web-ready SFX live in `public/audio/` (committed). Source WAVs stay gitignored under
 `reference/ha2-source/wav/` — pull from [iopred/heliattack](https://github.com/iopred/heliattack)
 `ha2/assets/helisounds` when regenerating, then run `npm run audio:transcode`.
+
+`npm install` points git at [`.githooks/`](.githooks/) when `core.hooksPath` is
+unset so commits run `lint` + `typecheck` locally (optional quality gate from #2).
+Set `HELI_SKIP_GIT_HOOKS=1` to opt out; an existing custom `core.hooksPath` is
+left unchanged.
 
 CI runs typecheck, lint, format check, tests, and build on every PR.
 
