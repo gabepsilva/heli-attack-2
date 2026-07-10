@@ -3,7 +3,7 @@
  *
  * Gameplay reads this abstract intent (move / aim / fire / jump / duck /
  * boost / bullet-time / weapon switch), never raw keyboard or pointer APIs.
- * Input sources (keyboard+mouse now; touch #30 and gamepad #31 later) sample
+ * Input sources (keyboard+mouse, touch #30; gamepad #31 later) sample
  * hardware into {@link PlayerIntent}; {@link applyPlayerIntent} copies it onto
  * the sim session each render frame.
  *
