@@ -29,7 +29,7 @@ export type Bullet = {
   /** Accumulated sim age (increments by `timeStep` each tick). */
   age: number;
   maxLifetime: number;
-  /** Motion / hit model (#16 specials; default ballistic). */
+  /** Motion / hit model (#16/#17 specials; default ballistic). */
   behavior: BulletBehavior;
   /**
    * FireMines planted counter (Flash `active`). 0 = still lobbing;
@@ -40,6 +40,10 @@ export type Bullet = {
   stepAccum: number;
   /** RailGun: hitscan already applied this beam (Flash `anim == 1`). */
   railFired: boolean;
+  /** GrappleCannon: hook has latched (Flash `grappleAttached`). */
+  grappleAttached: boolean;
+  /** GrappleCannon: frames spent latched (auto-release after max). */
+  grappleAttachedAge: number;
 };
 
 /** Axis-aligned cull region in arena/world space. */
@@ -68,6 +72,8 @@ export function createInactiveBullet(index: number): Bullet {
     mineActive: 0,
     stepAccum: 0,
     railFired: false,
+    grappleAttached: false,
+    grappleAttachedAge: 0,
   };
 }
 
@@ -138,6 +144,8 @@ export function activateBullet(
   bullet.mineActive = 0;
   bullet.stepAccum = 0;
   bullet.railFired = false;
+  bullet.grappleAttached = false;
+  bullet.grappleAttachedAge = 0;
 }
 
 /**

@@ -233,3 +233,27 @@ export const SPECIAL_PROJECTILE = {
    */
   railLingerFrames: 3,
 } as const;
+
+/**
+ * Heavy / signature weapon tunables (#17) — Flash `aBombFrame` / `grappleFrame`
+ * / `grappleAttached` / ShoulderCannon→`railFrame`.
+ */
+export const HEAVY_PROJECTILE = {
+  /**
+   * A-Bomb blast radius in px (Flash `dist<300` knockback + huge boom
+   * `_xscale = 800`). Helis inside this radius take full bomb damage.
+   */
+  abombBlastRadius: 300,
+  /** Peak player knockback X at ground zero (Flash `mult*24`). */
+  abombKnockbackX: 24,
+  /** Peak player knockback Y at ground zero (Flash `mult*64`). */
+  abombKnockbackY: 64,
+  /**
+   * Grapple reel acceleration toward the hook (px/sim-frame²). Flash draws a
+   * rope but the decompile omits an explicit pull — this is the port's
+   * mobility tool so the AC "grapple demonstrably moves the player" holds.
+   */
+  grapplePullAccel: 8,
+  /** Max frames the hook stays latched before auto-release. */
+  grappleAttachedFrames: 90,
+} as const;
