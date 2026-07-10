@@ -139,8 +139,7 @@ describe('config/constants (spec seed)', () => {
     });
     expect(HEALTH_PICKUP).toEqual({ amount: 20, cap: 100, firstThreshold: 15 });
     expect(POWERUP_DROP).toEqual({
-      chanceRange: 100,
-      chanceModulus: 32,
+      killsPerCrate: 3,
       nonHealthFrameCount: 13,
       crateW: 33,
       crateH: 32,

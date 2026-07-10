@@ -1,11 +1,14 @@
 /**
- * Powerup drop & pickup system — issue #21.
+ * Powerup drop & pickup system — issues #21 / #91.
  *
- * On heli kill (Flash `rthelis++`):
+ * On heli kill (Flash `rthelis++` / `helis++`):
+ * - Every {@link POWERUP_DROP.killsPerCrate} kills, always spawn a crate
+ *   (Flash `if (helis == 3)`).
  * - Health crate when `rthelis >= nextHealth` (`nextHealth` starts at 15, then
- *   doubles — {@link HEALTH_PICKUP.firstThreshold}).
- * - Otherwise weapon/ammo (or state-powerup frame) with
- *   `random(100) % 32 == 0` ≈ 3–4% chance ({@link POWERUP_DROP}).
+ *   doubles — {@link HEALTH_PICKUP.firstThreshold}); health takes priority on
+ *   the shared every-3-kills channel (#93).
+ * - Otherwise weapon/ammo (or state-powerup frame) — always, not random-gated
+ *   (#91). Pickup ammo is finite per {@link WEAPON_PICKUP_AMMO}.
  *
  * Crates fall on parachutes and are collected on player AABB overlap.
  * Timed state *effects* live in {@link ./powerupEffects} (#22) — this module
@@ -94,32 +97,34 @@ function randomInt(rng: SpawnRng, maxExclusive: number): number {
 }
 
 /**
- * Flash weapon/state drop gate: `random(100) % 32 == 0`.
- * True for rolls 0, 32, 64, 96 → 4/100 = 4% (spec ≈ 3%).
+ * True when this cumulative kill count is on the Flash every-N crate cadence
+ * (`helis == killsPerCrate` after increment).
  */
-export function rollsWeaponDrop(
-  roll: number,
-  modulus: number = POWERUP_DROP.chanceModulus,
+export function isCrateKill(
+  kills: number,
+  every: number = POWERUP_DROP.killsPerCrate,
 ): boolean {
-  return roll % modulus === 0;
+  return kills > 0 && every > 0 && kills % every === 0;
 }
 
 /**
  * Decide whether this kill (already counted in `kills`) spawns a crate.
  * Mutates `dropState.nextHealth` when a health threshold is crossed.
+ *
+ * Flash: only the every-3rd kill attaches a crate; health wins when
+ * `rthelis >= nextHealth`, else a weapon/state frame always drops.
  */
 export function decideKillDrop(
   kills: number,
   dropState: PowerupDropState,
   rng: SpawnRng,
 ): KillDropDecision {
+  if (!isCrateKill(kills)) {
+    return null;
+  }
   if (kills >= dropState.nextHealth) {
     dropState.nextHealth *= 2;
     return { kind: 'health' };
-  }
-  const roll = randomInt(rng, POWERUP_DROP.chanceRange);
-  if (!rollsWeaponDrop(roll)) {
-    return null;
   }
   // Flash: `gotoAndStop(random(totalframes-1)+2)` → frames 2..14.
   const frame = randomInt(rng, POWERUP_DROP.nonHealthFrameCount) + 2;
@@ -324,14 +329,13 @@ export function collectPowerups(
   return results;
 }
 
-/** Spec sanity — health threshold / chance / state ids match portable config. */
+/** Spec sanity — health threshold / every-3 cadence / state ids match config. */
 export function powerupDropMatchesSpec(): boolean {
   return (
     HEALTH_PICKUP.firstThreshold === 15 &&
     HEALTH_PICKUP.amount === 20 &&
     HEALTH_PICKUP.cap === 100 &&
-    POWERUP_DROP.chanceRange === 100 &&
-    POWERUP_DROP.chanceModulus === 32 &&
+    POWERUP_DROP.killsPerCrate === 3 &&
     POWERUP_FRAMES === 500 &&
     POWERUP.TriDamage === 1 &&
     POWERUP.Jetpack === 5
