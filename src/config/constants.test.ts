@@ -16,6 +16,7 @@ import {
   POWERUP_EFFECTS,
   POWERUP_FRAMES,
   SCORE,
+  HIGH_SCORES,
   SIM_DT,
   SIM_DT_MS,
   SIM_HZ,
@@ -115,6 +116,10 @@ describe('config/constants (spec seed)', () => {
       firstLevelScore: 10000,
     });
     expect(SCORE).toEqual({ displayScale: 100 });
+    expect(HIGH_SCORES).toEqual({
+      storageKey: 'heli-attack-2.highScores',
+      maxEntries: 10,
+    });
     expect(GAME_FLOW).toEqual({
       gameOverDelayFrames: 200,
       pauseKeyCode: 80,

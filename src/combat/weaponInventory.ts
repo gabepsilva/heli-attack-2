@@ -222,3 +222,12 @@ export function fallbackIfActiveEmpty(inv: WeaponInventory): void {
   active.reloadTime = Number.POSITIVE_INFINITY;
   inv.activeIndex = 0;
 }
+
+/** Sum of per-gun `shots` counters — run total for accuracy (#25). */
+export function totalInventoryShots(inv: Readonly<WeaponInventory>): number {
+  let total = 0;
+  for (const slot of inv.slots) {
+    total += slot.shots;
+  }
+  return total;
+}

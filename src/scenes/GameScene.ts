@@ -309,6 +309,9 @@ export class GameScene extends Phaser.Scene {
           if (tickDeath(this.flow)) {
             this.scene.start(SCENE_KEYS.GameOver, {
               finalScore: this.flow.finalScore,
+              helisKilled: this.session.heliSpawn.kills,
+              shots: this.session.runShots,
+              hits: this.session.runHits,
             });
             return;
           }

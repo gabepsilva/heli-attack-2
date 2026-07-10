@@ -10,8 +10,10 @@ import {
   WEAPONS,
   WORLD,
 } from '../config/constants';
+import { SHOTGUN_SPREAD_DEG } from '../combat/gunFire';
 import { nextWeapon, selectWeaponByDigitKey } from '../combat/weaponInventory';
 import { PLAYER_SPAWN } from '../player/player';
+import { accuracyPercent } from './highScores';
 import { DEBUG_BOX_SPAWN, SimSession } from './simSession';
 
 describe('SimSession', () => {
@@ -687,5 +689,74 @@ describe('SimSession', () => {
     const x0 = session.player.body.x;
     session.update(1000 / 30);
     expect(session.player.body.x - x0).toBeCloseTo(PLAYER.walkCap * 1, 10);
+  });
+
+  it('accuracy counts projectiles spawned and first contact only (#25 Lead #78)', () => {
+    const session = new SimSession();
+    session.player.mouse = {
+      x: session.player.gunPivot.x + 400,
+      y: session.player.gunPivot.y,
+    };
+    for (let i = 0; i < 60; i += 1) {
+      session.update(1000 / 30);
+    }
+
+    // Shotgun: 5 pellets = 5 runShots (not 1 trigger pull).
+    expect(selectWeaponByDigitKey(session.inventory, 3)).toBe(true);
+    session.bullets.reset();
+    session.runShots = 0;
+    session.runHits = 0;
+    session.fireHeld = true;
+    session.weapon.reloadTime = Number.POSITIVE_INFINITY;
+    session.update(1000 / 30);
+    expect(session.runShots).toBe(5);
+    expect(SHOTGUN_SPREAD_DEG).toHaveLength(5);
+
+    // Place a heli on the muzzle line and step until pellets connect.
+    const heli = session.helicopters[0]!;
+    heli.x = session.player.muzzle.x + 40;
+    heli.y = session.player.muzzle.y;
+    heli.health = HELI.hp;
+    heli.active = true;
+
+    for (let i = 0; i < 30; i += 1) {
+      session.update(1000 / 30);
+    }
+    // Hits ≤ shots even when every pellet lands (and score still accrues).
+    expect(session.runHits).toBeGreaterThan(0);
+    expect(session.runHits).toBeLessThanOrEqual(session.runShots);
+    expect(
+      accuracyPercent(session.runHits, session.runShots),
+    ).toBeLessThanOrEqual(100);
+
+    // Flame DoT: many damage ticks, but only one accuracy hit per projectile.
+    session.reset();
+    session.player.mouse = {
+      x: session.player.gunPivot.x + 400,
+      y: session.player.gunPivot.y,
+    };
+    for (let i = 0; i < 60; i += 1) {
+      session.update(1000 / 30);
+    }
+    expect(selectWeaponByDigitKey(session.inventory, 9)).toBe(true);
+    const flameHeli = session.helicopters[0]!;
+    flameHeli.x = session.player.muzzle.x + 30;
+    flameHeli.y = session.player.muzzle.y;
+    flameHeli.health = HELI.hp;
+    flameHeli.active = true;
+    session.bullets.reset();
+    session.runShots = 0;
+    session.runHits = 0;
+    session.fireHeld = true;
+    session.weapon.reloadTime = Number.POSITIVE_INFINITY;
+    for (let i = 0; i < 20; i += 1) {
+      session.update(1000 / 30);
+    }
+    expect(session.runShots).toBeGreaterThan(0);
+    expect(session.runHits).toBeLessThanOrEqual(session.runShots);
+    expect(session.score.value).toBeGreaterThan(0); // DoT still scores every tick
+    expect(
+      accuracyPercent(session.runHits, session.runShots),
+    ).toBeLessThanOrEqual(100);
   });
 });

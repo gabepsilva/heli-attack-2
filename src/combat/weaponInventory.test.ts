@@ -24,6 +24,7 @@ import {
   prevWeapon,
   selectWeapon,
   selectWeaponByDigitKey,
+  totalInventoryShots,
   weaponIndexFromDigitKey,
 } from './weaponInventory';
 
@@ -185,5 +186,14 @@ describe('weapon inventory switching (issue #14)', () => {
     expect(inv.activeIndex).toBe(0);
     expect(shotgun.reloadTime).toBe(Number.POSITIVE_INFINITY);
     expect(getActiveWeaponDef(inv).name).toBe('MachineGun');
+  });
+
+  it('sums per-gun shots for run accuracy (#25)', () => {
+    const inv = createWeaponInventory({ testGrant: true });
+    expect(totalInventoryShots(inv)).toBe(0);
+    expect(stepWeaponFire(getActiveWeapon(inv), true, WEAPONS[0])).toBe(true);
+    expect(selectWeapon(inv, 1)).toBe(true);
+    expect(stepWeaponFire(getActiveWeapon(inv), true, WEAPONS[1])).toBe(true);
+    expect(totalInventoryShots(inv)).toBe(2);
   });
 });

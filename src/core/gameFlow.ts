@@ -43,6 +43,12 @@ export type GameFlowState = {
 /** Data handed to GameOverScene via `scene.start(key, data)`. */
 export type GameOverSceneData = {
   finalScore: number;
+  /** Helis killed this run (Flash `rthelis`) — optional stats (#25). */
+  helisKilled?: number;
+  /** Shots fired this run (Flash `shots`). */
+  shots?: number;
+  /** Hits landed this run (Flash `hits`). */
+  hits?: number;
 };
 
 export function createGameFlowState(
