@@ -106,8 +106,10 @@ npm run format    # Prettier --write (format:check to verify only)
 npm test          # Vitest (test:watch for watch mode)
 ```
 
-`npm install` also points git at [`.githooks/`](.githooks/) so commits run
-`lint` + `typecheck` locally (optional quality gate from #2).
+`npm install` points git at [`.githooks/`](.githooks/) when `core.hooksPath` is
+unset so commits run `lint` + `typecheck` locally (optional quality gate from #2).
+Set `HELI_SKIP_GIT_HOOKS=1` to opt out; an existing custom `core.hooksPath` is
+left unchanged.
 
 CI runs typecheck, lint, format check, tests, and build on every PR.
 
