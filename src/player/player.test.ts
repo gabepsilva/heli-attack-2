@@ -214,6 +214,40 @@ describe('Player (gravity, jump, duck — issue #6)', () => {
     expect(player.jumpState.jump2).toBe(false);
   });
 
+  it('stays ducked under a ceiling when releasing duck with no headroom', () => {
+    const map = createTestArena();
+    const player = new Player(500, 4 * WORLD.tile);
+    player.body.onGround = false;
+    player.body.vy = -20;
+    // Duck while rising so the hitbox is already short when we bonk the platform.
+    player.input = { left: false, right: false, jump: false, duck: true };
+
+    let hitCeiling = false;
+    for (let i = 0; i < 20; i += 1) {
+      player.step(map, 1);
+      if (player.body.onCeiling) {
+        hitCeiling = true;
+        break;
+      }
+    }
+    expect(hitCeiling).toBe(true);
+    expect(player.ducking).toBe(true);
+    expect(player.body.h).toBeCloseTo(DUCK_SIZE.h, 10);
+
+    const pinnedY = player.body.y;
+    player.input = { left: false, right: false, jump: false, duck: false };
+    player.step(map, 1);
+    expect(player.ducking).toBe(true);
+    expect(player.body.h).toBeCloseTo(DUCK_SIZE.h, 10);
+    // Y may nudge by gravity this frame; must not stand up into the ceiling.
+    expect(player.body.y).toBeGreaterThanOrEqual(pinnedY - 1);
+
+    // Head must not embed in the floating platform (row 3).
+    const headRow = Math.floor(player.body.y / WORLD.tile);
+    expect(headRow).toBeGreaterThan(3);
+    expect(player.body.h).not.toBe(STAND_SIZE.h);
+  });
+
   it('does not burn double-jump after repeated duck taps on flat ground', () => {
     const map = createTestArena();
     const player = new Player(100, 200);

@@ -76,7 +76,12 @@ export class Player {
    * reads jump one frame earlier than the original (negligible).
    */
   step(map: TileMap, timeStep: number): void {
-    this.ducking = applyDuckHitbox(this.body, this.input.duck, this.ducking);
+    this.ducking = applyDuckHitbox(
+      this.body,
+      this.input.duck,
+      this.ducking,
+      map,
+    );
 
     this.body.vx = applyHorizontalWalk(this.body.vx, {
       left: this.input.left,

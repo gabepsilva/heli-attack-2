@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { PLAYER } from '../config/constants';
-import { DUCK_SIZE, STAND_SIZE, applyDuckHitbox } from './duckPhysics';
+import { createTileMap } from '../world/tileMap';
+import { createTestArena } from '../world/testArena';
+import {
+  DUCK_SIZE,
+  STAND_SIZE,
+  applyDuckHitbox,
+  hasStandingHeadroom,
+} from './duckPhysics';
+
+/** Open arena — standing always has headroom. */
+const openMap = createTestArena();
 
 describe('duckPhysics (spec §Duck)', () => {
   it('locks duckScale and derived sizes to exact spec values', () => {
@@ -18,7 +28,7 @@ describe('duckPhysics (spec §Duck)', () => {
     const feet = body.y + body.h;
     const centerX = body.x + body.w / 2;
 
-    const ducked = applyDuckHitbox(body, true, false);
+    const ducked = applyDuckHitbox(body, true, false, openMap);
 
     expect(ducked).toBe(true);
     expect(body.w).toBeCloseTo(DUCK_SIZE.w, 10);
@@ -31,7 +41,7 @@ describe('duckPhysics (spec §Duck)', () => {
     const body = { x: 100, y: 200, w: DUCK_SIZE.w, h: DUCK_SIZE.h };
     const feetBefore = body.y + body.h;
 
-    const ducked = applyDuckHitbox(body, false, true);
+    const ducked = applyDuckHitbox(body, false, true, openMap);
 
     expect(ducked).toBe(false);
     expect(body.w).toBe(STAND_SIZE.w);
@@ -39,14 +49,29 @@ describe('duckPhysics (spec §Duck)', () => {
     expect(body.y + body.h).toBeCloseTo(feetBefore, 10);
   });
 
-  it('restores standing size in air without the grounded quirk nudge', () => {
-    const body = { x: 100, y: 200, w: DUCK_SIZE.w, h: DUCK_SIZE.h };
-    const feetBefore = body.y + body.h;
+  it('stays ducked when overhead tiles block the standing box', () => {
+    // Low ceiling one tile above the ducked head (row 3 solid, body top at y=150).
+    const rows = Array.from({ length: 8 }, (_, y) =>
+      Array.from({ length: 8 }, () => (y === 3 ? 1 : 0)),
+    );
+    const map = createTileMap(rows);
+    const body = { x: 195, y: 150, w: DUCK_SIZE.w, h: DUCK_SIZE.h };
+    expect(hasStandingHeadroom(map, body)).toBe(false);
 
-    applyDuckHitbox(body, false, true);
+    const ducked = applyDuckHitbox(body, false, true, map);
 
-    expect(body.w).toBe(STAND_SIZE.w);
+    expect(ducked).toBe(true);
+    expect(body.w).toBeCloseTo(DUCK_SIZE.w, 10);
+    expect(body.h).toBeCloseTo(DUCK_SIZE.h, 10);
+  });
+
+  it('reports headroom on open ground in the test arena', () => {
+    const body = { x: 100, y: 557, w: DUCK_SIZE.w, h: DUCK_SIZE.h };
+    expect(hasStandingHeadroom(openMap, body)).toBe(true);
+
+    const ducked = applyDuckHitbox(body, false, true, openMap);
+
+    expect(ducked).toBe(false);
     expect(body.h).toBe(STAND_SIZE.h);
-    expect(body.y + body.h).toBeCloseTo(feetBefore, 10);
   });
 });
