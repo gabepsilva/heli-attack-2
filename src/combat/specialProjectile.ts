@@ -294,7 +294,7 @@ export function stepMineBullet(
 
 /**
  * Flash `seekerFrame`: steer toward the nearest heli by `dif/15`, then
- * hit-and-recycle like a normal rocket.
+ * hit-and-recycle like a normal rocket (including solid-tile cull).
  */
 export function stepSeekerBullet(
   bullet: Bullet,
@@ -302,6 +302,7 @@ export function stepSeekerBullet(
   timeStep: number,
   bounds: CullBounds,
   onHit?: (event: HeliHitEvent) => void,
+  map?: TileMap,
 ): boolean {
   const target = findNearestHeli(bullet.x, bullet.y, helis);
   if (target !== null) {
@@ -329,6 +330,11 @@ export function stepSeekerBullet(
       applyDamage(heli, bullet.damage, onHit, bullet);
       return true;
     }
+  }
+
+  // Flash seekerFrame: `map[y][x][0] != 0` recycles like a rocket.
+  if (map && isSolidAtWorld(map, bullet.x, bullet.y)) {
+    return true;
   }
 
   if (bullet.age >= bullet.maxLifetime) {
@@ -583,7 +589,7 @@ export function stepSpecialBullet(
     case 'rail':
       return stepRailBullet(bullet, helis, timeStep, bounds, onHit);
     case 'seeker':
-      return stepSeekerBullet(bullet, helis, timeStep, bounds, onHit);
+      return stepSeekerBullet(bullet, helis, timeStep, bounds, onHit, map);
     case 'abomb':
       return stepAbombBullet(
         bullet,
@@ -609,7 +615,7 @@ export function stepSpecialBullet(
       break;
   }
 
-  // Ballistic fallback (same as prior stepBulletWithHit motion+hit).
+  // Ballistic fallback — Flash `bulletFrame`: move, heli hit, solid / OOB cull.
   bullet.x += bullet.vx * timeStep;
   bullet.y += bullet.vy * timeStep;
   bullet.age += timeStep;
@@ -623,6 +629,11 @@ export function stepSpecialBullet(
       applyDamage(heli, bullet.damage, onHit, bullet);
       return true;
     }
+  }
+
+  // Flash: `map[floor(y/tile)][floor(x/tile)][0] != 0` → remove (no floor pierce).
+  if (map && isSolidAtWorld(map, bullet.x, bullet.y)) {
+    return true;
   }
 
   if (bullet.age >= bullet.maxLifetime) {
