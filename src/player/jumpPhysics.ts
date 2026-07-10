@@ -5,8 +5,9 @@ import { PLAYER } from '../config/constants';
  *
  * Variable height: while the jump key is held and {@link JumpState.up} > 0,
  * each frame forces `vy = min(vy, jumpVel)` (−8) and decrements `up`.
- * Releasing the key refills `up` to {@link PLAYER.jumpHoldFrames} when grounded
- * or when a double-jump is still available (`!jump2 && !duck`).
+ * Releasing the key refills `up` to {@link PLAYER.jumpHoldFrames} when not
+ * ducking and a jump is still available (`!jump2`, or grounded with `!jump`).
+ * The hold window and double-jump press are blocked entirely while ducking.
  */
 export type JumpState = {
   /** True after leaving the ground (jump, fall, or ceiling bonk). */
@@ -59,14 +60,13 @@ export function applyJumpInput(
   input: JumpInput,
 ): number {
   if (input.jump) {
-    if (state.up > 0) {
+    // Spec §Duck: no jump clamp, flag consume, or hold-window spend while ducked.
+    if (!input.duck && state.up > 0) {
       vy = Math.min(vy, PLAYER.jumpVel);
       if (!state.upHeld) {
         if (!state.jump) {
           state.jump = true;
         } else if (!state.jump2) {
-          // Double-jump — original also gates refill on !duck; the press
-          // itself only checks !jump2 (duck blocks via up staying 0).
           state.jump2 = true;
         }
       }
@@ -74,8 +74,8 @@ export function applyJumpInput(
     }
     state.upHeld = true;
   } else {
-    // Refill hold window when grounded, or when double-jump is still open.
-    if (!state.jump || (!state.jump2 && !input.duck)) {
+    // Refill when not ducking and at least one jump remains.
+    if (!input.duck && (!state.jump || !state.jump2)) {
       state.up = PLAYER.jumpHoldFrames;
     } else {
       state.up = 0;

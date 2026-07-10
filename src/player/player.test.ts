@@ -292,26 +292,44 @@ describe('Player (gravity, jump, duck — issue #6)', () => {
     const player = new Player(100, 200);
     settle(player);
 
-    // First jump without duck.
-    for (let i = 0; i < 2; i += 1) {
+    // First jump — full 6-frame hold, then release (up refills to 6).
+    for (let i = 0; i < 6; i += 1) {
       player.input = { left: false, right: false, jump: true, duck: false };
       player.step(map, 1);
     }
     expect(player.jumpState.jump).toBe(true);
+    expect(player.jumpState.jump2).toBe(false);
 
-    // Release while ducking — hold window must NOT refill (!jump2 && !duck fails).
-    player.input = { left: false, right: false, jump: false, duck: true };
+    player.input = { left: false, right: false, jump: false, duck: false };
     player.step(map, 1);
-    expect(player.ducking).toBe(true);
-    expect(player.jumpState.up).toBe(0);
+    expect(player.jumpState.up).toBe(PLAYER.jumpHoldFrames);
 
-    // Press jump while ducked — up is 0 so no clamp / no jump2.
+    // Hold duck and press jump — must not double-jump or clamp vy.
     const vyBefore = player.body.vy;
     player.input = { left: false, right: false, jump: true, duck: true };
     player.step(map, 1);
+    expect(player.ducking).toBe(true);
     expect(player.jumpState.jump2).toBe(false);
-    // Only gravity acted (no −8 clamp).
     expect(player.body.vy).toBe(vyBefore + WORLD.gravity);
+  });
+
+  it('holding duck blocks starting a jump from the ground', () => {
+    const map = createTestArena();
+    const player = new Player(100, 200);
+    settle(player);
+    expect(player.body.onGround).toBe(true);
+    const feetBefore = player.body.y + player.body.h;
+
+    for (let i = 0; i < 6; i += 1) {
+      player.input = { left: false, right: false, jump: true, duck: true };
+      player.step(map, 1);
+    }
+
+    expect(player.ducking).toBe(true);
+    expect(player.body.onGround).toBe(true);
+    expect(player.body.y + player.body.h).toBeCloseTo(feetBefore, 10);
+    expect(player.jumpState.jump).toBe(false);
+    expect(player.jumpState.jump2).toBe(false);
   });
 
   it('ramps vx to the walk cap under right input, then decays to 0 on release', () => {

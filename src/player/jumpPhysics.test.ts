@@ -55,8 +55,7 @@ describe('jumpPhysics (spec §Player physics — jump)', () => {
     expect(vy).toBe(-8);
     expect(state.up).toBe(4);
 
-    // Release — refill is blocked while airborne with jump2 still open? No:
-    // !jump || (!jump2 && !duck) → jump is true, jump2 false, duck false → refill.
+    // Release — refill because !duck and double-jump still open.
     vy = applyJumpInput(vy + 1, state, { jump: false, duck: false });
     expect(state.up).toBe(PLAYER.jumpHoldFrames);
     expect(state.upHeld).toBe(false);
@@ -93,6 +92,39 @@ describe('jumpPhysics (spec §Player physics — jump)', () => {
 
     applyJumpInput(-4, state, { jump: false, duck: true });
     expect(state.up).toBe(0);
+  });
+
+  it('blocks hold-window refill while ducking on the ground', () => {
+    const state = createJumpState();
+    state.jump = false;
+    state.jump2 = false;
+    state.up = 0;
+
+    applyJumpInput(0, state, { jump: false, duck: true });
+    expect(state.up).toBe(0);
+  });
+
+  it('blocks jump press while ducking on the ground (no vy clamp, no jump flag)', () => {
+    const state = createJumpState();
+    expect(state.up).toBe(PLAYER.jumpHoldFrames);
+
+    const vy = applyJumpInput(0, state, { jump: true, duck: true });
+    expect(vy).toBe(0);
+    expect(state.jump).toBe(false);
+    expect(state.jump2).toBe(false);
+    expect(state.up).toBe(PLAYER.jumpHoldFrames);
+  });
+
+  it('blocks double-jump press while ducking even when up was refilled before duck', () => {
+    const state = createJumpState();
+    state.jump = true;
+    state.jump2 = false;
+    state.up = PLAYER.jumpHoldFrames;
+
+    const vy = applyJumpInput(-2, state, { jump: true, duck: true });
+    expect(vy).toBe(-2);
+    expect(state.jump2).toBe(false);
+    expect(state.up).toBe(PLAYER.jumpHoldFrames);
   });
 
   it('consumes jump2 on the second press while airborne', () => {
