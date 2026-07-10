@@ -124,7 +124,13 @@ describe('createLevel1 — original HA2 map1 layout (#41)', () => {
     expect(player.body.onGround).toBe(true);
     expect(player.body.y + player.body.h).toBe(14 * WORLD.tile - 1);
 
-    player.input = { left: false, right: true, jump: false, duck: false };
+    player.input = {
+      left: false,
+      right: true,
+      jump: false,
+      duck: false,
+      boost: false,
+    };
     const ramp: number[] = [];
     for (let i = 0; i < 8; i += 1) {
       player.step(map, 1);
