@@ -15,6 +15,7 @@ import {
 import {
   BULLET,
   ENEMY_BULLET,
+  GAME_FLOW,
   GUN,
   HELI_LOOK_TINT,
   PLAYER,
@@ -103,9 +104,15 @@ export class GameScene extends Phaser.Scene {
   private audioHud: AudioHud | null = null;
   private boostKey!: Phaser.Input.Keyboard.Key;
   private bulletTimeKey!: Phaser.Input.Keyboard.Key;
+  private pauseKey!: Phaser.Input.Keyboard.Key;
+  private escKey!: Phaser.Input.Keyboard.Key;
   private overlay: DebugOverlay | null = null;
   private arenaOriginX = 0;
   private arenaOriginY = 0;
+
+  private readonly onResume = (): void => {
+    resumeGame(this.flow);
+  };
 
   constructor() {
     super({ key: SCENE_KEYS.Game });
@@ -204,10 +211,15 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-E', () => {
       nextWeapon(this.session.inventory, this.session.playerPowerup.powerupOn);
     });
-    this.input.keyboard?.on('keydown-P', () => {
+    // Flash pauseKey (80 / P) via GAME_FLOW — addKey avoids OS key-repeat strobe.
+    this.pauseKey = this.input.keyboard!.addKey(GAME_FLOW.pauseKeyCode);
+    this.pauseKey.on('down', () => {
       this.enterPause();
     });
-    this.input.keyboard?.on('keydown-ESC', () => {
+    this.escKey = this.input.keyboard!.addKey(
+      Phaser.Input.Keyboard.KeyCodes.ESC,
+    );
+    this.escKey.on('down', () => {
       this.enterPause();
     });
     // Backtick / tilde key — toggle overlay for clean demos (issue #8).
@@ -216,12 +228,12 @@ export class GameScene extends Phaser.Scene {
     });
 
     // Resume may re-enter without a full create() — keep flow in sync.
-    this.events.on(Phaser.Scenes.Events.RESUME, () => {
-      resumeGame(this.flow);
-    });
+    this.events.on(Phaser.Scenes.Events.RESUME, this.onResume);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.events.off(Phaser.Scenes.Events.RESUME);
+      this.events.off(Phaser.Scenes.Events.RESUME, this.onResume);
+      this.pauseKey?.off('down');
+      this.escKey?.off('down');
       this.audioHud?.destroy();
       this.audioHud = null;
       this.overlay?.destroy();
@@ -280,6 +292,7 @@ export class GameScene extends Phaser.Scene {
       !pointer.rightButtonDown() &&
       !this.session.debugBox.dragging;
 
+    const wasDying = this.flow.phase === 'dying';
     const ticksBefore = this.session.simTickCount;
     this.session.update(delta);
     const simSteps = this.session.simTickCount - ticksBefore;
@@ -289,7 +302,10 @@ export class GameScene extends Phaser.Scene {
         beginDeath(this.flow, this.session.score.value);
       }
       if (this.flow.phase === 'dying') {
-        for (let i = 0; i < simSteps; i += 1) {
+        // Count only steps while already dead; on the death frame count one
+        // (sim steps before the killing blow were still alive).
+        const deathTicks = wasDying ? simSteps : simSteps > 0 ? 1 : 0;
+        for (let i = 0; i < deathTicks; i += 1) {
           if (tickDeath(this.flow)) {
             this.scene.start(SCENE_KEYS.GameOver, {
               finalScore: this.flow.finalScore,

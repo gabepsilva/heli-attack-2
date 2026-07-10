@@ -6,11 +6,19 @@
  *
  * Flash references:
  *   gameover++ while dead; stats when `gameover > 200`
+ *   (Flash also early-outs when enemyArray/entityArray are empty — not ported;
+ *   the treadmill keeps helis spawning, so the 200-frame path is the real one.)
  *   temp.score = Math.floor(score)*100
  *   pauseKey toggles onEnterFrame; menu via gotoAndStop("menu")
+ *
+ * Shipped scene wiring (do not invent parallel helpers for these):
+ *   Menu → Game: scene.start(Game) → create() → startPlaying + session.reset
+ *   Pause resume: scene.resume(Game) → RESUME → resumeGame
+ *   Pause/GameOver → Menu: scene.start(Menu) (next Game create() re-seeds flow)
+ *   GameOver restart: scene.start(Game) → create() → startPlaying + session.reset
  */
 
-import { GAME_FLOW, SCORE } from '../config/constants';
+import { GAME_FLOW } from '../config/constants';
 import { displayedScore } from '../combat/score';
 
 /** High-level session phases driven by scene transitions. */
@@ -24,7 +32,11 @@ export type GameFlowState = {
    * Stats screen when `gameOverFrames > GAME_FLOW.gameOverDelayFrames`.
    */
   gameOverFrames: number;
-  /** Internal score frozen at death (Flash `score`, not ×100). */
+  /**
+   * Internal score frozen at death for the game-over screen.
+   * (Flash reads score at stats time; we snapshot so in-flight hits after death
+   * cannot desync the banner from what the player saw when they died.)
+   */
   finalScore: number;
 };
 
@@ -43,7 +55,10 @@ export function createGameFlowState(
   };
 }
 
-/** Menu / restart → gameplay. Clears death counters. */
+/**
+ * Enter gameplay. Called from GameScene.create() on every start/restart —
+ * that is the shipped reset path (with session.reset()).
+ */
 export function startPlaying(state: GameFlowState): void {
   state.phase = 'playing';
   state.gameOverFrames = 0;
@@ -70,13 +85,11 @@ export function resumeGame(state: GameFlowState): boolean {
 
 /**
  * Begin the death sequence (Flash `gameover` path).
- * Freezes `finalScore` for the game-over screen. Idempotent while dying.
+ * Only from `playing` — a paused GameScene does not run update(), so death
+ * while paused cannot occur. Freezes `finalScore` for GameOverScene.
  */
 export function beginDeath(state: GameFlowState, score: number): boolean {
-  if (state.phase === 'dying' || state.phase === 'gameOver') {
-    return false;
-  }
-  if (state.phase !== 'playing' && state.phase !== 'paused') {
+  if (state.phase !== 'playing') {
     return false;
   }
   state.phase = 'dying';
@@ -102,38 +115,7 @@ export function tickDeath(state: GameFlowState): boolean {
   return false;
 }
 
-/** True once death delay has elapsed (ready to show GameOverScene). */
-export function isGameOverReady(state: Readonly<GameFlowState>): boolean {
-  return state.phase === 'gameOver';
-}
-
-/** Any screen → main menu. */
-export function goToMenu(state: GameFlowState): void {
-  state.phase = 'menu';
-  state.gameOverFrames = 0;
-  state.finalScore = 0;
-}
-
-/** Game-over → fresh run (same as startPlaying). */
-export function restartFromGameOver(state: GameFlowState): void {
-  startPlaying(state);
-}
-
-/** Flash HUD / stats numeric: `Math.floor(score) * 100`. */
-export function gameOverDisplayedScore(internalScore: number): number {
-  return displayedScore(internalScore);
-}
-
-/** Label for the game-over screen. */
+/** Label for the game-over screen — Flash `Math.floor(score)*100`. */
 export function formatGameOverScore(internalScore: number): string {
-  return `Final Score: ${gameOverDisplayedScore(internalScore)}`;
-}
-
-/** Spec seeds the session loop depends on (exact Flash values). */
-export function gameFlowSpecSeeds() {
-  return {
-    gameOverDelayFrames: GAME_FLOW.gameOverDelayFrames,
-    pauseKeyCode: GAME_FLOW.pauseKeyCode,
-    scoreDisplayScale: SCORE.displayScale,
-  };
+  return `Final Score: ${displayedScore(internalScore)}`;
 }

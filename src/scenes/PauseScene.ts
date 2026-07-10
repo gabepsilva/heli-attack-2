@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { GAME_FLOW } from '../config/constants';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/game';
 import { SCENE_KEYS } from '../config/scenes';
 
@@ -53,10 +54,18 @@ export class PauseScene extends Phaser.Scene {
       this.scene.start(SCENE_KEYS.Menu);
     };
 
-    this.input.keyboard?.on('keydown-P', resume);
-    this.input.keyboard?.on('keydown-ESC', resume);
-    this.input.keyboard?.on('keydown-SPACE', resume);
-    this.input.keyboard?.on('keydown-M', toMenu);
+    // addKey respects emitOnRepeat=false — avoids OS key-repeat strobing pause.
+    const pauseKey = this.input.keyboard!.addKey(GAME_FLOW.pauseKeyCode);
+    pauseKey.on('down', resume);
+    this.input
+      .keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ESC)
+      .on('down', resume);
+    this.input
+      .keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
+      .on('down', resume);
+    this.input
+      .keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.M)
+      .on('down', toMenu);
     this.input.once('pointerdown', resume);
   }
 }

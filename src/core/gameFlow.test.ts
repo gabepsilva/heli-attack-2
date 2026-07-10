@@ -1,37 +1,35 @@
 /**
  * Game state flow — unit tests for issue #24 acceptance criteria.
  *
- * AC: Every transition works (menu → play → pause → play → death → game over → restart/menu)
+ * AC: Every transition works (menu → play → pause → play → death → game over → restart)
  * AC: Game-over shows the correct final score; restart resets cleanly
+ *
+ * Restart/menu in the shipped game are scene transitions that re-enter
+ * GameScene.create() → startPlaying() + session.reset() — tests assert that
+ * path, not parallel helpers the scenes never call.
  */
 
 import { describe, expect, it } from 'vitest';
 import { GAME_FLOW, SCORE } from '../config/constants';
 import { SCENE_KEYS } from '../config/scenes';
+import { displayedScore } from '../combat/score';
 import {
   beginDeath,
   createGameFlowState,
   formatGameOverScore,
-  gameFlowSpecSeeds,
-  gameOverDisplayedScore,
-  goToMenu,
-  isGameOverReady,
   pauseGame,
-  restartFromGameOver,
   resumeGame,
   startPlaying,
   tickDeath,
 } from './gameFlow';
 
-describe('gameFlow spec seeds (issue #24)', () => {
-  it('locks death delay and pause key to exact Flash values', () => {
-    const seeds = gameFlowSpecSeeds();
-    expect(seeds.gameOverDelayFrames).toBe(200);
-    expect(seeds.gameOverDelayFrames).toBe(GAME_FLOW.gameOverDelayFrames);
-    expect(seeds.pauseKeyCode).toBe(80);
-    expect(seeds.pauseKeyCode).toBe(GAME_FLOW.pauseKeyCode);
-    expect(seeds.scoreDisplayScale).toBe(100);
-    expect(seeds.scoreDisplayScale).toBe(SCORE.displayScale);
+describe('gameFlow Flash constants (issue #24)', () => {
+  it('locks death delay to Flash `gameover > 200`', () => {
+    expect(GAME_FLOW.gameOverDelayFrames).toBe(200);
+  });
+
+  it('locks pause key to Flash pauseKey = 80 (P) for scene addKey binding', () => {
+    expect(GAME_FLOW.pauseKeyCode).toBe(80);
   });
 
   it('registers Boot → Menu → Game ↔ Pause → GameOver scene keys', () => {
@@ -80,7 +78,6 @@ describe('session transitions (issue #24 AC: every transition works)', () => {
     expect(flow.phase).toBe('dying');
     expect(flow.finalScore).toBe(42.7);
     expect(flow.gameOverFrames).toBe(0);
-    expect(isGameOverReady(flow)).toBe(false);
 
     // Flash: `gameover > 200` — frames 1..200 stay dying; frame 201 opens stats.
     for (let i = 0; i < GAME_FLOW.gameOverDelayFrames; i += 1) {
@@ -92,7 +89,6 @@ describe('session transitions (issue #24 AC: every transition works)', () => {
     expect(tickDeath(flow)).toBe(true);
     expect(flow.gameOverFrames).toBe(201);
     expect(flow.phase).toBe('gameOver');
-    expect(isGameOverReady(flow)).toBe(true);
   });
 
   it('beginDeath is idempotent while dying / gameOver', () => {
@@ -110,21 +106,19 @@ describe('session transitions (issue #24 AC: every transition works)', () => {
     expect(tickDeath(flow)).toBe(false);
   });
 
-  it('rejects beginDeath from menu', () => {
-    const flow = createGameFlowState('menu');
-    expect(beginDeath(flow, 1)).toBe(false);
-    expect(flow.phase).toBe('menu');
-  });
+  it('rejects beginDeath from menu or paused (paused GameScene does not update)', () => {
+    const menu = createGameFlowState('menu');
+    expect(beginDeath(menu, 1)).toBe(false);
+    expect(menu.phase).toBe('menu');
 
-  it('paused → dying is allowed (death while overlay open)', () => {
     const flow = createGameFlowState();
     startPlaying(flow);
     pauseGame(flow);
-    expect(beginDeath(flow, 5)).toBe(true);
-    expect(flow.phase).toBe('dying');
+    expect(beginDeath(flow, 5)).toBe(false);
+    expect(flow.phase).toBe('paused');
   });
 
-  it('gameOver → restart → playing clears death state', () => {
+  it('startPlaying after gameOver clears death state (GameScene.create on restart)', () => {
     const flow = createGameFlowState();
     startPlaying(flow);
     beginDeath(flow, 77);
@@ -133,24 +127,14 @@ describe('session transitions (issue #24 AC: every transition works)', () => {
     }
     expect(flow.phase).toBe('gameOver');
 
-    restartFromGameOver(flow);
+    // Shipped restart: GameOverScene → scene.start(Game) → create() → startPlaying.
+    startPlaying(flow);
     expect(flow.phase).toBe('playing');
     expect(flow.gameOverFrames).toBe(0);
     expect(flow.finalScore).toBe(0);
   });
 
-  it('any phase → menu clears counters (AC: restart / menu resets cleanly)', () => {
-    const flow = createGameFlowState();
-    startPlaying(flow);
-    beginDeath(flow, 50);
-    tickDeath(flow);
-    goToMenu(flow);
-    expect(flow.phase).toBe('menu');
-    expect(flow.gameOverFrames).toBe(0);
-    expect(flow.finalScore).toBe(0);
-  });
-
-  it('full loop: menu → play → pause → resume → death → gameOver → menu → play', () => {
+  it('full loop: play → pause → resume → death → gameOver → startPlaying restart', () => {
     const flow = createGameFlowState('menu');
 
     startPlaying(flow);
@@ -161,9 +145,9 @@ describe('session transitions (issue #24 AC: every transition works)', () => {
       tickDeath(flow);
     }
     expect(flow.phase).toBe('gameOver');
-    expect(gameOverDisplayedScore(flow.finalScore)).toBe(1200);
+    expect(displayedScore(flow.finalScore)).toBe(1200);
+    expect(formatGameOverScore(flow.finalScore)).toBe('Final Score: 1200');
 
-    goToMenu(flow);
     startPlaying(flow);
     expect(flow.phase).toBe('playing');
     expect(flow.finalScore).toBe(0);
@@ -171,11 +155,12 @@ describe('session transitions (issue #24 AC: every transition works)', () => {
 });
 
 describe('game-over score display (issue #24 AC: correct final score)', () => {
-  it('uses Flash Math.floor(score)*100 for the game-over readout', () => {
-    expect(gameOverDisplayedScore(0)).toBe(0);
-    expect(gameOverDisplayedScore(1)).toBe(100);
-    expect(gameOverDisplayedScore(10.9)).toBe(1000);
-    expect(gameOverDisplayedScore(42.7)).toBe(4200);
+  it('uses Flash Math.floor(score)*100 via displayedScore', () => {
+    expect(SCORE.displayScale).toBe(100);
+    expect(displayedScore(0)).toBe(0);
+    expect(displayedScore(1)).toBe(100);
+    expect(displayedScore(10.9)).toBe(1000);
+    expect(displayedScore(42.7)).toBe(4200);
     expect(formatGameOverScore(42.7)).toBe('Final Score: 4200');
     expect(formatGameOverScore(0)).toBe('Final Score: 0');
   });
@@ -184,7 +169,6 @@ describe('game-over score display (issue #24 AC: correct final score)', () => {
     const flow = createGameFlowState();
     startPlaying(flow);
     beginDeath(flow, 33.3);
-    // Sim might keep ticking score elsewhere — flow keeps the snapshot.
     expect(flow.finalScore).toBe(33.3);
     expect(formatGameOverScore(flow.finalScore)).toBe('Final Score: 3300');
   });
