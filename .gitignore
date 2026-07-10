@@ -26,3 +26,12 @@ reference/**/*.png
 reference/**/*.wav
 reference/**/*.zip
 reference/**/*.psd
+
+# Python
+__pycache__/
+
+# Test coverage
+coverage/
+
+# Agent loop runtime state
+scripts/agent-loop/loop_controls/

@@ -94,7 +94,12 @@ npm run dev       # Vite dev server with HMR (http://localhost:5173)
 npm run build     # typecheck + production web build → dist/
 npm run preview   # serve dist/ locally (http://localhost:4173)
 npm run typecheck # strict TypeScript check
+npm run lint      # ESLint (type-aware)
+npm run format    # Prettier --write (format:check to verify only)
+npm test          # Vitest (test:watch for watch mode)
 ```
+
+CI runs typecheck, lint, format check, tests, and build on every PR.
 
 `dist/` is a static site meant to be **served over HTTP** (e.g. `npm run preview`,
 GitHub Pages, any static host). Opening `dist/index.html` via `file://` will not
