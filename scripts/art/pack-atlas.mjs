@@ -2,9 +2,9 @@
 /**
  * Pack Phaser hash atlas + write ART-SPEC.md + copy background plate.
  *
- * - Final player frames (#33): committed PNGs under art/player/ (8× Flash size).
- * - Final world frames (#34): committed PNGs under art/world/ (4× Flash size).
- * - Background (#34): art/world/bg.png → public/art/bg.png (not packed).
+ * - Player frames: committed PNGs under art/player/ (8× Flash size; #95 originals).
+ * - World frames: committed PNGs under art/world/ (4× Flash size; #95 originals).
+ * - Background: art/world/bg.png → public/art/bg.png (not packed).
  *
  * Outputs (committed): public/atlas/game-atlas.{png,json}, public/art/bg.png,
  * docs/ART-SPEC.md
@@ -13,7 +13,7 @@
  *
  * Usage: npm run art:pack
  * Requires: ImageMagick (`convert`, `identify`).
- * Optional: npm run art:player / npm run art:world
+ * Regenerate sources: npm run art:import-original
  */
 import { spawnSync } from 'node:child_process';
 import {
@@ -48,7 +48,7 @@ export const SPRITE_DEFS = [
     originalW: 24,
     originalH: 49,
     pivot: { x: 0.5, y: 1 },
-    role: 'Player stand / idle (final hi-res; Flash guy.png pose)',
+    role: 'Player stand / idle (temp Flash guy.png)',
     final: true,
   },
   {
@@ -57,7 +57,7 @@ export const SPRITE_DEFS = [
     originalW: 25,
     originalH: 39,
     pivot: { x: 0.5, y: 1 },
-    role: 'Player duck (final hi-res; Flash gfx frame 2 / duck.png)',
+    role: 'Player duck (temp Flash duck.png)',
     final: true,
   },
   {
@@ -66,7 +66,7 @@ export const SPRITE_DEFS = [
     originalW: 25,
     originalH: 55,
     pivot: { x: 0.5, y: 1 },
-    role: 'Player jump (final hi-res; Flash gfx frame 3)',
+    role: 'Player jump (temp Flash jump.png)',
     final: true,
   },
   {
@@ -75,7 +75,7 @@ export const SPRITE_DEFS = [
     originalW: 25,
     originalH: 55,
     pivot: { x: 0.5, y: 1 },
-    role: 'Player double-jump (final hi-res; Flash gfx frame 5)',
+    role: 'Player double-jump (temp Flash jump2.png)',
     final: true,
   },
   {
@@ -84,7 +84,7 @@ export const SPRITE_DEFS = [
     originalW: 24,
     originalH: 49,
     pivot: { x: 0.5, y: 1 },
-    role: 'Player walk cycle frame 1 (final hi-res; Flash gfx frame 4)',
+    role: 'Player walk cycle frame 1 (temp Flash step1.png)',
     final: true,
   },
   {
@@ -93,7 +93,7 @@ export const SPRITE_DEFS = [
     originalW: 24,
     originalH: 49,
     pivot: { x: 0.5, y: 1 },
-    role: 'Player walk cycle frame 2 (final hi-res; Flash gfx frame 4)',
+    role: 'Player walk cycle frame 2 (temp Flash step2.png)',
     final: true,
   },
   {
@@ -102,7 +102,7 @@ export const SPRITE_DEFS = [
     originalW: 24,
     originalH: 49,
     pivot: { x: 0.5, y: 1 },
-    role: 'Player hurt flash pose (final hi-res; shown during i-frames)',
+    role: 'Player hurt flash (stub: reuse guy.png — no dedicated original)',
     final: true,
   },
   {
@@ -111,7 +111,7 @@ export const SPRITE_DEFS = [
     originalW: 40,
     originalH: 49,
     pivot: { x: 0.5, y: 1 },
-    role: 'Player death (final hi-res; Flash guyBurned swap)',
+    role: 'Player death (temp Flash guyburned.png)',
     final: true,
   },
   {
@@ -120,7 +120,7 @@ export const SPRITE_DEFS = [
     originalW: 212,
     originalH: 106,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Enemy helicopter look 0 / hover (final hi-res; warm desert)',
+    role: 'Enemy helicopter look 0 / hover (temp Flash heli.png)',
     final: true,
   },
   {
@@ -129,7 +129,7 @@ export const SPRITE_DEFS = [
     originalW: 212,
     originalH: 106,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Enemy helicopter look 1 / strafe (final hi-res; cool steel)',
+    role: 'Enemy helicopter look 1 / strafe (stub: reuse heli.png)',
     final: true,
   },
   {
@@ -138,7 +138,7 @@ export const SPRITE_DEFS = [
     originalW: 212,
     originalH: 106,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Helicopter damaged flash (final hi-res)',
+    role: 'Helicopter damaged flash (temp Flash heli_hit.png)',
     final: true,
   },
   {
@@ -147,7 +147,7 @@ export const SPRITE_DEFS = [
     originalW: 173,
     originalH: 89,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Helicopter wreck (final hi-res)',
+    role: 'Helicopter wreck (temp Flash heliDestroyed.png)',
     final: true,
   },
   {
@@ -156,7 +156,7 @@ export const SPRITE_DEFS = [
     originalW: 25,
     originalH: 50,
     pivot: { x: 0.5, y: 1 },
-    role: 'Paratrooper / ground enemy (final hi-res)',
+    role: 'Paratrooper / ground enemy (temp Flash enemyguy.png)',
     final: true,
   },
   {
@@ -165,7 +165,7 @@ export const SPRITE_DEFS = [
     originalW: 10,
     originalH: 9,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Player projectile (final hi-res)',
+    role: 'Player projectile (temp Flash bullett.png)',
     final: true,
   },
   {
@@ -174,7 +174,7 @@ export const SPRITE_DEFS = [
     originalW: 10,
     originalH: 9,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Enemy projectile (final hi-res)',
+    role: 'Enemy projectile (temp Flash enemybullet.png)',
     final: true,
   },
   {
@@ -183,7 +183,7 @@ export const SPRITE_DEFS = [
     originalW: 29,
     originalH: 16,
     pivot: { x: 0.2, y: 0.5 },
-    role: 'Starting machine gun (final hi-res)',
+    role: 'Starting machine gun (temp Flash machineGun.png)',
     final: true,
   },
   {
@@ -192,7 +192,7 @@ export const SPRITE_DEFS = [
     originalW: 16,
     originalH: 16,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Weapon muzzle flash (final hi-res)',
+    role: 'Weapon muzzle flash (generated stub — no Flash original)',
     final: true,
   },
   {
@@ -201,7 +201,7 @@ export const SPRITE_DEFS = [
     originalW: 19,
     originalH: 11,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Grenade projectile (final hi-res)',
+    role: 'Grenade projectile (temp Flash grenade.png)',
     final: true,
   },
   {
@@ -210,7 +210,7 @@ export const SPRITE_DEFS = [
     originalW: 21,
     originalH: 15,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Rocket projectile (final hi-res)',
+    role: 'Rocket projectile (temp Flash Rocket.png)',
     final: true,
   },
   {
@@ -219,7 +219,7 @@ export const SPRITE_DEFS = [
     originalW: 28,
     originalH: 27,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Smoke VFX (final hi-res)',
+    role: 'Smoke VFX (temp Flash smoke.png)',
     final: true,
   },
   {
@@ -228,7 +228,7 @@ export const SPRITE_DEFS = [
     originalW: 30,
     originalH: 30,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Hit / blood VFX (final hi-res)',
+    role: 'Hit / blood VFX (temp Flash blood.png)',
     final: true,
   },
   {
@@ -237,7 +237,7 @@ export const SPRITE_DEFS = [
     originalW: 187,
     originalH: 186,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Heli death explosion (final hi-res; half Flash bigboom)',
+    role: 'Heli death explosion (temp Flash bigboom.png, half-res catalog)',
     final: true,
   },
   {
@@ -246,7 +246,7 @@ export const SPRITE_DEFS = [
     originalW: 33,
     originalH: 32,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Powerup crate base (final hi-res)',
+    role: 'Powerup crate base (temp Flash powerup.png)',
     final: true,
   },
   {
@@ -255,7 +255,7 @@ export const SPRITE_DEFS = [
     originalW: 52,
     originalH: 52,
     pivot: { x: 0, y: 0 },
-    role: 'Solid floor tile (final hi-res; maps to WORLD.tile)',
+    role: 'Solid floor tile (temp Flash assets/new/Floor.png; maps to WORLD.tile)',
     final: true,
   },
 ];
@@ -399,8 +399,8 @@ export function renderArtSpecMarkdown(
 | Phaser atlas key | \`${ATLAS_KEY}\` |
 | Background plate | \`public/art/bg.png\` (not packed; 452×322 @ ${worldScale}×) |
 
-All catalog frames are **final** hi-res redraws (#33 player, #34 world). Do not
-ship original GPL art as final product art.
+Shipped art is **temporary original Flash** sprites from iopred \`ha2/assets\`
+(#95), nearest-neighbor upscaled into the atlas pipeline. Hi-res redraws TBD.
 
 ## Pivot convention
 
@@ -448,8 +448,8 @@ ${rows}
 
 ## Adding a new sprite
 
-1. **Final art:** add / regenerate under \`art/player/\` (\`npm run art:player\`)
-   or \`art/world/\` (\`npm run art:world\`), then set \`final: true\` on the catalog
+1. **Source art:** import originals via \`npm run art:import-original\` (or drop
+   PNGs under \`art/player/\` / \`art/world/\`), then set \`final: true\` on the catalog
    entry.
 2. Append a \`SpriteDef\` to \`SPRITE_DEFS\` in \`src/art/catalog.ts\` with measured
    \`originalW\` / \`originalH\`, pivot, and role.
@@ -459,16 +459,13 @@ ${rows}
 5. Use the frame via \`ATLAS_KEY\` + frame id (see \`selectPlayerAnimFrame\`,
    \`heliFrameForLook\`).
 6. Add / update unit tests in \`src/art/*.test.ts\` if sizes, pivots, or
-   final-vs-placeholder acceptance are critical.
+   Flash-original acceptance are critical.
 
 ## Pipeline commands
 
 \`\`\`bash
-# Regenerate final player redraws (Pillow)
-npm run art:player
-
-# Regenerate final world redraws (Pillow) — helis, weapons, VFX, tiles, bg
-npm run art:world
+# Import temporary original Flash sprites (Pillow; needs reference/ha2-source/gfx)
+npm run art:import-original
 
 # Pack atlas (requires ImageMagick)
 npm run art:pack
@@ -476,8 +473,8 @@ npm run art:pack
 
 Outputs (committed):
 
-- \`art/player/player_*.png\` (final player sources)
-- \`art/world/*.png\` (final world sources + bg plate)
+- \`art/player/player_*.png\` (player sources — temp Flash #95)
+- \`art/world/*.png\` (world sources + bg plate — temp Flash #95)
 - \`public/atlas/game-atlas.png\`
 - \`public/atlas/game-atlas.json\`
 - \`public/art/bg.png\`
@@ -500,8 +497,8 @@ function main() {
     const src = join(srcDir, def.sourceFile);
 
     if (!existsSync(src)) {
-      const regen = isPlayer(def) ? 'npm run art:player' : 'npm run art:world';
-      console.error(`Missing final sprite: ${src}\nRun: ${regen}`);
+      const regen = 'npm run art:import-original';
+      console.error(`Missing atlas source sprite: ${src}\nRun: ${regen}`);
       process.exit(1);
     }
     const measured = identifySize(src);
@@ -574,7 +571,9 @@ function main() {
   const bgSrc = join(worldFinalDir, 'bg.png');
   const bgDst = join(publicArtDir, 'bg.png');
   if (!existsSync(bgSrc)) {
-    console.error(`Missing background plate: ${bgSrc}\nRun: npm run art:world`);
+    console.error(
+      `Missing background plate: ${bgSrc}\nRun: npm run art:import-original`,
+    );
     process.exit(1);
   }
   const bgExpected = {

@@ -15,6 +15,7 @@
     "test:watch": "vitest",
     "art:player": "python3 scripts/art/generate-player-final.py",
     "art:world": "python3 scripts/art/generate-world-final.py",
+    "art:import-original": "python3 scripts/art/import-original-flash.py",
     "art:pack": "node scripts/art/pack-atlas.mjs",
     "audio:transcode": "node scripts/audio/transcode-wavs.mjs",
     "prepare": "node scripts/install-git-hooks.mjs"

@@ -88,13 +88,12 @@ describe('ART-SPEC.md (issue #32/#33/#34 — documented working process)', () =>
 
     expect(md).toContain('Adding a new sprite');
     expect(md).toContain('npm run art:pack');
-    expect(md).toContain('npm run art:player');
-    expect(md).toContain('npm run art:world');
+    expect(md).toContain('npm run art:import-original');
     expect(md).toContain(`**${PLAYER.spriteW}×${PLAYER.spriteH}**`);
     expect(md).toContain('heli_strafe');
     expect(md).toContain('explosion');
     expect(md).toContain('muzzle_flash');
     expect(md).toContain('public/art/bg.png');
-    expect(md).toContain('All catalog frames are **final**');
+    expect(md).toMatch(/temporary original Flash/i);
   });
 });
