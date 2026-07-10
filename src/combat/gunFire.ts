@@ -12,6 +12,11 @@
  * - FlameThrower (8): hold-to-fire stream with ±10° jitter
  * - FireMines (9): lobbed persistent mine
  * - RailGun (11): hitscan-fast beam
+ *
+ * Heavy / signature set (#17):
+ * - ABombLauncher (10): slow nuke with huge blast
+ * - GrappleCannon (12): damage + pull mobility
+ * - ShoulderCannon (13): predator rail (Flash `railFrame`)
  */
 
 import { SPECIAL_PROJECTILE } from '../config/constants';
@@ -55,6 +60,9 @@ export const BALLISTIC_WEAPON_INDICES = [1, 2, 3, 4, 5, 6] as const;
 
 /** Arsenal indices with special behaviors (#16 deliverable). */
 export { SPECIAL_WEAPON_INDICES } from './specialProjectile';
+
+/** Arsenal indices with heavy / signature behaviors (#17 deliverable). */
+export { HEAVY_WEAPON_INDICES } from './specialProjectile';
 
 /**
  * Build the projectile list for one successful fire of arsenal `weaponIndex`.
@@ -100,7 +108,10 @@ export function planWeaponFire(
       return planFlameFire(x, y, rotationDeg, speed, damage, randomInt);
     case 7:
     case 9:
+    case 10:
     case 11:
+    case 12:
+    case 13:
       return [
         {
           x,
@@ -110,7 +121,7 @@ export function planWeaponFire(
           damage,
           behavior,
           maxLifetime:
-            weaponIndex === 11
+            weaponIndex === 11 || weaponIndex === 13
               ? SPECIAL_PROJECTILE.railLingerFrames
               : undefined,
         },

@@ -1,12 +1,18 @@
 /**
- * Special-behavior projectiles (#16) — Flash `flameFrame` / `fireMinesFrame` /
- * `railFrame` / `seekerFrame`.
+ * Special-behavior projectiles (#16/#17) — Flash `flameFrame` / `fireMinesFrame`
+ * / `railFrame` / `seekerFrame` / `aBombFrame` / `grappleFrame`.
  *
  * Ballistic bullets stay on the default hit-and-recycle path in helicopter.ts;
- * this module owns continuous DoT, lobbed mines, hitscan rail, and homing.
+ * this module owns continuous DoT, lobbed mines, hitscan rail, homing, A-Bomb
+ * blast, and Grapple pull.
  */
 
-import { HELI, SPECIAL_PROJECTILE, WORLD } from '../config/constants';
+import {
+  HELI,
+  HEAVY_PROJECTILE,
+  SPECIAL_PROJECTILE,
+  WORLD,
+} from '../config/constants';
 import {
   isOutsideCullBounds,
   velocityFromRotation,
@@ -15,13 +21,18 @@ import {
 } from './bullet';
 import { bulletHitsHeli } from './heliHit';
 import type { Helicopter, HeliHitEvent } from './helicopter';
+import type { AabbBody } from '../world/aabbBody';
 import { isSolidTile, type TileMap } from '../world/tileMap';
 
 /** Projectile motion / hit model (Flash bullet `action` frame). */
-export type BulletBehavior = 'ballistic' | 'flame' | 'mine' | 'rail' | 'seeker';
+export type BulletBehavior =
+  'ballistic' | 'flame' | 'mine' | 'rail' | 'seeker' | 'abomb' | 'grapple';
 
 /** Arsenal indices with dedicated special behaviors (#16 deliverable). */
 export const SPECIAL_WEAPON_INDICES = [7, 8, 9, 11] as const;
+
+/** Arsenal indices for heavy / signature weapons (#17 deliverable). */
+export const HEAVY_WEAPON_INDICES = [10, 12, 13] as const;
 
 export function behaviorForWeapon(weaponIndex: number): BulletBehavior {
   switch (weaponIndex) {
@@ -31,8 +42,14 @@ export function behaviorForWeapon(weaponIndex: number): BulletBehavior {
       return 'flame';
     case 9:
       return 'mine';
+    case 10:
+      return 'abomb';
     case 11:
+    case 13:
+      // RailGun + ShoulderCannon both use Flash `railFrame`.
       return 'rail';
+    case 12:
+      return 'grapple';
     default:
       return 'ballistic';
   }
@@ -314,9 +331,222 @@ export function stepSeekerBullet(
   return isOutsideCullBounds(bullet.x, bullet.y, bounds);
 }
 
+/** Euclidean distance between two points. */
+export function distance2d(
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+): number {
+  return Math.hypot(x1 - x0, y1 - y0);
+}
+
+/**
+ * Flash A-Bomb player knockback angle:
+ * `360 - atan2(px-bx, py-by)*180/π + 90`.
+ */
+export function abombKnockbackAngleDeg(
+  bombX: number,
+  bombY: number,
+  playerX: number,
+  playerY: number,
+): number {
+  return (
+    360 - (Math.atan2(playerX - bombX, playerY - bombY) * 180) / Math.PI + 90
+  );
+}
+
+/**
+ * Apply Flash `aBombFrame` knockback to the player when inside the blast
+ * radius. Uses feet point `(x+w/2, y+h)` like the original.
+ */
+export function applyAbombKnockback(
+  player: AabbBody,
+  bombX: number,
+  bombY: number,
+): void {
+  const px = player.x + player.w / 2;
+  const py = player.y + player.h;
+  const dist = distance2d(bombX, bombY, px, py);
+  const radius = HEAVY_PROJECTILE.abombBlastRadius;
+  if (dist >= radius) {
+    return;
+  }
+  const mult = 1 - dist / radius;
+  const ang = abombKnockbackAngleDeg(bombX, bombY, px, py);
+  const rad = (ang * Math.PI) / 180;
+  player.vx += Math.trunc(
+    mult * HEAVY_PROJECTILE.abombKnockbackX * Math.cos(rad),
+  );
+  player.vy += mult * HEAVY_PROJECTILE.abombKnockbackY * Math.sin(rad);
+  player.onGround = false;
+}
+
+/**
+ * Damage every active heli whose center is within the A-Bomb blast radius.
+ * Returns how many helis were hit (for tests / scoring callbacks).
+ */
+export function applyAbombBlastDamage(
+  bombX: number,
+  bombY: number,
+  damage: number,
+  helis: readonly Helicopter[],
+  onHit?: (event: HeliHitEvent) => void,
+): number {
+  let hitCount = 0;
+  const radius = HEAVY_PROJECTILE.abombBlastRadius;
+  for (let h = 0; h < helis.length; h += 1) {
+    const heli = helis[h]!;
+    if (!heli.active) {
+      continue;
+    }
+    if (distance2d(bombX, bombY, heli.x, heli.y) <= radius) {
+      applyDamage(heli, damage, onHit);
+      hitCount += 1;
+    }
+  }
+  return hitCount;
+}
+
+/**
+ * Flash `aBombFrame`: slow projectile; on heli hit or solid tile, detonate a
+ * large blast (radius 300) that one-shots helis inside and knocks the player.
+ */
+export function stepAbombBullet(
+  bullet: Bullet,
+  helis: readonly Helicopter[],
+  timeStep: number,
+  bounds: CullBounds,
+  map: TileMap | undefined,
+  player: AabbBody | undefined,
+  onHit?: (event: HeliHitEvent) => void,
+): boolean {
+  bullet.x += bullet.vx * timeStep;
+  bullet.y += bullet.vy * timeStep;
+  bullet.age += timeStep;
+
+  let detonate = false;
+  for (let h = 0; h < helis.length; h += 1) {
+    const heli = helis[h]!;
+    if (!heli.active) {
+      continue;
+    }
+    if (bulletHitsHeli(bullet.x, bullet.y, heliHitTarget(heli))) {
+      detonate = true;
+      break;
+    }
+  }
+  if (!detonate && map && isSolidAtWorld(map, bullet.x, bullet.y)) {
+    detonate = true;
+  }
+
+  if (detonate) {
+    applyAbombBlastDamage(bullet.x, bullet.y, bullet.damage, helis, onHit);
+    if (player) {
+      applyAbombKnockback(player, bullet.x, bullet.y);
+    }
+    return true;
+  }
+
+  if (bullet.age >= bullet.maxLifetime) {
+    return true;
+  }
+  return isOutsideCullBounds(bullet.x, bullet.y, bounds);
+}
+
+/**
+ * Pull the player toward the grapple hook (port mobility for Flash rope).
+ * Returns the velocity delta applied (for tests).
+ */
+export function applyGrapplePull(
+  player: AabbBody,
+  hookX: number,
+  hookY: number,
+  timeStep: number = 1,
+): { dvx: number; dvy: number } {
+  const px = player.x + player.w / 2;
+  const py = player.y + player.h / 2;
+  const dx = hookX - px;
+  const dy = hookY - py;
+  const dist = Math.hypot(dx, dy);
+  if (dist < 1) {
+    return { dvx: 0, dvy: 0 };
+  }
+  const accel = HEAVY_PROJECTILE.grapplePullAccel * timeStep;
+  const dvx = (dx / dist) * accel;
+  const dvy = (dy / dist) * accel;
+  player.vx += dvx;
+  player.vy += dvy;
+  player.onGround = false;
+  return { dvx, dvy };
+}
+
+/**
+ * Flash `grappleFrame` / `grappleAttached`: fly until heli or solid latch,
+ * deal damage on heli hit, then reel the player toward the hook.
+ */
+export function stepGrappleBullet(
+  bullet: Bullet,
+  helis: readonly Helicopter[],
+  timeStep: number,
+  bounds: CullBounds,
+  map: TileMap | undefined,
+  player: AabbBody | undefined,
+  onHit?: (event: HeliHitEvent) => void,
+): boolean {
+  if (bullet.grappleAttached) {
+    bullet.grappleAttachedAge += timeStep;
+    bullet.age += timeStep;
+    if (player) {
+      applyGrapplePull(player, bullet.x, bullet.y, timeStep);
+    }
+    return bullet.grappleAttachedAge >= HEAVY_PROJECTILE.grappleAttachedFrames;
+  }
+
+  bullet.x += bullet.vx * timeStep;
+  bullet.y += bullet.vy * timeStep;
+  bullet.age += timeStep;
+
+  for (let h = 0; h < helis.length; h += 1) {
+    const heli = helis[h]!;
+    if (!heli.active) {
+      continue;
+    }
+    if (bulletHitsHeli(bullet.x, bullet.y, heliHitTarget(heli))) {
+      applyDamage(heli, bullet.damage, onHit);
+      bullet.grappleAttached = true;
+      bullet.vx = 0;
+      bullet.vy = 0;
+      if (player) {
+        applyGrapplePull(player, bullet.x, bullet.y, timeStep);
+      }
+      return false;
+    }
+  }
+
+  if (map && isSolidAtWorld(map, bullet.x, bullet.y)) {
+    // Nudge back out of the solid cell so the hook sits on the surface.
+    bullet.x -= bullet.vx * timeStep;
+    bullet.y -= bullet.vy * timeStep;
+    bullet.grappleAttached = true;
+    bullet.vx = 0;
+    bullet.vy = 0;
+    if (player) {
+      applyGrapplePull(player, bullet.x, bullet.y, timeStep);
+    }
+    return false;
+  }
+
+  if (bullet.age >= bullet.maxLifetime) {
+    return true;
+  }
+  return isOutsideCullBounds(bullet.x, bullet.y, bounds);
+}
+
 /**
  * Dispatch one active special (or ballistic) projectile tick.
- * {@link map} is required for mines; ignored by other behaviors.
+ * {@link map} is required for mines / A-Bomb solid / grapple latch;
+ * {@link player} enables A-Bomb knockback and Grapple pull.
  */
 export function stepSpecialBullet(
   bullet: Bullet,
@@ -325,6 +555,7 @@ export function stepSpecialBullet(
   bounds: CullBounds,
   map: TileMap | undefined,
   onHit?: (event: HeliHitEvent) => void,
+  player?: AabbBody,
 ): boolean {
   switch (bullet.behavior) {
     case 'flame':
@@ -339,6 +570,26 @@ export function stepSpecialBullet(
       return stepRailBullet(bullet, helis, timeStep, bounds, onHit);
     case 'seeker':
       return stepSeekerBullet(bullet, helis, timeStep, bounds, onHit);
+    case 'abomb':
+      return stepAbombBullet(
+        bullet,
+        helis,
+        timeStep,
+        bounds,
+        map,
+        player,
+        onHit,
+      );
+    case 'grapple':
+      return stepGrappleBullet(
+        bullet,
+        helis,
+        timeStep,
+        bounds,
+        map,
+        player,
+        onHit,
+      );
     case 'ballistic':
     default:
       break;

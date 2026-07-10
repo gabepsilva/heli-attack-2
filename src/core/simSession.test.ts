@@ -495,4 +495,55 @@ describe('SimSession', () => {
     expect(mine.speed).toBe(3);
     expect(mine.damage).toBe(5);
   });
+
+  it('heavy weapons: A-Bomb blast, Grapple pull, Shoulder rail (#17)', () => {
+    const session = new SimSession();
+    session.player.mouse = {
+      x: session.player.gunPivot.x + 400,
+      y: session.player.gunPivot.y,
+    };
+    for (let i = 0; i < 60; i += 1) {
+      session.update(1000 / 30);
+    }
+
+    // ABombLauncher (index 10): reload 150, speed 3, damage 300, abomb.
+    session.inventory.activeIndex = 10;
+    session.weapon.type = 10;
+    session.weapon.reloadTime = Number.POSITIVE_INFINITY;
+    session.weapon.bullets = 2;
+    session.bullets.reset();
+    session.fireHeld = true;
+    session.update(1000 / 30);
+    const abomb = session.bullets.slots.find((b) => b.active)!;
+    expect(abomb.behavior).toBe('abomb');
+    expect(abomb.speed).toBe(3);
+    expect(abomb.damage).toBe(300);
+    expect(WEAPONS[10].reload).toBe(150);
+
+    // GrappleCannon (index 12).
+    session.inventory.activeIndex = 12;
+    session.weapon.type = 12;
+    session.weapon.reloadTime = Number.POSITIVE_INFINITY;
+    session.weapon.bullets = 2;
+    session.bullets.reset();
+    session.update(1000 / 30);
+    const grapple = session.bullets.slots.find((b) => b.active)!;
+    expect(grapple.behavior).toBe('grapple');
+    expect(grapple.speed).toBe(20);
+    expect(grapple.damage).toBe(300);
+    expect(WEAPONS[12].reload).toBe(250);
+
+    // ShoulderCannon / predator (index 13) — rail hitscan, damage 300.
+    session.inventory.activeIndex = 13;
+    session.weapon.type = 13;
+    session.weapon.reloadTime = Number.POSITIVE_INFINITY;
+    session.weapon.bullets = Number.POSITIVE_INFINITY;
+    session.bullets.reset();
+    session.update(1000 / 30);
+    const shoulder = session.bullets.slots.find((b) => b.active)!;
+    expect(shoulder.behavior).toBe('rail');
+    expect(shoulder.speed).toBe(20);
+    expect(shoulder.damage).toBe(300);
+    expect(WEAPONS[13].reload).toBe(100);
+  });
 });

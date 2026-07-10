@@ -241,6 +241,7 @@ export class SimSession {
         }
       },
       this.map,
+      playerBody,
     );
     for (let i = this.explosions.length - 1; i >= 0; i -= 1) {
       if (stepHeliExplosion(this.explosions[i]!, this.timeScale.timeStep)) {

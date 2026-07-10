@@ -6,6 +6,7 @@
 import { HELI, WORLD } from '../config/constants';
 import type { BulletPool } from './bullet';
 import { stepSpecialBullet } from './specialProjectile';
+import type { AabbBody } from '../world/aabbBody';
 import type { TileMap } from '../world/tileMap';
 
 export type Helicopter = {
@@ -242,10 +243,11 @@ export function stepHeliExplosion(
 
 /**
  * Advance bullets, pixel-test against active helis, apply damage, recycle on hit.
- * Mirrors Flash `bulletFrame` enemy loop (point vs `hit` clip), plus #16
- * special behaviors (flame DoT, mines, rail hitscan, seeker homing).
+ * Mirrors Flash `bulletFrame` enemy loop (point vs `hit` clip), plus #16/#17
+ * special behaviors (flame DoT, mines, rail hitscan, seeker, A-Bomb, grapple).
  * {@link onHit} receives damage dealt so callers can add score (#13).
- * {@link map} enables FireMines tile landing; optional for ballistic-only tests.
+ * {@link map} enables FireMines / A-Bomb solid / grapple latch.
+ * {@link player} enables A-Bomb knockback and Grapple pull (#17).
  */
 export function stepBulletsVsHelis(
   pool: BulletPool,
@@ -254,6 +256,7 @@ export function stepBulletsVsHelis(
   timeStep: number,
   onHit?: (event: HeliHitEvent) => void,
   map?: TileMap,
+  player?: AabbBody,
 ): void {
   for (let i = 0; i < pool.slots.length; i += 1) {
     const bullet = pool.slots[i]!;
@@ -268,6 +271,7 @@ export function stepBulletsVsHelis(
       bounds,
       map,
       onHit,
+      player,
     );
     if (shouldCull) {
       pool.release(bullet);
