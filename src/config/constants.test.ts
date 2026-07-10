@@ -111,8 +111,7 @@ describe('config/constants (spec seed)', () => {
     expect(HELI_LOOK_TINT).toHaveLength(HELI.lookCount);
     expect(HELI_SPAWN).toEqual({
       initialConcurrent: 1,
-      killsPerExtraHeli: 3,
-      maxConcurrent: 6,
+      maxConcurrent: 1,
       firstLevelScore: 10000,
     });
     expect(SCORE).toEqual({ displayScale: 100 });

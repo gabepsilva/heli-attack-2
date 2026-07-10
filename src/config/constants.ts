@@ -185,23 +185,18 @@ export const HELI = {
 export const HELI_LOOK_TINT = [0xf4a261, 0x4cc9f0] as const;
 
 /**
- * Replacement spawn treadmill + difficulty ramp (#19).
+ * Replacement spawn treadmill + difficulty ramp (#19 / #109).
  *
- * Flash always calls `addEnemy(300)` on kill (1:1 replacement) and raises
- * `level` when `score > nextLevel` (starts at 10000, doubles). Concurrent
- * pressure in this port also grows with kill count so the sky fills over a
- * long run — matching the ticket AC while keeping Flash level thresholds.
+ * Flash always calls `addEnemy(300)` on kill / fly-off (1:1 replacement) and
+ * raises `level` when `score > nextLevel` (starts at 10000, doubles). Living
+ * combat population stays at exactly one heli — the every-3-kills crate
+ * cadence (`POWERUP_DROP.killsPerCrate`) does not grow on-screen count (#109).
  */
 export const HELI_SPAWN = {
   /** Opening concurrent population (first `addEnemy` after drop-in). */
   initialConcurrent: 1,
-  /**
-   * Extra concurrent heli every N kills (`rthelis`). Matches Flash's
-   * every-3-kills powerup cadence so pressure steps up on a familiar rhythm.
-   */
-  killsPerExtraHeli: 3,
-  /** Soft cap so late-game stays readable. */
-  maxConcurrent: 6,
+  /** Flash parity: never more than one living combat heli (#109). */
+  maxConcurrent: 1,
   /** Flash `nextLevel = 10000` — first score threshold for `level++`. */
   firstLevelScore: 10000,
 } as const;

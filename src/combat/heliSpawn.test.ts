@@ -1,11 +1,13 @@
 /**
- * Replacement spawn treadmill & difficulty ramp — issue #19 acceptance criteria.
+ * Replacement spawn treadmill & difficulty ramp — issues #19 / #109.
  *
- * AC: Heli population never hits zero mid-game
- * AC: Concurrent count measurably grows with kills
+ * AC (#109): Living combat heli count never exceeds 1
+ * AC (#109): Kill / despawn immediately spawns a 1:1 replacement
+ * AC (#19): Score-based level++ / fire-rate hardening (nextLevel doubling)
  *
  * Spec values: Flash `addEnemy(300)` on kill, `nextLevel = 10000` doubling,
  * fire `Math.max(10,16-level)`, aim `Math.max(1,10-level)`, edge/top spawns.
+ * Concurrent population is fixed at 1 — every-3-kills only gates crates (#91).
  */
 
 import { describe, expect, it } from 'vitest';
@@ -13,6 +15,7 @@ import {
   HELI,
   HELI_SPAWN,
   HEAVY_PROJECTILE,
+  POWERUP_DROP,
   WEAPONS,
 } from '../config/constants';
 import { SimSession } from '../core/simSession';
@@ -34,13 +37,20 @@ import {
   targetConcurrent,
 } from './heliSpawn';
 import { applyAbombBlastDamage } from './specialProjectile';
+import {
+  createPowerupDropState,
+  trySpawnDropOnKill,
+  type PowerupPickup,
+} from './powerupDrop';
 
-describe('heli spawn treadmill (issue #19)', () => {
+describe('heli spawn treadmill (issue #19 / #109)', () => {
   it('locks HELI_SPAWN and Flash difficulty thresholds to exact spec values', () => {
-    expect(HELI_SPAWN.initialConcurrent).toBe(1);
-    expect(HELI_SPAWN.killsPerExtraHeli).toBe(3);
-    expect(HELI_SPAWN.maxConcurrent).toBe(6);
-    expect(HELI_SPAWN.firstLevelScore).toBe(10000);
+    expect(HELI_SPAWN).toEqual({
+      initialConcurrent: 1,
+      maxConcurrent: 1,
+      firstLevelScore: 10000,
+    });
+    expect(HELI_SPAWN).not.toHaveProperty('killsPerExtraHeli');
     expect(HELI.hp).toBe(300);
     expect(HELI.fireIntervalFrames).toBe(16);
     expect(HELI.fireIntervalMin).toBe(10);
@@ -48,16 +58,14 @@ describe('heli spawn treadmill (issue #19)', () => {
     expect(HELI.gunTurnDivisorMin).toBe(1);
   });
 
-  it('targetConcurrent grows with kills and caps at maxConcurrent', () => {
+  it('targetConcurrent stays at 1 regardless of kill count (AC #109)', () => {
     expect(targetConcurrent(0)).toBe(1);
     expect(targetConcurrent(2)).toBe(1);
-    expect(targetConcurrent(3)).toBe(2);
-    expect(targetConcurrent(5)).toBe(2);
-    expect(targetConcurrent(6)).toBe(3);
-    expect(targetConcurrent(9)).toBe(4);
-    expect(targetConcurrent(12)).toBe(5);
-    expect(targetConcurrent(15)).toBe(6);
+    expect(targetConcurrent(3)).toBe(1);
+    expect(targetConcurrent(15)).toBe(1);
     expect(targetConcurrent(99)).toBe(HELI_SPAWN.maxConcurrent);
+    expect(HELI_SPAWN.maxConcurrent).toBe(1);
+    expect(HELI_SPAWN.initialConcurrent).toBe(1);
   });
 
   it('Flash fire interval is Math.max(10, 16-level)', () => {
@@ -91,7 +99,7 @@ describe('heli spawn treadmill (issue #19)', () => {
     expect(state.nextLevelScore).toBe(80000);
   });
 
-  it('replacement spawn keeps population ≥1 after a kill (AC: never empty)', () => {
+  it('replacement spawn keeps population exactly 1 after a kill (AC #109)', () => {
     const rng = createSpawnRng(7);
     const state = createHeliSpawnState();
     const helis = [createHelicopter(400, 200, HELI.hp, rng)];
@@ -102,11 +110,11 @@ describe('heli spawn treadmill (issue #19)', () => {
 
     onHeliKilled(helis, state, 0, LEVEL1_WIDTH_PX, LEVEL1_HEIGHT_PX, rng);
     expect(state.kills).toBe(1);
-    expect(activeHeliCount(helis)).toBeGreaterThanOrEqual(1);
+    expect(activeHeliCount(helis)).toBe(1);
     expect(activeHeliCount(helis)).toBe(targetConcurrent(1));
   });
 
-  it('concurrent count measurably grows with kills (AC)', () => {
+  it('living combat heli count never exceeds 1 across a long kill run (AC #109)', () => {
     const rng = createSpawnRng(19);
     const state = createHeliSpawnState();
     const helis = [] as ReturnType<typeof createHelicopter>[];
@@ -115,7 +123,6 @@ describe('heli spawn treadmill (issue #19)', () => {
 
     const counts: number[] = [];
     for (let k = 0; k < 15; k += 1) {
-      // Instant-kill one living heli, then refill via treadmill.
       const victim = helis.find((h) => h.active);
       expect(victim).toBeDefined();
       damageHelicopter(victim!, HELI.hp);
@@ -127,28 +134,23 @@ describe('heli spawn treadmill (issue #19)', () => {
         LEVEL1_HEIGHT_PX,
         rng,
       );
-      counts.push(activeHeliCount(helis));
+      const living = activeHeliCount(helis);
+      expect(living).toBe(1);
+      counts.push(living);
     }
 
     expect(state.kills).toBe(15);
-    expect(counts[0]).toBe(1); // after 1 kill still target 1
-    expect(counts[2]).toBe(2); // after 3 kills → 2 concurrent
-    expect(counts[5]).toBe(3); // after 6 kills → 3
-    expect(counts[14]).toBe(6); // after 15 kills → capped at 6
-    // Strictly non-decreasing target over the run.
-    for (let i = 1; i < counts.length; i += 1) {
-      expect(counts[i]!).toBeGreaterThanOrEqual(counts[i - 1]!);
-    }
-    expect(counts[14]!).toBeGreaterThan(counts[0]!);
+    expect(counts.every((n) => n === 1)).toBe(true);
+    expect(Math.max(...counts)).toBe(1);
   });
 
   it('spawns replacements from screen edges or top', () => {
     const rng = createSpawnRng(42);
     const state = createHeliSpawnState();
-    state.kills = 3; // target 2
+    state.kills = 3;
     const helis = [] as ReturnType<typeof createHelicopter>[];
     ensureHeliPopulation(helis, state, LEVEL1_WIDTH_PX, LEVEL1_HEIGHT_PX, rng);
-    expect(helis).toHaveLength(2);
+    expect(helis).toHaveLength(1);
     for (const heli of helis) {
       const offLeft = heli.x < 0 || heli.x > LEVEL1_WIDTH_PX;
       const offTop = heli.y < 0;
@@ -184,8 +186,8 @@ describe('heli spawn treadmill (issue #19)', () => {
       heli.tx = heli.x;
       heli.ty = heli.y;
       session.update(1000 / 30);
-      // Mid-game: after the opening spawn, living count must stay ≥ 1.
-      expect(activeHeliCount(session.helicopters)).toBeGreaterThanOrEqual(1);
+      // Mid-game: living count stays exactly 1 (never empty, never multi).
+      expect(activeHeliCount(session.helicopters)).toBe(1);
     }
 
     expect(heli.active).toBe(false);
@@ -195,14 +197,13 @@ describe('heli spawn treadmill (issue #19)', () => {
     expect(WEAPONS[0].damage).toBe(10);
   });
 
-  it('SimSession concurrent grows after every killsPerExtraHeli kills', () => {
+  it('SimSession stays at 1 concurrent after many kills (AC #109)', () => {
     const session = new SimSession();
     const rng = session.spawnRng;
 
-    for (let k = 0; k < HELI_SPAWN.killsPerExtraHeli; k += 1) {
+    for (let k = 0; k < 9; k += 1) {
       const victim = session.helicopters.find((h) => h.active)!;
       damageHelicopter(victim, HELI.hp);
-      // Match SimSession: record during "hit", refill after the loop.
       recordHeliKill(session.heliSpawn, session.score.value + HELI.hp);
       session.score.value += HELI.hp;
       ensureHeliPopulation(
@@ -212,16 +213,35 @@ describe('heli spawn treadmill (issue #19)', () => {
         LEVEL1_HEIGHT_PX,
         rng,
       );
+      expect(activeHeliCount(session.helicopters)).toBe(1);
     }
 
-    expect(session.heliSpawn.kills).toBe(3);
-    expect(activeHeliCount(session.helicopters)).toBe(2);
-    expect(targetConcurrent(session.heliSpawn.kills)).toBe(2);
+    expect(session.heliSpawn.kills).toBe(9);
+    expect(activeHeliCount(session.helicopters)).toBe(1);
+    expect(targetConcurrent(session.heliSpawn.kills)).toBe(1);
+  });
+
+  it('every-3-kills still drops a crate without growing heli count (AC #91/#109)', () => {
+    expect(POWERUP_DROP.killsPerCrate).toBe(3);
+    const dropState = createPowerupDropState();
+    const pickups: PowerupPickup[] = [];
+    const rng = createSpawnRng(91);
+
+    // Simulate three kills: only kill 3 attaches a crate; heli target stays 1.
+    for (let kills = 1; kills <= 3; kills += 1) {
+      trySpawnDropOnKill(kills, dropState, pickups, 400, 200, rng);
+      expect(targetConcurrent(kills)).toBe(1);
+    }
+
+    expect(pickups).toHaveLength(1);
+    expect(pickups[0]!.active).toBe(true);
+    expect(pickups[0]!.kind).not.toBe('health');
   });
 
   it('deferred refill does not skip multi-heli A-Bomb victims (Lead #71)', () => {
     // Regression: splicing helis inside onHit skipped survivors in the same
     // blast. recordHeliKill is state-only; ensureHeliPopulation runs after.
+    // Artificial multi-heli setup — normal play never exceeds maxConcurrent.
     const helis = [
       createHelicopter(100, 100, HELI.hp),
       createHelicopter(150, 100, HELI.hp),
@@ -254,7 +274,7 @@ describe('heli spawn treadmill (issue #19)', () => {
     expect(helis).toHaveLength(3);
 
     ensureHeliPopulation(helis, state, LEVEL1_WIDTH_PX, LEVEL1_HEIGHT_PX, rng);
-    expect(activeHeliCount(helis)).toBe(targetConcurrent(3));
-    expect(targetConcurrent(3)).toBe(2);
+    expect(activeHeliCount(helis)).toBe(1);
+    expect(targetConcurrent(3)).toBe(1);
   });
 });
