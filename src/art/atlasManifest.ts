@@ -3,12 +3,7 @@
  * without touching Phaser (unit-testable).
  */
 
-import {
-  ATLAS_IMAGE_PATH,
-  ATLAS_JSON_PATH,
-  ATLAS_KEY,
-  ART_PLACEHOLDER_SCALE,
-} from '../config/art';
+import { ATLAS_IMAGE_PATH, ATLAS_JSON_PATH, ATLAS_KEY } from '../config/art';
 import {
   SPRITE_DEFS,
   type SpriteId,
@@ -93,7 +88,7 @@ export function validateAtlasManifest(json: AtlasJson): ManifestValidation {
     const entry = frames[id]!;
     if (entry.frame.w !== tex.w || entry.frame.h !== tex.h) {
       sizeMismatches.push(
-        `${id}: frame ${entry.frame.w}×${entry.frame.h} != ${tex.w}×${tex.h} (${ART_PLACEHOLDER_SCALE}× original)`,
+        `${id}: frame ${entry.frame.w}×${entry.frame.h} != ${tex.w}×${tex.h}`,
       );
     }
     const pivot = entry.pivot;

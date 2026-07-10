@@ -55,7 +55,7 @@ export function placeOnCenter(
   };
 }
 
-/** Placement for the player placeholder from body + sprite def. */
+/** Placement for the player sprite from body + sprite def. */
 export function playerSpritePlacement(
   body: Aabb,
   def: SpriteDef,

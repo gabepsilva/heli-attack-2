@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { ART_PLACEHOLDER_SCALE, ATLAS_KEY } from '../config/art';
+import { ART_PLAYER_FINAL_SCALE, ATLAS_KEY } from '../config/art';
 import { PLAYER } from '../config/constants';
 import {
   atlasLoadPaths,
@@ -20,7 +20,7 @@ function loadCommittedAtlas(): AtlasJson {
   return JSON.parse(readFileSync(path, 'utf8')) as AtlasJson;
 }
 
-describe('committed atlas manifest (issue #32 — scene renders via atlas)', () => {
+describe('committed atlas manifest (issue #32/#33 — scene renders via atlas)', () => {
   it('exposes load paths for Phaser load.atlas', () => {
     expect(atlasLoadPaths()).toEqual({
       key: ATLAS_KEY,
@@ -29,7 +29,7 @@ describe('committed atlas manifest (issue #32 — scene renders via atlas)', () 
     });
   });
 
-  it('includes every catalog frame at 4× size with documented pivots', () => {
+  it('includes every catalog frame at documented texture size with pivots', () => {
     const json = loadCommittedAtlas();
     const report = validateAtlasManifest(json);
 
@@ -45,9 +45,13 @@ describe('committed atlas manifest (issue #32 — scene renders via atlas)', () 
     expect(json.meta.size.h).toBeGreaterThan(0);
 
     const idle = json.frames.player_idle!;
-    expect(idle.frame.w).toBe(24 * ART_PLACEHOLDER_SCALE);
-    expect(idle.frame.h).toBe(49 * ART_PLACEHOLDER_SCALE);
+    expect(idle.frame.w).toBe(24 * ART_PLAYER_FINAL_SCALE);
+    expect(idle.frame.h).toBe(49 * ART_PLAYER_FINAL_SCALE);
     expect(idle.pivot).toEqual({ x: 0.5, y: 1 });
+
+    const death = json.frames.player_death!;
+    expect(death.frame.w).toBe(40 * ART_PLAYER_FINAL_SCALE);
+    expect(death.frame.h).toBe(49 * ART_PLAYER_FINAL_SCALE);
   });
 
   it('ships a PNG atlas next to the JSON', () => {
@@ -63,7 +67,7 @@ describe('committed atlas manifest (issue #32 — scene renders via atlas)', () 
   });
 });
 
-describe('ART-SPEC.md (issue #32 — documented working process)', () => {
+describe('ART-SPEC.md (issue #32/#33 — documented working process)', () => {
   it('documents every sprite dimension, pivot, and add-sprite steps', () => {
     const md = renderArtSpecMarkdown();
     const committed = readFileSync(
@@ -84,7 +88,11 @@ describe('ART-SPEC.md (issue #32 — documented working process)', () => {
 
     expect(md).toContain('Adding a new sprite');
     expect(md).toContain('npm run art:pack');
+    expect(md).toContain('npm run art:player');
     expect(md).toContain(`**${PLAYER.spriteW}×${PLAYER.spriteH}**`);
     expect(md).toContain(getSpriteDef('player_duck').role);
+    expect(md).toContain('player_hurt');
+    expect(md).toContain('player_death');
+    expect(md).toContain('final hi-res');
   });
 });
