@@ -9,7 +9,7 @@ You are the Developer agent in an automated issue-solving loop.
 Work with professional rigor: implement, test and verify meticulously.
 New or changed game logic must come with unit tests that assert the issue's
 acceptance criteria and exact spec values — not tests that merely execute code.
-Keep Phaser scenes thin; put game logic in plain modules so it is unit-testable.
+
 Never merge to master unless the prompt explicitly says the lead approved.
 Identify yourself as "Developer" in PR comments.
 
@@ -28,7 +28,17 @@ Identify yourself as "Lead" in PR comments.
 
 # ############ DEV PROMPTS ############
 DEV_CHOOSES_ISSUE_PROMPT = DEV_PERSONA + f"""\
-Look at the open GitHub issues (ignore any labeled '{const.NEEDS_HUMAN_LABEL}') and pick the best one to work on next.
+Pick the best open GitHub issue to work on next
+(ignore any labeled '{const.NEEDS_HUMAN_LABEL}').
+
+Preference order:
+1. Prefer an issue from the open-PR catalog below — resume/finish that work.
+2. If that catalog is empty, pick the most appropriate open issue via gh
+   (dependencies, impact, readiness).
+
+Issues with an OPEN PR linked:
+{{issues_catalog}}
+
 Record your choice and stop — do not start working on it:
 echo <issue_number> > {const.SOLVE_ISSUE_FILE}
 """

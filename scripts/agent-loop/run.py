@@ -1,13 +1,59 @@
 import argparse
+import json
 import shutil
 import subprocess
+import sys
 import time
 from pathlib import Path
 
+import claude_usage
 import const as const
+import cursor_usage
 import prompt_strings as prompts
 
 PAUSE = False
+
+ISSUES_WITH_PRS_QUERY = """
+query($owner: String!, $name: String!) {
+  repository(owner: $owner, name: $name) {
+    issues(first: 100, states: OPEN) {
+      nodes {
+        number
+        title
+        url
+        labels(first: 20) {
+          nodes { name }
+        }
+        timelineItems(itemTypes: [CROSS_REFERENCED_EVENT, CONNECTED_EVENT], first: 50) {
+          nodes {
+            __typename
+            ... on ConnectedEvent {
+              subject {
+                ... on PullRequest {
+                  number
+                  title
+                  state
+                  url
+                }
+              }
+            }
+            ... on CrossReferencedEvent {
+              source {
+                ... on PullRequest {
+                  number
+                  title
+                  state
+                  url
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+"""
 
 
 def gh(*args: str) -> subprocess.CompletedProcess:
@@ -16,23 +62,112 @@ def gh(*args: str) -> subprocess.CompletedProcess:
 	)
 
 
-def has_open_issues() -> bool:
+def repo_owner_name() -> tuple[str, str] | None:
+	result = gh("repo", "view", "--json", "owner,name", "-q", ".owner.login + \" \" + .name")
+	if result.returncode != 0:
+		print(f"gh repo view failed: {result.stderr.strip()}")
+		return None
+	parts = result.stdout.strip().split()
+	if len(parts) != 2:
+		print(f"unexpected repo view output: {result.stdout.strip()!r}")
+		return None
+	return parts[0], parts[1]
+
+
+def list_open_issues_with_prs() -> list[dict]:
+	"""Open issues (excluding needs-human) with deduped linked/referenced PRs."""
+	repo = repo_owner_name()
+	if repo is None:
+		return []
+	owner, name = repo
 	result = gh(
-		"issue",
-		"list",
-		"--search",
-		f"is:open -label:{const.NEEDS_HUMAN_LABEL}",
-		"--limit",
-		"1",
-		"--json",
-		"number",
-		"-q",
-		"length",
+		"api",
+		"graphql",
+		"-f",
+		f"query={ISSUES_WITH_PRS_QUERY}",
+		"-F",
+		f"owner={owner}",
+		"-F",
+		f"name={name}",
 	)
 	if result.returncode != 0:
-		print(f"gh issue list failed: {result.stderr.strip()}")
-		return False
-	return result.stdout.strip() != "0"
+		print(f"gh graphql failed: {result.stderr.strip()}")
+		return []
+
+	try:
+		payload = json.loads(result.stdout)
+		nodes = payload["data"]["repository"]["issues"]["nodes"]
+	except (json.JSONDecodeError, KeyError, TypeError) as exc:
+		print(f"failed to parse issues-with-PRs response: {exc}")
+		return []
+
+	issues: list[dict] = []
+	for issue in nodes:
+		labels = {label["name"] for label in issue.get("labels", {}).get("nodes", [])}
+		if const.NEEDS_HUMAN_LABEL in labels:
+			continue
+
+		prs: dict[int, dict] = {}
+		for event in issue.get("timelineItems", {}).get("nodes", []):
+			pr = None
+			if event.get("__typename") == "ConnectedEvent":
+				pr = event.get("subject")
+			elif event.get("__typename") == "CrossReferencedEvent":
+				pr = event.get("source")
+			if not pr or "number" not in pr:
+				continue
+			prs[pr["number"]] = {
+				"number": pr["number"],
+				"title": pr.get("title", ""),
+				"state": pr.get("state", ""),
+				"url": pr.get("url", ""),
+			}
+
+		issues.append(
+			{
+				"number": issue["number"],
+				"title": issue["title"],
+				"url": issue["url"],
+				"prs": sorted(prs.values(), key=lambda p: p["number"]),
+			}
+		)
+
+	issues.sort(
+		key=lambda i: (
+			0 if any(p["state"] == "OPEN" for p in i["prs"]) else 1,
+			i["number"],
+		)
+	)
+	return issues
+
+
+def issues_with_open_prs(issues: list[dict] | None = None) -> list[dict]:
+	"""Issues that have at least one OPEN linked/referenced PR."""
+	if issues is None:
+		issues = list_open_issues_with_prs()
+	filtered: list[dict] = []
+	for issue in issues:
+		open_prs = [p for p in issue["prs"] if p["state"] == "OPEN"]
+		if not open_prs:
+			continue
+		filtered.append({**issue, "prs": open_prs})
+	return filtered
+
+
+def format_issues_with_prs(issues: list[dict]) -> str:
+	if not issues:
+		return "(none)"
+
+	lines: list[str] = []
+	for issue in issues:
+		lines.append(f"#{issue['number']}: {issue['title']}")
+		for pr in issue["prs"]:
+			lines.append(f"  PR #{pr['number']} [{pr['state']}] {pr['title']}")
+	return "\n".join(lines)
+
+
+def has_open_issues() -> bool:
+	return bool(list_open_issues_with_prs())
 
 
 def ensure_label() -> None:
@@ -70,7 +205,7 @@ def reset_loop_controls() -> None:
 
 def run_agent(
 	cmd: list[str], banner: str, str_prompt: str, *, prompt_via_stdin: bool = False
-) -> bool:
+) -> None:
 	if PAUSE:
 		input(f"[pause] press Enter to run {banner}... ")
 	print("")
@@ -88,13 +223,13 @@ def run_agent(
 			timeout=const.AGENT_TIMEOUT,
 			text=True,
 		)
-		return True
 	except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
 		print(f"{banner} failed: {exc}")
-		return False
+		print("Aborting agent loop")
+		sys.exit(1)
 
 
-def run_dev_agent(str_prompt: str) -> bool:
+def run_dev_agent(str_prompt: str) -> None:
 	cmd = [
 		"cursor-agent",
 		"-p",
@@ -104,28 +239,39 @@ def run_dev_agent(str_prompt: str) -> bool:
 		"--model",
 		"auto",
 	]
-	return run_agent(cmd, "🖥️🖥️🖥️  dev agent", str_prompt)
+	run_agent(cmd, "🖥️🖥️🖥️  dev agent", str_prompt)
 
 
-def run_lead_agent(str_prompt: str) -> bool:
+def run_lead_agent(str_prompt: str) -> None:
+	if claude_usage.should_fallback_to_cursor(const.CLAUDE_USAGE_FALLBACK_PCT):
+		cmd = [
+			"cursor-agent",
+			"-p",
+			"--yolo",
+			"--workspace",
+			str(const.REPO_ROOT),
+			"--model",
+			const.CURSOR_LEAD_MODEL,
+		]
+		run_agent(cmd, "👨‍⚖️👨‍⚖️👨‍⚖️  lead agent (cursor opus)", str_prompt)
+		return
+
 	cmd = [
 		"claude",
 		"-p",
 		"--dangerously-skip-permissions",
 		"--model",
-		"opus"
+		"opus",
 	]
-	return run_agent(
-		cmd, "👨‍⚖️👨‍⚖️👨‍⚖️  lead agent", str_prompt, prompt_via_stdin=True
-	)
+	run_agent(cmd, "👨‍⚖️👨‍⚖️👨‍⚖️  lead agent", str_prompt, prompt_via_stdin=True)
 
 
 def process_issue(issue: str) -> None:
 	clear_control(const.PR_FILE)
-	ok = run_dev_agent(prompts.DEV_WORK_ON_ISSUE_PROMPT.format(issue_number=issue))
+	run_dev_agent(prompts.DEV_WORK_ON_ISSUE_PROMPT.format(issue_number=issue))
 	pr = read_control(const.PR_FILE)
-	if not ok or not pr.isdigit():
-		mark_needs_human(issue, "dev run failed or did not record a PR number")
+	if not pr.isdigit():
+		mark_needs_human(issue, "dev did not record a PR number")
 		return
 
 	for round_num in range(1, const.MAX_REVIEW_ROUNDS + 1):
@@ -172,6 +318,8 @@ def main() -> None:
 		print("Issue number must be a positive integer")
 		exit(1)
 
+	claude_usage.print_claude_usage()
+	cursor_usage.print_cursor_usage()
 	reset_loop_controls()
 	ensure_label()
 	if args.solve_issue is not None:
@@ -188,7 +336,11 @@ def main() -> None:
 				time.sleep(const.IDLE_INTERVAL)
 				continue
 			print("Choosing issue")
-			run_dev_agent(prompts.DEV_CHOOSES_ISSUE_PROMPT)
+			catalog = format_issues_with_prs(issues_with_open_prs())
+			print(catalog)
+			run_dev_agent(
+				prompts.DEV_CHOOSES_ISSUE_PROMPT.format(issues_catalog=catalog)
+			)
 			issue = read_control(const.SOLVE_ISSUE_FILE)
 			if not issue:
 				print("Dev did not pick an issue — sleeping")
