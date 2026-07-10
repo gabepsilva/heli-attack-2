@@ -171,7 +171,7 @@ export class GameScene extends Phaser.Scene {
   private bulletSprites: Phaser.GameObjects.Image[] = [];
   /** Enemy return-fire visuals (#18). */
   private enemyBulletSprites: Phaser.GameObjects.Image[] = [];
-  /** One visual per concurrent heli slot (#19 treadmill can fill several). */
+  /** One visual per concurrent heli slot (Flash parity: maxConcurrent = 1). */
   private heliSprites: Phaser.GameObjects.Image[] = [];
   /** One visual per in-flight explosion (kills can overlap). */
   private explosionSprites: Phaser.GameObjects.Image[] = [];

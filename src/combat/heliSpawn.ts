@@ -1,12 +1,10 @@
 /**
- * Replacement spawn treadmill & difficulty ramp (#19).
+ * Replacement spawn treadmill & difficulty ramp (#19 / #109).
  *
  * Flash model:
- * - On heli death: `addEnemy(300)` → immediate replacement (sky never empty).
+ * - On heli death / fly-off: `addEnemy(...)` → immediate 1:1 replacement.
+ * - Living combat population stays at exactly one heli.
  * - `if (score > nextLevel) { nextLevel *= 2; level++; }` — fire/aim harden.
- *
- * Port addition (ticket AC): target concurrent grows with kill count so
- * pressure escalates the longer you survive, not only via fire rate.
  */
 
 import { HELI, HELI_SPAWN } from '../config/constants';
@@ -30,15 +28,15 @@ export function createHeliSpawnState(): HeliSpawnState {
 }
 
 /**
- * Target on-screen population for the current kill count.
- * `1 + floor(kills / killsPerExtraHeli)`, capped at {@link HELI_SPAWN.maxConcurrent}.
+ * Target on-screen population — Flash parity is a fixed concurrent count
+ * ({@link HELI_SPAWN.maxConcurrent} = {@link HELI_SPAWN.initialConcurrent} = 1).
+ * `kills` is accepted for call-site compatibility; it does not raise the cap.
  */
 export function targetConcurrent(
-  kills: number,
+  _kills: number,
   cfg: typeof HELI_SPAWN = HELI_SPAWN,
 ): number {
-  const extra = Math.floor(Math.max(0, kills) / cfg.killsPerExtraHeli);
-  return Math.min(cfg.maxConcurrent, cfg.initialConcurrent + extra);
+  return Math.min(cfg.maxConcurrent, cfg.initialConcurrent);
 }
 
 /** Active (living) heli count. */

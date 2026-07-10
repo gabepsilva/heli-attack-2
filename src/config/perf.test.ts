@@ -47,7 +47,7 @@ describe('config/perf (#37)', () => {
     expect(PERF.enemyBulletPoolCapacity).toBe(ENEMY_BULLET.poolCapacity);
     expect(PERF.enemyBulletPoolCapacity).toBe(64);
     expect(PERF.heliMaxConcurrent).toBe(HELI_SPAWN.maxConcurrent);
-    expect(PERF.heliMaxConcurrent).toBe(6);
+    expect(PERF.heliMaxConcurrent).toBe(1);
     expect(PERF_HELI_VISUAL_POOL).toBe(8);
     expect(PERF_EXPLOSION_VISUAL_POOL).toBe(8);
     expect(PERF.heliVisualPool).toBeGreaterThanOrEqual(PERF.heliMaxConcurrent);

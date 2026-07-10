@@ -61,10 +61,7 @@ export type PeakLoadAuditOptions = {
 export function saturatePeakLoad(session: SimSession): void {
   refillBulletPools(session);
 
-  // Cap helis at max concurrent (spawn treadmill soft cap).
-  session.heliSpawn.kills =
-    HELI_SPAWN.killsPerExtraHeli *
-    (HELI_SPAWN.maxConcurrent - HELI_SPAWN.initialConcurrent);
+  // Cap helis at Flash parity max concurrent (exactly one living combat heli).
   while (session.helicopters.length < HELI_SPAWN.maxConcurrent) {
     session.helicopters.push(
       spawnHelicopter(

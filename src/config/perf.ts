@@ -54,7 +54,7 @@ export const PERF = {
   playerBulletPoolCapacity: BULLET.poolCapacity,
   enemyBulletPoolCapacity: ENEMY_BULLET.poolCapacity,
 
-  /** Soft enemy cap from the spawn treadmill (#19). */
+  /** Living combat heli cap — Flash 1:1 replacement (#19 / #109). */
   heliMaxConcurrent: HELI_SPAWN.maxConcurrent,
   heliVisualPool: PERF_HELI_VISUAL_POOL,
   explosionVisualPool: PERF_EXPLOSION_VISUAL_POOL,

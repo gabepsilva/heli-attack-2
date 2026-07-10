@@ -31,7 +31,7 @@ describe('tooling/peakLoadAudit (#37)', () => {
     expect(session.bullets.activeCount).toBe(64);
     expect(session.enemyBullets.activeCount).toBe(64);
     expect(session.helicopters.length).toBe(HELI_SPAWN.maxConcurrent);
-    expect(session.helicopters.length).toBe(6);
+    expect(session.helicopters.length).toBe(1);
     expect(session.particleFx.length).toBe(128);
     expect(session.particleFx.dropped).toBeGreaterThan(0);
     // Acquire past capacity must fail — pool never grows.
@@ -55,7 +55,7 @@ describe('tooling/peakLoadAudit (#37)', () => {
     );
     expect(result.pools.particleBudgetCap).toBe(particleBudgetCap());
     expect(result.pools.particleBudgetCap).toBe(432);
-    expect(result.pools.heliMaxConcurrent).toBe(6);
+    expect(result.pools.heliMaxConcurrent).toBe(1);
     expect(result.pools.capacitiesGrew).toBe(false);
     // Still at peak occupancy after the measured burst (refill each tick).
     expect(result.pools.playerBulletsActive).toBe(
