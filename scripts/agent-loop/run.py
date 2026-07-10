@@ -10,6 +10,7 @@ import agent_sessions
 import claude_usage
 import const as const
 import cursor_usage
+import issue_timing
 import prompt_strings as prompts
 import stream_format
 
@@ -188,6 +189,7 @@ def ensure_label() -> None:
 def mark_needs_human(issue: str, reason: str) -> None:
 	print(f"Marking issue #{issue} as {const.NEEDS_HUMAN_LABEL}: {reason}")
 	agent_sessions.clear_issue_sessions()
+	issue_timing.clear()
 	gh("issue", "edit", issue, "--add-label", const.NEEDS_HUMAN_LABEL)
 	gh("issue", "comment", issue, "--body", f"Agent loop stopped working on this issue: {reason}")
 
@@ -381,6 +383,7 @@ def merge_approved_pr(issue: str, pr: str) -> None:
 			pr_number=pr, issue_number=issue
 		),
 	)
+	issue_timing.post_resolution(issue, pr)
 
 
 def fix_pr_after_changes(pr: str) -> None:
@@ -443,7 +446,9 @@ def review_until_merged(
 
 def process_issue(issue: str) -> None:
 	agent_sessions.clear_issue_sessions()
+	issue_timing.clear()
 	clear_control(const.PR_FILE)
+	issue_timing.mark_started()
 	run_dev_agent(
 		full_prompt=prompts.DEV_WORK_ON_ISSUE_PROMPT.format(issue_number=issue)
 	)
@@ -453,6 +458,7 @@ def process_issue(issue: str) -> None:
 		return
 	review_until_merged(issue, pr)
 	agent_sessions.clear_issue_sessions()
+	issue_timing.clear()
 
 
 def process_lead_open_pr_review() -> bool:
@@ -467,9 +473,11 @@ def process_lead_open_pr_review() -> bool:
 
 	catalog = format_issues_with_prs(catalog_issues)
 	agent_sessions.clear_issue_sessions()
+	issue_timing.clear()
 	clear_control(const.SOLVE_ISSUE_FILE)
 	clear_control(const.PR_FILE)
 	clear_control(const.VERDICT_FILE)
+	issue_timing.mark_started()
 	run_lead_agent(
 		full_prompt=prompts.LEAD_CHOOSE_AND_REVIEW_PROMPT.format(
 			issues_catalog=catalog
@@ -482,11 +490,13 @@ def process_lead_open_pr_review() -> bool:
 
 	if not issue.isdigit() or not pr.isdigit():
 		print("Lead did not pick a PR to review")
+		issue_timing.clear()
 		return False
 
 	print(f"Lead reviewing issue #{issue} / PR #{pr}")
 	review_until_merged(issue, pr, initial_verdict=verdict)
 	agent_sessions.clear_issue_sessions()
+	issue_timing.clear()
 	return True
 
 

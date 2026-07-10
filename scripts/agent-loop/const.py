@@ -9,6 +9,7 @@ VERDICT_FILE = LOOP_CONTROLS / "verdict.txt"
 DEV_SESSION_FILE = LOOP_CONTROLS / "dev_session.txt"
 LEAD_SESSION_FILE = LOOP_CONTROLS / "lead_session.txt"
 LEAD_BACKEND_FILE = LOOP_CONTROLS / "lead_backend.txt"
+ISSUE_LOOP_STARTED_AT_FILE = LOOP_CONTROLS / "issue_loop_started_at.txt"
 NEEDS_HUMAN_LABEL = "needs-human"
 MAX_REVIEW_ROUNDS = 5
 IDLE_INTERVAL = 30
