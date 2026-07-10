@@ -325,18 +325,16 @@ export const HEALTH_PICKUP = {
 } as const;
 
 /**
- * Kill-drop / parachute pickup tunables (#21).
+ * Kill-drop / parachute pickup tunables (#21 / #91).
  *
- * Flash: on every 3rd kill, always attach a powerup; health when
+ * Flash: on every 3rd kill (`helis == 3`), always attach a powerup; health when
  * `rthelis >= nextHealth` (starts 15, doubles), else a random weapon/state
- * frame. Spec + ticket AC reinterpret the `random(100) % 32 == 0` gate as the
- * ~3% weapon/ammo drop chance on non-threshold kills (no every-3rd gate).
+ * frame. The Flash `random(100) % 32 == 0` roll only sets a visual `randomed`
+ * cycle flag — it does **not** gate whether a crate spawns (#91).
  */
 export const POWERUP_DROP = {
-  /** Flash `random(100)` range (integers 0..99). */
-  chanceRange: 100,
-  /** Flash `% 32 == 0` → 4 of 100 rolls (0,32,64,96) ≈ 3–4%. */
-  chanceModulus: 32,
+  /** Flash `helis == 3` — one crate every N heli kills. */
+  killsPerCrate: 3,
   /**
    * Non-health crate frames in Flash `power._totalframes` (frames 2..14):
    * weapons 1–12 + one state-powerup roll.

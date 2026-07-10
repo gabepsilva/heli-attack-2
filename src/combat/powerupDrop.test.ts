@@ -1,11 +1,14 @@
 /**
- * Powerup drop & pickup — issue #21 acceptance criteria.
+ * Powerup drop & pickup — issues #21 / #91 acceptance criteria.
  *
- * AC: Health drops on threshold kills
- * AC: Weapon drops appear ~3% over many kills; touch collects
+ * AC (#91): Weapon crate every 3 heli kills (deterministic cadence)
+ * AC (#91): Pickup grants finite Flash ammo; MachineGun stays ∞-only
+ * AC (#91): Empty limited weapons fall back / unselectable at 0 ammo
+ * AC (#21): Health drops on doubling thresholds via the shared crate channel
  *
- * Spec: nextHealth starts at 15 then doubles; random(100)%32==0 ≈ 3%;
- * health pickup +20 capped at 100; parachute fall then AABB collect.
+ * Spec: Flash `helis == 3` always attaches a crate; health when
+ * `rthelis >= nextHealth` (15→30→60…); else weapon/state frame. Pickup ammo
+ * from {@link WEAPON_PICKUP_AMMO}.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -16,7 +19,11 @@ import {
   POWERUP_FRAMES,
   WORLD,
 } from '../config/constants';
-import { WEAPON_PICKUP_AMMO } from '../config/weapons';
+import {
+  PREDATOR_WEAPON_INDEX,
+  WEAPONS,
+  WEAPON_PICKUP_AMMO,
+} from '../config/weapons';
 import { SimSession } from '../core/simSession';
 import { createAabbBody } from '../world/aabbBody';
 import { LEVEL1_HEIGHT_PX, LEVEL1_WIDTH_PX } from '../world/level1';
@@ -29,9 +36,9 @@ import {
   createPlayerPowerupState,
   createPowerupDropState,
   decideKillDrop,
+  isCrateKill,
   powerupDropMatchesSpec,
   powerupOverlapsPlayer,
-  rollsWeaponDrop,
   spawnPowerup,
   stepPowerup,
   stepPowerups,
@@ -39,108 +46,126 @@ import {
   type PowerupPickup,
 } from './powerupDrop';
 import { createPlayerHealth, healPlayer } from './playerHealth';
-import { createWeaponInventory } from './weaponInventory';
+import { stepWeaponFire } from './weapon';
+import {
+  createWeaponInventory,
+  fallbackIfActiveEmpty,
+  grantWeaponAmmo,
+  isWeaponOwned,
+  selectWeapon,
+} from './weaponInventory';
 
-describe('powerup drop & pickup (issue #21)', () => {
-  it('locks drop chance, health threshold, and pickup amounts to exact spec', () => {
+describe('powerup drop & pickup (issues #21 / #91)', () => {
+  it('locks every-3 cadence, health threshold, and pickup amounts to exact spec', () => {
     expect(powerupDropMatchesSpec()).toBe(true);
     expect(HEALTH_PICKUP).toEqual({
       amount: 20,
       cap: 100,
       firstThreshold: 15,
     });
-    expect(POWERUP_DROP.chanceRange).toBe(100);
-    expect(POWERUP_DROP.chanceModulus).toBe(32);
+    expect(POWERUP_DROP.killsPerCrate).toBe(3);
     expect(POWERUP_DROP.nonHealthFrameCount).toBe(13);
     expect(POWERUP_DROP.crateW).toBe(33);
     expect(POWERUP_DROP.crateH).toBe(32);
     expect(POWERUP_DROP.chuteFallSpeed).toBe(2);
     expect(POWERUP_FRAMES).toBe(500);
-  });
-
-  it('rollsWeaponDrop matches Flash random(100)%32==0 (4 of 100 ≈ 3–4%)', () => {
-    const hits: number[] = [];
-    for (let roll = 0; roll < POWERUP_DROP.chanceRange; roll += 1) {
-      if (rollsWeaponDrop(roll)) {
-        hits.push(roll);
-      }
-    }
-    expect(hits).toEqual([0, 32, 64, 96]);
-    expect(hits.length / POWERUP_DROP.chanceRange).toBeCloseTo(0.04, 5);
-  });
-
-  it('health drops on doubling kill thresholds starting at 15 (AC)', () => {
-    const dropState = createPowerupDropState();
-    expect(dropState.nextHealth).toBe(15);
-
-    // Force weapon-miss rolls so only thresholds spawn.
-    const missRng = {
-      next: (): number => 0.5, // floor(0.5*100)=50; 50%32!=0
-    };
-
-    expect(decideKillDrop(1, dropState, missRng)).toBeNull();
-    expect(dropState.nextHealth).toBe(15);
-
-    expect(decideKillDrop(14, dropState, missRng)).toBeNull();
-    const at15 = decideKillDrop(15, dropState, missRng);
-    expect(at15).toEqual({ kind: 'health' });
-    expect(dropState.nextHealth).toBe(30);
-
-    expect(decideKillDrop(29, dropState, missRng)).toBeNull();
-    expect(decideKillDrop(30, dropState, missRng)).toEqual({ kind: 'health' });
-    expect(dropState.nextHealth).toBe(60);
-
-    expect(decideKillDrop(60, dropState, missRng)).toEqual({ kind: 'health' });
-    expect(dropState.nextHealth).toBe(120);
-
-    expect(decideKillDrop(120, dropState, missRng)).toEqual({
-      kind: 'health',
+    // Finite Flash pickup ammo for limited guns 1..12 — never Infinity.
+    expect(WEAPON_PICKUP_AMMO).toEqual({
+      1: 50,
+      2: 14,
+      3: 8,
+      4: 12,
+      5: 10,
+      6: 8,
+      7: 6,
+      8: 150,
+      9: 3,
+      10: 2,
+      11: 3,
+      12: 2,
     });
-    expect(dropState.nextHealth).toBe(240);
+    for (const ammo of Object.values(WEAPON_PICKUP_AMMO)) {
+      expect(Number.isFinite(ammo)).toBe(true);
+      expect(ammo).toBeGreaterThan(0);
+    }
   });
 
-  it('weapon drops appear ~3–4% over many non-threshold kills (AC)', () => {
-    const dropState = createPowerupDropState();
-    // Keep nextHealth far away so health never wins.
-    dropState.nextHealth = 1_000_000;
+  it('isCrateKill matches Flash helis==3 every-N cadence', () => {
+    expect(isCrateKill(0)).toBe(false);
+    expect(isCrateKill(1)).toBe(false);
+    expect(isCrateKill(2)).toBe(false);
+    expect(isCrateKill(3)).toBe(true);
+    expect(isCrateKill(4)).toBe(false);
+    expect(isCrateKill(6)).toBe(true);
+    expect(isCrateKill(15)).toBe(true);
+    expect(isCrateKill(3, POWERUP_DROP.killsPerCrate)).toBe(true);
+  });
 
+  it('spawns a weapon crate every 3 heli kills — deterministic cadence (AC #91)', () => {
+    const dropState = createPowerupDropState();
+    // Keep nextHealth far away so health never wins the shared channel.
+    dropState.nextHealth = 1_000_000;
     const rng = createSpawnRng(42);
-    const trials = 10_000;
-    let drops = 0;
-    let weapons = 0;
-    let states = 0;
-    for (let i = 0; i < trials; i += 1) {
-      const d = decideKillDrop(i + 1, dropState, rng);
+
+    const decisions = [];
+    for (let k = 1; k <= 30; k += 1) {
+      decisions.push(decideKillDrop(k, dropState, rng));
+    }
+
+    // Non-multiples of 3 never drop.
+    for (const k of [1, 2, 4, 5, 7, 8, 10, 11, 13, 14, 16]) {
+      expect(decisions[k - 1]).toBeNull();
+    }
+
+    // Every 3rd kill always drops weapon or state (never null, never health).
+    for (let k = 3; k <= 30; k += 3) {
+      const d = decisions[k - 1] ?? null;
+      expect(d).not.toBeNull();
+      expect(d).not.toBeUndefined();
       if (d === null) {
         continue;
       }
-      drops += 1;
+      expect(d.kind === 'weapon' || d.kind === 'state').toBe(true);
       if (d.kind === 'weapon') {
-        weapons += 1;
         expect(d.weaponIndex).toBeGreaterThanOrEqual(1);
         expect(d.weaponIndex).toBeLessThanOrEqual(12);
-      } else if (d.kind === 'state') {
-        states += 1;
-      } else {
-        expect.fail('health should not drop with nextHealth far away');
       }
     }
 
-    const rate = drops / trials;
-    // Spec ≈ 3%; Flash gate is exactly 4/100 = 4%. Allow sampling noise.
-    expect(rate).toBeGreaterThan(0.03);
-    expect(rate).toBeLessThan(0.055);
-    expect(weapons + states).toBe(drops);
-    expect(weapons).toBeGreaterThan(states); // 12 weapon frames vs 1 state
+    // Exactly 10 crates across 30 kills (30/3).
+    const crates = decisions.filter((d) => d !== null);
+    expect(crates).toHaveLength(10);
   });
 
-  it('health threshold takes priority over the weapon-drop roll', () => {
+  it('health drops on doubling kill thresholds via the every-3 channel (AC #21/#93)', () => {
     const dropState = createPowerupDropState();
-    // Always roll 0 → would be a weapon drop if health did not win.
-    const alwaysHit = { next: (): number => 0 };
-    expect(decideKillDrop(15, dropState, alwaysHit)).toEqual({
-      kind: 'health',
-    });
+    expect(dropState.nextHealth).toBe(15);
+    const rng = createSpawnRng(1);
+
+    // Off-cadence kills never drop, even past a threshold conceptually.
+    expect(decideKillDrop(1, dropState, rng)).toBeNull();
+    expect(decideKillDrop(14, dropState, rng)).toBeNull();
+    expect(dropState.nextHealth).toBe(15);
+
+    // Kill 15 is both every-3 and first health threshold.
+    expect(decideKillDrop(15, dropState, rng)).toEqual({ kind: 'health' });
+    expect(dropState.nextHealth).toBe(30);
+
+    expect(decideKillDrop(18, dropState, rng)?.kind).not.toBe('health');
+    expect(decideKillDrop(30, dropState, rng)).toEqual({ kind: 'health' });
+    expect(dropState.nextHealth).toBe(60);
+
+    expect(decideKillDrop(60, dropState, rng)).toEqual({ kind: 'health' });
+    expect(dropState.nextHealth).toBe(120);
+
+    expect(decideKillDrop(120, dropState, rng)).toEqual({ kind: 'health' });
+    expect(dropState.nextHealth).toBe(240);
+  });
+
+  it('health threshold takes priority over weapon on the shared every-3 slot', () => {
+    const dropState = createPowerupDropState();
+    const rng = createSpawnRng(99);
+    expect(decideKillDrop(15, dropState, rng)).toEqual({ kind: 'health' });
     expect(dropState.nextHealth).toBe(30);
   });
 
@@ -155,6 +180,70 @@ describe('powerup drop & pickup (issue #21)', () => {
       20,
     );
     expect(health.health).toBe(70);
+  });
+
+  it('weapon pickup grants finite Flash ammo — never infinite on limited guns (AC #91)', () => {
+    const health = createPlayerHealth();
+    const inventory = createWeaponInventory();
+    const powerupState = createPlayerPowerupState();
+    const rng = createSpawnRng(7);
+
+    // MachineGun starts infinite and is the only ∞ slot in normal play.
+    expect(inventory.slots[0]!.bullets).toBe(Number.POSITIVE_INFINITY);
+    for (let i = 1; i < PREDATOR_WEAPON_INDEX; i += 1) {
+      expect(inventory.slots[i]!.bullets).toBe(0);
+      expect(isWeaponOwned(inventory, i)).toBe(false);
+    }
+
+    for (const [indexStr, expectedAmmo] of Object.entries(WEAPON_PICKUP_AMMO)) {
+      const weaponIndex = Number(indexStr);
+      const crate = spawnPowerup(0, 0, { kind: 'weapon', weaponIndex });
+      const before = inventory.slots[weaponIndex]!.bullets;
+      const result = applyPowerupCollect(
+        crate,
+        health,
+        inventory,
+        powerupState,
+        rng,
+      );
+      expect(result).toEqual({
+        kind: 'weapon',
+        amount: expectedAmmo,
+        weaponIndex,
+      });
+      expect(Number.isFinite(result.amount)).toBe(true);
+      expect(inventory.slots[weaponIndex]!.bullets).toBe(before + expectedAmmo);
+      expect(Number.isFinite(inventory.slots[weaponIndex]!.bullets)).toBe(true);
+      expect(isWeaponOwned(inventory, weaponIndex)).toBe(true);
+    }
+
+    // MachineGun still infinite; predator slot untouched by weapon pickups.
+    expect(inventory.slots[0]!.bullets).toBe(Number.POSITIVE_INFINITY);
+    expect(inventory.slots[PREDATOR_WEAPON_INDEX]!.bullets).toBe(
+      Number.POSITIVE_INFINITY,
+    );
+
+    // grantWeaponAmmo refuses to top up MG / predator / non-finite amounts.
+    grantWeaponAmmo(inventory, 0, 99);
+    expect(inventory.slots[0]!.bullets).toBe(Number.POSITIVE_INFINITY);
+    grantWeaponAmmo(inventory, 2, Number.POSITIVE_INFINITY);
+    expect(inventory.slots[2]!.bullets).toBe(WEAPON_PICKUP_AMMO[2]);
+  });
+
+  it('empty limited weapons fall back to MachineGun and become unselectable (AC #91)', () => {
+    const inv = createWeaponInventory();
+    grantWeaponAmmo(inv, 2, 1);
+    expect(selectWeapon(inv, 2)).toBe(true);
+    expect(inv.activeIndex).toBe(2);
+
+    // Spend the last shot.
+    expect(stepWeaponFire(inv.slots[2]!, true, WEAPONS[2])).toBe(true);
+    expect(inv.slots[2]!.bullets).toBe(0);
+    fallbackIfActiveEmpty(inv);
+    expect(inv.activeIndex).toBe(0);
+    expect(isWeaponOwned(inv, 2)).toBe(false);
+    expect(selectWeapon(inv, 2)).toBe(false);
+    expect(inv.activeIndex).toBe(0);
   });
 
   it('touch collects health and weapon crates (AC)', () => {
@@ -274,27 +363,39 @@ describe('powerup drop & pickup (issue #21)', () => {
     expect(health.health).toBe(100);
   });
 
-  it('trySpawnDropOnKill pushes health at threshold into the list', () => {
+  it('trySpawnDropOnKill pushes a weapon crate on kill 3 and health on kill 15', () => {
     const dropState = createPowerupDropState();
     const powerups: PowerupPickup[] = [];
-    const missRng = { next: (): number => 0.5 };
+    const rng = createSpawnRng(3);
+
     expect(
-      trySpawnDropOnKill(14, dropState, powerups, 100, 200, missRng),
+      trySpawnDropOnKill(1, dropState, powerups, 100, 200, rng),
+    ).toBeNull();
+    expect(
+      trySpawnDropOnKill(2, dropState, powerups, 100, 200, rng),
     ).toBeNull();
     expect(powerups).toHaveLength(0);
 
-    const spawned = trySpawnDropOnKill(
-      15,
-      dropState,
-      powerups,
-      100,
-      200,
-      missRng,
-    );
-    expect(spawned?.kind).toBe('health');
+    const at3 = trySpawnDropOnKill(3, dropState, powerups, 100, 200, rng);
+    expect(at3).not.toBeNull();
+    expect(at3!.kind === 'weapon' || at3!.kind === 'state').toBe(true);
     expect(powerups).toHaveLength(1);
     expect(powerups[0]!.x).toBe(100);
     expect(powerups[0]!.y).toBe(200);
+
+    // Advance to health threshold (kills 6..14 off-cadence or weapon slots).
+    for (let k = 6; k <= 12; k += 3) {
+      trySpawnDropOnKill(k, dropState, powerups, 0, 0, rng);
+    }
+    const healthSpawn = trySpawnDropOnKill(
+      15,
+      dropState,
+      powerups,
+      50,
+      60,
+      rng,
+    );
+    expect(healthSpawn?.kind).toBe('health');
     expect(dropState.nextHealth).toBe(30);
   });
 
@@ -304,11 +405,12 @@ describe('powerup drop & pickup (issue #21)', () => {
     expect(session.powerupDrop.nextHealth).toBe(15);
     expect(session.powerups).toHaveLength(0);
 
-    const miss = { next: (): number => 0.5 };
+    const rng = createSpawnRng(1);
     for (let k = 1; k <= 14; k += 1) {
-      trySpawnDropOnKill(k, session.powerupDrop, session.powerups, 0, 0, miss);
+      trySpawnDropOnKill(k, session.powerupDrop, session.powerups, 0, 0, rng);
     }
-    expect(session.powerups).toHaveLength(0);
+    // Kills 3,6,9,12 each drop a weapon/state crate; not health yet.
+    expect(session.powerups.every((p) => p.kind !== 'health')).toBe(true);
     expect(session.powerupDrop.nextHealth).toBe(15);
 
     trySpawnDropOnKill(
@@ -317,36 +419,36 @@ describe('powerup drop & pickup (issue #21)', () => {
       session.powerups,
       400,
       100,
-      miss,
+      rng,
     );
-    expect(session.powerups).toHaveLength(1);
-    expect(session.powerups[0]!.kind).toBe('health');
+    const healthCrates = session.powerups.filter((p) => p.kind === 'health');
+    expect(healthCrates).toHaveLength(1);
 
     session.playerHealth.health = 50;
     session.player.body.x = 400 - 5;
     session.player.body.y = 100 - 20;
+    // Collect only the health crate at the player.
     const collected = collectPowerups(
       session.powerups,
       session.player.body,
       session.playerHealth,
       session.inventory,
       session.playerPowerup,
-      miss,
+      rng,
     );
-    expect(collected).toEqual([{ kind: 'health', amount: 20 }]);
+    expect(collected.some((c) => c.kind === 'health' && c.amount === 20)).toBe(
+      true,
+    );
     expect(session.playerHealth.health).toBe(70);
-    expect(session.powerups).toHaveLength(0);
   });
 
-  it('SimSession kill path drops health at kill 15 and steps parachutes', () => {
+  it('SimSession kill path drops a crate every 3 kills and health at 15', () => {
     const session = new SimSession();
     session.reset();
 
     for (let k = 0; k < 15; k += 1) {
       const victim = session.helicopters.find((h) => h.active);
       expect(victim).toBeDefined();
-      // Instant-kill via fatal damage, then one sim tick so the bullet-hit
-      // path is not required — drive the same post-kill hooks SimSession uses.
       damageHelicopter(victim!, HELI.hp);
       recordHeliKill(session.heliSpawn, session.score.value + HELI.hp);
       session.score.value += HELI.hp;
@@ -369,13 +471,14 @@ describe('powerup drop & pickup (issue #21)', () => {
 
     expect(session.heliSpawn.kills).toBe(15);
     expect(session.powerupDrop.nextHealth).toBe(30);
+    // 5 every-3 slots (3,6,9,12,15) — last is health.
+    expect(session.powerups).toHaveLength(5);
     const healthCrates = session.powerups.filter((p) => p.kind === 'health');
     expect(healthCrates.length).toBe(1);
 
     const crate = healthCrates[0]!;
     const y0 = crate.y;
     stepPowerups(session.powerups, session.map, 1);
-    // Parachute descent moves the crate downward.
     expect(crate.y).toBeGreaterThan(y0);
   });
 
