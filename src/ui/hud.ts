@@ -1,5 +1,5 @@
 /**
- * In-game HUD snapshot + 1080p layout — issue #23 / #105.
+ * In-game HUD snapshot + 1080p layout — issue #23 / #105 / #106.
  *
  * Pure logic (no Phaser). GameScene feeds live sim values each frame; the
  * Phaser view ({@link ./gameHud}) only draws this snapshot.
@@ -14,6 +14,10 @@
  *   HUD.bullettime.mask._xscale = bullettime/maxbullettime * 100
  *   HUD.powerup.text + powerup.mask._yscale = powerupTime/powerupTime * 100
  *   heroDie: HUD.ammo = "0 x "
+ *
+ * Meter composition (#106): Flash `Symbol 38` (HUD) instance **header**
+ * places put hyperjump → bullettime → reload left-to-right on the 450×320
+ * stage (reload is not under the weapon crate). Coords scale to 1920×1080.
  */
 
 import {
@@ -51,7 +55,94 @@ export const POWERUP_HUD_NAMES: Readonly<Record<number, string>> = {
 };
 
 /**
- * Layout anchored to the 1920×1080 design resolution (#23 / #28).
+ * Original Flash embed stage (`heli2.html` object/embed width/height).
+ * HUD Symbol 38 instance positions are authored in this space.
+ */
+export const FLASH_STAGE = { width: 450, height: 320 } as const;
+
+/**
+ * Flash `Symbol 38` (HUD) meter instance **place** positions in stage pixels
+ * (FLA twips ÷ 20).
+ *
+ * Extraction (OLE `Symbol 38` in `reference/ha2-source/heli2.fla`):
+ * each len-prefixed instance record stores the place translate in the
+ * **header** (`01 00 <tx> <ty> …` before the symbol id / name). A post-name
+ * `13 80 01` translate is the **next-sibling cursor** (equals the next
+ * instance’s header), not this clip’s place — e.g. reload header (407,302)
+ * with post-name (129,302) which is hyperjump’s header. Identity-matrix
+ * clips (`07 80 01`, including bullettime) also use the header place.
+ *
+ * Cross-check: each meter sits just right of its label, and health/weapon
+ * headers land top-right / bottom-right as in the live HUD.
+ */
+export const FLASH_HUD_METERS = {
+  hyperjump: { x: 129, y: 302 },
+  bullettime: { x: 282, y: 302 },
+  reload: { x: 407, y: 302 },
+} as const;
+
+/**
+ * Flash HUD meter labels (left of each bar) in stage pixels.
+ * Text-field place is the header `tx,ty` immediately before the font block
+ * for that string (not the following field’s header).
+ */
+export const FLASH_HUD_METER_LABELS = {
+  hyperjump: { x: 58, y: 307, text: 'HyperJump:' },
+  bullettime: { x: 210, y: 307, text: 'TimeDistort:' },
+  reload: { x: 365, y: 307, text: 'Reload:' },
+} as const;
+
+/** Map a Flash stage point into the 1920×1080 design resolution. */
+export function flashToDesign(x: number, y: number): { x: number; y: number } {
+  return {
+    x: (x * GAME_WIDTH) / FLASH_STAGE.width,
+    y: (y * GAME_HEIGHT) / FLASH_STAGE.height,
+  };
+}
+
+/**
+ * Meter ids sorted by Flash stage X (original left→right composition).
+ * Derived from {@link FLASH_HUD_METERS}, not a hard-coded aesthetic order.
+ */
+export function flashHudMeterOrderLeftToRight(): ReadonlyArray<
+  keyof typeof FLASH_HUD_METERS
+> {
+  return (
+    Object.entries(FLASH_HUD_METERS) as Array<
+      [keyof typeof FLASH_HUD_METERS, { x: number; y: number }]
+    >
+  )
+    .sort((a, b) => a[1].x - b[1].x)
+    .map(([id]) => id);
+}
+
+const DESIGN_HYPER_JUMP = flashToDesign(
+  FLASH_HUD_METERS.hyperjump.x,
+  FLASH_HUD_METERS.hyperjump.y,
+);
+const DESIGN_BULLET_TIME = flashToDesign(
+  FLASH_HUD_METERS.bullettime.x,
+  FLASH_HUD_METERS.bullettime.y,
+);
+const DESIGN_RELOAD = flashToDesign(
+  FLASH_HUD_METERS.reload.x,
+  FLASH_HUD_METERS.reload.y,
+);
+const DESIGN_HJ_LABEL = flashToDesign(
+  FLASH_HUD_METER_LABELS.hyperjump.x,
+  FLASH_HUD_METER_LABELS.hyperjump.y,
+);
+const DESIGN_BT_LABEL = flashToDesign(
+  FLASH_HUD_METER_LABELS.bullettime.x,
+  FLASH_HUD_METER_LABELS.bullettime.y,
+);
+const DESIGN_RL_LABEL = flashToDesign(
+  FLASH_HUD_METER_LABELS.reload.x,
+  FLASH_HUD_METER_LABELS.reload.y,
+);
+
+/**
+ * Layout anchored to the 1920×1080 design resolution (#23 / #28 / #106).
  * Under Phaser Scale.FIT these design-space coords stay correct at any
  * window / fullscreen aspect (uniform canvas scale + letterbox).
  * Sizes chosen so bars and labels read clearly at full HD.
@@ -65,7 +156,8 @@ export const HUD_LAYOUT = {
   /** Top-right score. */
   score: { x: GAME_WIDTH - 40, y: 36, fontSize: 48 },
   /**
-   * Bottom-left Flash weapon cluster (#105): crate icon + ammo + reload.
+   * Bottom-left weapon cluster (#105): crate icon + ammo.
+   * Reload lives with the bottom meters (#106), not under the crate.
    * Icon is Flash `power*.png` (33×32) drawn larger for 1080p readability.
    */
   weapon: {
@@ -79,18 +171,29 @@ export const HUD_LAYOUT = {
     /** Gap between crate icon and ammo text. */
     iconTextGap: 16,
     ammoFontSize: 32,
-    reloadWidth: 280,
-    reloadHeight: 12,
-    reloadGap: 10,
   },
-  /** Bottom meters: hyper-jump (left of center) + bullet-time (right). */
+  /**
+   * Bottom meters (#106): Flash order hyper-jump → bullet-time → reload.
+   * Anchors are Flash Symbol 38 positions scaled 450×320 → 1920×1080.
+   * Width is capped so the rightmost (reload) bar stays on-canvas at that
+   * Flash X — Flash bars were short; 176px still reads clearly at 1080p.
+   */
   meters: {
-    y: GAME_HEIGHT - 56,
-    width: 280,
+    y: DESIGN_HYPER_JUMP.y,
+    /** Fits `reloadX + width < designWidth` at Flash-scaled reload X. */
+    width: 176,
     height: 18,
-    labelGap: 6,
-    hyperJumpX: GAME_WIDTH / 2 - 300,
-    bulletTimeX: GAME_WIDTH / 2 + 20,
+    labelFontSize: 18,
+    hyperJumpX: DESIGN_HYPER_JUMP.x,
+    bulletTimeX: DESIGN_BULLET_TIME.x,
+    reloadX: DESIGN_RELOAD.x,
+    hyperJumpLabelX: DESIGN_HJ_LABEL.x,
+    bulletTimeLabelX: DESIGN_BT_LABEL.x,
+    reloadLabelX: DESIGN_RL_LABEL.x,
+    labelY: DESIGN_HJ_LABEL.y,
+    hyperJumpLabel: FLASH_HUD_METER_LABELS.hyperjump.text,
+    bulletTimeLabel: FLASH_HUD_METER_LABELS.bullettime.text,
+    reloadLabel: FLASH_HUD_METER_LABELS.reload.text,
   },
   /** Active powerup chip under the health bar. */
   powerup: {
@@ -111,15 +214,20 @@ export const HUD_LAYOUT = {
  * Under FIT these stay at the corresponding corners of the fitted canvas.
  */
 export function hudDesignAnchors() {
+  const flashOrder = flashHudMeterOrderLeftToRight();
   return {
     health: { x: HUD_LAYOUT.health.x, y: HUD_LAYOUT.health.y },
     score: { x: HUD_LAYOUT.score.x, y: HUD_LAYOUT.score.y },
     weapon: { x: HUD_LAYOUT.weapon.x, y: HUD_LAYOUT.weapon.y },
     powerup: { x: HUD_LAYOUT.powerup.x, y: HUD_LAYOUT.powerup.y },
     meters: {
+      /** Derived from Flash stage X via {@link flashHudMeterOrderLeftToRight}. */
+      order: flashOrder,
       hyperJumpX: HUD_LAYOUT.meters.hyperJumpX,
       bulletTimeX: HUD_LAYOUT.meters.bulletTimeX,
+      reloadX: HUD_LAYOUT.meters.reloadX,
       y: HUD_LAYOUT.meters.y,
+      labelY: HUD_LAYOUT.meters.labelY,
     },
     designWidth: HUD_LAYOUT.designWidth,
     designHeight: HUD_LAYOUT.designHeight,
