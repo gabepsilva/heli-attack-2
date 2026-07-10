@@ -214,12 +214,11 @@ describe('Player (gravity, jump, duck — issue #6)', () => {
     expect(player.jumpState.jump2).toBe(false);
   });
 
-  it('stays ducked under a ceiling when releasing duck with no headroom', () => {
+  it('stands up after bonking a ceiling while ducked', () => {
     const map = createTestArena();
     const player = new Player(500, 4 * WORLD.tile);
     player.body.onGround = false;
     player.body.vy = -20;
-    // Duck while rising so the hitbox is already short when we bonk the platform.
     player.input = { left: false, right: false, jump: false, duck: true };
 
     let hitCeiling = false;
@@ -234,18 +233,44 @@ describe('Player (gravity, jump, duck — issue #6)', () => {
     expect(player.ducking).toBe(true);
     expect(player.body.h).toBeCloseTo(DUCK_SIZE.h, 10);
 
-    const pinnedY = player.body.y;
     player.input = { left: false, right: false, jump: false, duck: false };
+    for (let i = 0; i < 30; i += 1) {
+      player.step(map, 1);
+    }
+    expect(player.ducking).toBe(false);
+    expect(player.body.h).toBe(STAND_SIZE.h);
+  });
+
+  it('does not soft-lock when ducking near a wall and releasing duck', () => {
+    const map = createTestArena();
+    const player = new Player(60, 12 * WORLD.tile - PLAYER.boxH - 1);
+    player.body.onGround = true;
+    player.input = { left: true, right: false, jump: false, duck: false };
+
+    for (let i = 0; i < 12; i += 1) {
+      player.step(map, 1);
+    }
+    const duckX = player.body.x;
+    expect(duckX).toBeLessThanOrEqual(WORLD.tile + 5);
+
+    player.input = { left: false, right: false, jump: false, duck: true };
     player.step(map, 1);
     expect(player.ducking).toBe(true);
-    expect(player.body.h).toBeCloseTo(DUCK_SIZE.h, 10);
-    // Y may nudge by gravity this frame; must not stand up into the ceiling.
-    expect(player.body.y).toBeGreaterThanOrEqual(pinnedY - 1);
 
-    // Head must not embed in the floating platform (row 3).
-    const headRow = Math.floor(player.body.y / WORLD.tile);
-    expect(headRow).toBeGreaterThan(3);
-    expect(player.body.h).not.toBe(STAND_SIZE.h);
+    player.input = { left: false, right: false, jump: false, duck: false };
+    for (let i = 0; i < 60; i += 1) {
+      player.step(map, 1);
+    }
+    expect(player.ducking).toBe(false);
+    expect(player.body.w).toBe(STAND_SIZE.w);
+
+    const pinnedX = player.body.x;
+    player.input = { left: false, right: true, jump: false, duck: false };
+    for (let i = 0; i < 120; i += 1) {
+      player.step(map, 1);
+    }
+    expect(player.body.x).toBeGreaterThan(pinnedX);
+    expect(player.ducking).toBe(false);
   });
 
   it('does not burn double-jump after repeated duck taps on flat ground', () => {
@@ -287,7 +312,7 @@ describe('Player (gravity, jump, duck — issue #6)', () => {
     expect(player.body.vx).toBe(0); // no accel while ducked
   });
 
-  it('holding duck blocks the double-jump (no jump2 while ducked)', () => {
+  it('blocks double-jump refill while ducking airborne (up stays 0)', () => {
     const map = createTestArena();
     const player = new Player(100, 200);
     settle(player);
@@ -304,7 +329,12 @@ describe('Player (gravity, jump, duck — issue #6)', () => {
     player.step(map, 1);
     expect(player.jumpState.up).toBe(PLAYER.jumpHoldFrames);
 
-    // Hold duck and press jump — must not double-jump or clamp vy.
+    // Duck mid-air — refill blocked, so up zeroes on release.
+    player.input = { left: false, right: false, jump: false, duck: true };
+    player.step(map, 1);
+    expect(player.jumpState.up).toBe(0);
+
+    // Press jump while ducking with up=0 — no double-jump.
     const vyBefore = player.body.vy;
     player.input = { left: false, right: false, jump: true, duck: true };
     player.step(map, 1);
@@ -313,23 +343,21 @@ describe('Player (gravity, jump, duck — issue #6)', () => {
     expect(player.body.vy).toBe(vyBefore + WORLD.gravity);
   });
 
-  it('holding duck blocks starting a jump from the ground', () => {
+  it('allows a crouch hop from the ground while holding duck', () => {
     const map = createTestArena();
     const player = new Player(100, 200);
     settle(player);
     expect(player.body.onGround).toBe(true);
     const feetBefore = player.body.y + player.body.h;
 
-    for (let i = 0; i < 6; i += 1) {
-      player.input = { left: false, right: false, jump: true, duck: true };
-      player.step(map, 1);
-    }
+    player.input = { left: false, right: false, jump: true, duck: true };
+    player.step(map, 1);
 
     expect(player.ducking).toBe(true);
-    expect(player.body.onGround).toBe(true);
-    expect(player.body.y + player.body.h).toBeCloseTo(feetBefore, 10);
-    expect(player.jumpState.jump).toBe(false);
-    expect(player.jumpState.jump2).toBe(false);
+    expect(player.jumpState.jump).toBe(true);
+    expect(player.body.vy).toBe(PLAYER.jumpVel + WORLD.gravity);
+    expect(player.body.onGround).toBe(false);
+    expect(player.body.y + player.body.h).toBeLessThan(feetBefore);
   });
 
   it('ramps vx to the walk cap under right input, then decays to 0 on release', () => {

@@ -1,6 +1,4 @@
-import { PLAYER, WORLD } from '../config/constants';
-import { hitCheck } from '../world/hitCheck';
-import type { TileMap } from '../world/tileMap';
+import { PLAYER } from '../config/constants';
 
 /** Standing hitbox from the spec. */
 export const STAND_SIZE = { w: PLAYER.boxW, h: PLAYER.boxH } as const;
@@ -25,8 +23,7 @@ export type DuckBody = {
  * - Standing from duck: restore {@link STAND_SIZE} with feet planted (top-anchored
  *   hitbox; the original's `_y` nudge compensated sprite-anchored coords we don't use).
  *
- * If overhead tiles block the standing box, the player stays ducked until
- * headroom clears (standard crouch rule).
+ * Matches the original AS: standing always restores the box (no headroom gate).
  *
  * Returns whether the player is currently ducked.
  */
@@ -34,7 +31,6 @@ export function applyDuckHitbox(
   body: DuckBody,
   wantDuck: boolean,
   wasDuck: boolean,
-  map: TileMap,
 ): boolean {
   if (wantDuck) {
     if (!wasDuck) {
@@ -48,14 +44,7 @@ export function applyDuckHitbox(
   }
 
   if (wasDuck) {
-    if (hasStandingHeadroom(map, body)) {
-      growToStand(body);
-    } else {
-      // Ceiling blocks expansion — remain crouched until clear.
-      body.w = DUCK_SIZE.w;
-      body.h = DUCK_SIZE.h;
-      return true;
-    }
+    growToStand(body);
   } else {
     body.w = STAND_SIZE.w;
     body.h = STAND_SIZE.h;
@@ -71,22 +60,6 @@ function shrinkToDuck(body: DuckBody): void {
   // Keep feet planted; center the narrower box.
   body.y += oldH - body.h;
   body.x += (oldW - body.w) / 2;
-}
-
-/** True when the standing hitbox (feet planted, centered) would not overlap solids. */
-export function hasStandingHeadroom(map: TileMap, body: DuckBody): boolean {
-  const tile = map.tileSize ?? WORLD.tile;
-  const feetY = body.y + body.h;
-  const centerX = body.x + body.w / 2;
-  const standX = centerX - STAND_SIZE.w / 2;
-  const standY = feetY - STAND_SIZE.h;
-
-  const tilex = Math.floor((standX + 1) / tile);
-  const tile2x = Math.floor((standX + STAND_SIZE.w) / tile);
-  const tiley = Math.floor(standY / tile);
-  const tile2y = Math.floor((standY + STAND_SIZE.h) / tile);
-
-  return hitCheck(map, tiley, tilex, tile2y, tile2x, 0) === 0;
 }
 
 function growToStand(body: DuckBody): void {

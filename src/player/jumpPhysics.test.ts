@@ -94,37 +94,37 @@ describe('jumpPhysics (spec §Player physics — jump)', () => {
     expect(state.up).toBe(0);
   });
 
-  it('blocks hold-window refill while ducking on the ground', () => {
+  it('refills the hold window while ducking on the ground (!jump short-circuits)', () => {
     const state = createJumpState();
     state.jump = false;
     state.jump2 = false;
     state.up = 0;
 
     applyJumpInput(0, state, { jump: false, duck: true });
-    expect(state.up).toBe(0);
+    expect(state.up).toBe(PLAYER.jumpHoldFrames);
   });
 
-  it('blocks jump press while ducking on the ground (no vy clamp, no jump flag)', () => {
+  it('allows a crouch hop from the ground (press path ungated)', () => {
     const state = createJumpState();
     expect(state.up).toBe(PLAYER.jumpHoldFrames);
 
     const vy = applyJumpInput(0, state, { jump: true, duck: true });
-    expect(vy).toBe(0);
-    expect(state.jump).toBe(false);
+    expect(vy).toBe(PLAYER.jumpVel);
+    expect(state.jump).toBe(true);
     expect(state.jump2).toBe(false);
-    expect(state.up).toBe(PLAYER.jumpHoldFrames);
+    expect(state.up).toBe(PLAYER.jumpHoldFrames - 1);
   });
 
-  it('blocks double-jump press while ducking even when up was refilled before duck', () => {
+  it('allows double-jump press while ducking when up was banked before duck', () => {
     const state = createJumpState();
     state.jump = true;
     state.jump2 = false;
     state.up = PLAYER.jumpHoldFrames;
 
     const vy = applyJumpInput(-2, state, { jump: true, duck: true });
-    expect(vy).toBe(-2);
-    expect(state.jump2).toBe(false);
-    expect(state.up).toBe(PLAYER.jumpHoldFrames);
+    expect(vy).toBe(PLAYER.jumpVel);
+    expect(state.jump2).toBe(true);
+    expect(state.up).toBe(PLAYER.jumpHoldFrames - 1);
   });
 
   it('consumes jump2 on the second press while airborne', () => {

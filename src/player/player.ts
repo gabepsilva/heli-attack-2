@@ -76,17 +76,12 @@ export class Player {
    * reads jump one frame earlier than the original (negligible).
    */
   step(map: TileMap, timeStep: number): void {
-    this.ducking = applyDuckHitbox(
-      this.body,
-      this.input.duck,
-      this.ducking,
-      map,
-    );
+    this.ducking = applyDuckHitbox(this.body, this.input.duck, this.ducking);
 
     this.body.vx = applyHorizontalWalk(this.body.vx, {
       left: this.input.left,
       right: this.input.right,
-      duck: this.ducking,
+      duck: this.input.duck,
       // Original friction gate uses the airborne flag, not the jump key.
       jump: this.jumpState.jump,
     });
@@ -95,7 +90,7 @@ export class Player {
 
     this.body.vy = applyJumpInput(this.body.vy, this.jumpState, {
       jump: this.input.jump,
-      duck: this.ducking,
+      duck: this.input.duck,
     });
 
     // Gravity after jump (original: clamp → yspeed++). Terminal clamp lives
