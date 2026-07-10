@@ -46,6 +46,15 @@ describe('highScores Flash / config locks (issue #25)', () => {
     expect(accuracyPercent(10, 10)).toBe(100);
     expect(formatRunStatsLine(7, 33)).toBe('Helis: 7    Accuracy: 33%');
   });
+
+  it('clamps accuracy at 100 so write/read agree on mismatched denominators', () => {
+    // Lead #78: shotgun 5 pellet-hits / 1 trigger must not render as 500%.
+    expect(accuracyPercent(5, 1)).toBe(100);
+    expect(accuracyPercent(500, 1)).toBe(100);
+    expect(formatRunStatsLine(1, accuracyPercent(5, 1))).toBe(
+      'Helis: 1    Accuracy: 100%',
+    );
+  });
 });
 
 describe('high score persistence (issue #25 AC: persists across reloads)', () => {

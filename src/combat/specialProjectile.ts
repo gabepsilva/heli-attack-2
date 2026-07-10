@@ -113,6 +113,7 @@ function applyDamage(
   heli: Helicopter,
   damage: number,
   onHit?: (event: HeliHitEvent) => void,
+  bullet?: Bullet,
 ): void {
   if (!heli.active || damage <= 0) {
     return;
@@ -125,8 +126,13 @@ function applyDamage(
   if (killed) {
     heli.active = false;
   }
+  let firstContact = true;
+  if (bullet !== undefined) {
+    firstContact = !bullet.hasHit;
+    bullet.hasHit = true;
+  }
   if (onHit) {
-    onHit({ heli, damage, killed });
+    onHit({ heli, damage, killed, firstContact });
   }
 }
 
@@ -172,7 +178,7 @@ export function stepRailBullet(
         tx += dx;
         ty += dy;
         if (bulletHitsHeli(tx, ty, heliHitTarget(heli))) {
-          applyDamage(heli, bullet.damage, onHit);
+          applyDamage(heli, bullet.damage, onHit, bullet);
           break;
         }
       }
@@ -206,7 +212,7 @@ export function stepFlameBullet(
       continue;
     }
     if (bulletHitsHeli(bullet.x, bullet.y, heliHitTarget(heli))) {
-      applyDamage(heli, tickDamage, onHit);
+      applyDamage(heli, tickDamage, onHit, bullet);
       // Continuous stream — do not recycle on hit.
       break;
     }
@@ -271,7 +277,7 @@ export function stepMineBullet(
         continue;
       }
       if (bulletHitsHeli(bullet.x, bullet.y, heliHitTarget(heli))) {
-        applyDamage(heli, bullet.damage * timeStep, onHit);
+        applyDamage(heli, bullet.damage * timeStep, onHit, bullet);
         break;
       }
     }
@@ -320,7 +326,7 @@ export function stepSeekerBullet(
       continue;
     }
     if (bulletHitsHeli(bullet.x, bullet.y, heliHitTarget(heli))) {
-      applyDamage(heli, bullet.damage, onHit);
+      applyDamage(heli, bullet.damage, onHit, bullet);
       return true;
     }
   }
@@ -392,6 +398,7 @@ export function applyAbombBlastDamage(
   damage: number,
   helis: readonly Helicopter[],
   onHit?: (event: HeliHitEvent) => void,
+  bullet?: Bullet,
 ): number {
   let hitCount = 0;
   const radius = HEAVY_PROJECTILE.abombBlastRadius;
@@ -401,7 +408,7 @@ export function applyAbombBlastDamage(
       continue;
     }
     if (distance2d(bombX, bombY, heli.x, heli.y) <= radius) {
-      applyDamage(heli, damage, onHit);
+      applyDamage(heli, damage, onHit, bullet);
       hitCount += 1;
     }
   }
@@ -441,7 +448,14 @@ export function stepAbombBullet(
   }
 
   if (detonate) {
-    applyAbombBlastDamage(bullet.x, bullet.y, bullet.damage, helis, onHit);
+    applyAbombBlastDamage(
+      bullet.x,
+      bullet.y,
+      bullet.damage,
+      helis,
+      onHit,
+      bullet,
+    );
     if (player) {
       applyAbombKnockback(player, bullet.x, bullet.y);
     }
@@ -513,7 +527,7 @@ export function stepGrappleBullet(
       continue;
     }
     if (bulletHitsHeli(bullet.x, bullet.y, heliHitTarget(heli))) {
-      applyDamage(heli, bullet.damage, onHit);
+      applyDamage(heli, bullet.damage, onHit, bullet);
       bullet.grappleAttached = true;
       bullet.vx = 0;
       bullet.vy = 0;
@@ -606,7 +620,7 @@ export function stepSpecialBullet(
       continue;
     }
     if (bulletHitsHeli(bullet.x, bullet.y, heliHitTarget(heli))) {
-      applyDamage(heli, bullet.damage, onHit);
+      applyDamage(heli, bullet.damage, onHit, bullet);
       return true;
     }
   }

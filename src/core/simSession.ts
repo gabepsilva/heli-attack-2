@@ -149,10 +149,18 @@ export class SimSession {
   score: ScoreState = createScoreState();
 
   /**
-   * Successful bullet-on-heli hits this run (Flash global `hits`) — feeds
-   * game-over accuracy (#25).
+   * Successful bullet-on-heli first contacts this run (Flash global `hits`) —
+   * feeds game-over accuracy (#25). Only the first damage event per projectile
+   * counts so DoT / splash / multi-heli beams cannot exceed projectiles fired.
    */
   runHits = 0;
+
+  /**
+   * Projectiles successfully acquired this run (#25 accuracy denominator).
+   * Counts pellets/beams spawned, not trigger pulls — matches Flash `shots+=N`
+   * for multi-projectile weapons.
+   */
+  runShots = 0;
 
   /** Player vitals — health, i-frames, death (#18). */
   playerHealth: PlayerHealthState = createPlayerHealth();
@@ -229,6 +237,7 @@ export class SimSession {
     this.explosions = [];
     this.score = createScoreState();
     this.runHits = 0;
+    this.runShots = 0;
     this.playerHealth = createPlayerHealth();
     this.powerupDrop = createPowerupDropState();
     this.powerups = [];
@@ -297,6 +306,7 @@ export class SimSession {
       );
       if (bullet !== null) {
         any = true;
+        this.runShots += 1;
       }
     }
     return any;
@@ -379,7 +389,9 @@ export class SimSession {
       this.timeScale.timeStep,
       (event) => {
         addDamageScore(this.score, event.damage);
-        this.runHits += 1;
+        if (event.firstContact) {
+          this.runHits += 1;
+        }
         if (event.killed) {
           this.explosions.push(createHeliExplosion(event.heli.x, event.heli.y));
           // State only — never splice/push helis here. Rail + A-Bomb keep

@@ -44,6 +44,11 @@ export type Bullet = {
   grappleAttached: boolean;
   /** GrappleCannon: frames spent latched (auto-release after max). */
   grappleAttachedAge: number;
+  /**
+   * Accuracy latch (#25): set on first heli damage so DoT / splash / multi-heli
+   * beams do not inflate `runHits` past projectiles spawned.
+   */
+  hasHit: boolean;
 };
 
 /** Axis-aligned cull region in arena/world space. */
@@ -74,6 +79,7 @@ export function createInactiveBullet(index: number): Bullet {
     railFired: false,
     grappleAttached: false,
     grappleAttachedAge: 0,
+    hasHit: false,
   };
 }
 
@@ -146,6 +152,7 @@ export function activateBullet(
   bullet.railFired = false;
   bullet.grappleAttached = false;
   bullet.grappleAttachedAge = 0;
+  bullet.hasHit = false;
 }
 
 /**

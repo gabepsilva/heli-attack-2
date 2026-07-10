@@ -68,6 +68,12 @@ export type HeliHitEvent = {
   damage: number;
   /** True when this hit reduced health to ≤ 0. */
   killed: boolean;
+  /**
+   * True the first time this bullet damages any heli (#25 accuracy).
+   * DoT / splash / multi-heli beams still score every tick, but accuracy
+   * only credits the first contact so hits ≤ projectiles spawned.
+   */
+  firstContact: boolean;
 };
 
 export type HeliExplosion = {

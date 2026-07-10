@@ -177,6 +177,8 @@ function sortEntries(entries: HighScoreEntry[]): HighScoreEntry[] {
 
 /**
  * Flash accuracy: `Math.floor((hits/shots)*100) + "%"`, or `"0%"` when no shots.
+ * Clamped to 100 so write and read agree even if a caller passes mismatched
+ * denominators (DoT / multi-pellet without a hit latch).
  */
 export function accuracyPercent(hits: number, shots: number): number {
   if (!(shots > 0) || !Number.isFinite(shots) || !Number.isFinite(hits)) {
@@ -184,7 +186,7 @@ export function accuracyPercent(hits: number, shots: number): number {
   }
   const h = Math.max(0, hits);
   const s = Math.max(0, shots);
-  return Math.floor((h / s) * 100);
+  return Math.min(100, Math.floor((h / s) * 100));
 }
 
 /** Flash HUD: `High Score: ` + (hs * 100). */
