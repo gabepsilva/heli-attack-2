@@ -1,0 +1,471 @@
+{
+  "frames": {
+    "heli": {
+      "frame": {
+        "x": 2,
+        "y": 2,
+        "w": 848,
+        "h": 424
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 848,
+        "h": 424
+      },
+      "sourceSize": {
+        "w": 848,
+        "h": 424
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "heli_hit": {
+      "frame": {
+        "x": 852,
+        "y": 2,
+        "w": 848,
+        "h": 424
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 848,
+        "h": 424
+      },
+      "sourceSize": {
+        "w": 848,
+        "h": 424
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "heli_destroyed": {
+      "frame": {
+        "x": 2,
+        "y": 428,
+        "w": 692,
+        "h": 356
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 692,
+        "h": 356
+      },
+      "sourceSize": {
+        "w": 692,
+        "h": 356
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "player_jump": {
+      "frame": {
+        "x": 696,
+        "y": 428,
+        "w": 100,
+        "h": 220
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 100,
+        "h": 220
+      },
+      "sourceSize": {
+        "w": 100,
+        "h": 220
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "player_jump2": {
+      "frame": {
+        "x": 798,
+        "y": 428,
+        "w": 100,
+        "h": 220
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 100,
+        "h": 220
+      },
+      "sourceSize": {
+        "w": 100,
+        "h": 220
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "tile_floor": {
+      "frame": {
+        "x": 900,
+        "y": 428,
+        "w": 208,
+        "h": 208
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 208,
+        "h": 208
+      },
+      "sourceSize": {
+        "w": 208,
+        "h": 208
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "enemy_guy": {
+      "frame": {
+        "x": 1110,
+        "y": 428,
+        "w": 100,
+        "h": 200
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 100,
+        "h": 200
+      },
+      "sourceSize": {
+        "w": 100,
+        "h": 200
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "player_idle": {
+      "frame": {
+        "x": 1212,
+        "y": 428,
+        "w": 96,
+        "h": 196
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 96,
+        "h": 196
+      },
+      "sourceSize": {
+        "w": 96,
+        "h": 196
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "player_step1": {
+      "frame": {
+        "x": 1310,
+        "y": 428,
+        "w": 96,
+        "h": 196
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 96,
+        "h": 196
+      },
+      "sourceSize": {
+        "w": 96,
+        "h": 196
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "player_step2": {
+      "frame": {
+        "x": 1408,
+        "y": 428,
+        "w": 96,
+        "h": 196
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 96,
+        "h": 196
+      },
+      "sourceSize": {
+        "w": 96,
+        "h": 196
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "player_duck": {
+      "frame": {
+        "x": 1506,
+        "y": 428,
+        "w": 100,
+        "h": 156
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 100,
+        "h": 156
+      },
+      "sourceSize": {
+        "w": 100,
+        "h": 156
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "powerup": {
+      "frame": {
+        "x": 1608,
+        "y": 428,
+        "w": 132,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 132,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 132,
+        "h": 128
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "blood": {
+      "frame": {
+        "x": 1742,
+        "y": 428,
+        "w": 120,
+        "h": 120
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 120,
+        "h": 120
+      },
+      "sourceSize": {
+        "w": 120,
+        "h": 120
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "smoke": {
+      "frame": {
+        "x": 1864,
+        "y": 428,
+        "w": 112,
+        "h": 108
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 112,
+        "h": 108
+      },
+      "sourceSize": {
+        "w": 112,
+        "h": 108
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "weapon_machinegun": {
+      "frame": {
+        "x": 2,
+        "y": 786,
+        "w": 116,
+        "h": 64
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 116,
+        "h": 64
+      },
+      "sourceSize": {
+        "w": 116,
+        "h": 64
+      },
+      "pivot": {
+        "x": 0.2,
+        "y": 0.5
+      }
+    },
+    "rocket": {
+      "frame": {
+        "x": 120,
+        "y": 786,
+        "w": 84,
+        "h": 60
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 84,
+        "h": 60
+      },
+      "sourceSize": {
+        "w": 84,
+        "h": 60
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "grenade": {
+      "frame": {
+        "x": 206,
+        "y": 786,
+        "w": 76,
+        "h": 44
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 76,
+        "h": 44
+      },
+      "sourceSize": {
+        "w": 76,
+        "h": 44
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "bullet_player": {
+      "frame": {
+        "x": 284,
+        "y": 786,
+        "w": 40,
+        "h": 36
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 36
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 36
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "bullet_enemy": {
+      "frame": {
+        "x": 326,
+        "y": 786,
+        "w": 40,
+        "h": 36
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 36
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 36
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    }
+  },
+  "meta": {
+    "app": "heli-attack-2/scripts/art/pack-atlas.mjs",
+    "version": "1.0",
+    "image": "game-atlas.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 2048,
+      "h": 1024
+    },
+    "scale": "1"
+  }
+}

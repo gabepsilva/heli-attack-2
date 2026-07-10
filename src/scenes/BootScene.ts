@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { atlasLoadPaths } from '../art/atlasManifest';
 import { AUDIO_TEST_SFX_ID } from '../config/audio';
 import {
   BOOT_BACKGROUND_COLOR,
@@ -13,6 +14,11 @@ import { getGameAudio } from '../audio/gameAudio';
 export class BootScene extends Phaser.Scene {
   constructor() {
     super({ key: SCENE_KEYS.Boot });
+  }
+
+  preload(): void {
+    const atlas = atlasLoadPaths();
+    this.load.atlas(atlas.key, atlas.imagePath, atlas.jsonPath);
   }
 
   create(): void {
