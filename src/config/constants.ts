@@ -243,6 +243,18 @@ export const SCORE = {
 } as const;
 
 /**
+ * Local high-score table (#25). Flash stored a single SharedObject `highscore`
+ * (`hs = Math.floor(score)`); we keep a ranked local table in `localStorage`
+ * and still compare with floor(score) like Flash `Math.floor(score) > hs`.
+ */
+export const HIGH_SCORES = {
+  /** `localStorage` key for the persisted table + career stats. */
+  storageKey: 'heli-attack-2.highScores',
+  /** Max ranked rows kept locally (menu / game-over table). */
+  maxEntries: 10,
+} as const;
+
+/**
  * Session loop / game states (#24). Flash `gameover++` each frame while dead;
  * stats screen when `gameover > 200`. Pause key default is ASCII 80 (`P`).
  * (Flash also opens stats when enemy/entity arrays are empty — omitted here;

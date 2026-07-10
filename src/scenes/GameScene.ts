@@ -11,6 +11,7 @@ import {
   nextWeapon,
   prevWeapon,
   selectWeaponByDigitKey,
+  totalInventoryShots,
 } from '../combat/weaponInventory';
 import {
   BULLET,
@@ -309,6 +310,9 @@ export class GameScene extends Phaser.Scene {
           if (tickDeath(this.flow)) {
             this.scene.start(SCENE_KEYS.GameOver, {
               finalScore: this.flow.finalScore,
+              helisKilled: this.session.heliSpawn.kills,
+              shots: totalInventoryShots(this.session.inventory),
+              hits: this.session.runHits,
             });
             return;
           }

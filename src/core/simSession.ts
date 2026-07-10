@@ -148,6 +148,12 @@ export class SimSession {
   /** Damage-dealt score (Flash `score += damage`) (#13). */
   score: ScoreState = createScoreState();
 
+  /**
+   * Successful bullet-on-heli hits this run (Flash global `hits`) — feeds
+   * game-over accuracy (#25).
+   */
+  runHits = 0;
+
   /** Player vitals — health, i-frames, death (#18). */
   playerHealth: PlayerHealthState = createPlayerHealth();
 
@@ -222,6 +228,7 @@ export class SimSession {
     );
     this.explosions = [];
     this.score = createScoreState();
+    this.runHits = 0;
     this.playerHealth = createPlayerHealth();
     this.powerupDrop = createPowerupDropState();
     this.powerups = [];
@@ -372,6 +379,7 @@ export class SimSession {
       this.timeScale.timeStep,
       (event) => {
         addDamageScore(this.score, event.damage);
+        this.runHits += 1;
         if (event.killed) {
           this.explosions.push(createHeliExplosion(event.heli.x, event.heli.y));
           // State only — never splice/push helis here. Rail + A-Bomb keep
