@@ -5,7 +5,7 @@
  * Flash:
  *   xspeed = speed * cos(rot°); yspeed = speed * sin(rot°)
  *   _x += xspeed * timeStep; _y += yspeed * timeStep
- *   remove when off-screen (±1 tile) / lifetime / (later: hit / solid)
+ *   remove when off-screen (±1 tile) / lifetime / hit / solid (via stepSpecialBullet)
  */
 
 import { BULLET } from '../config/constants';
