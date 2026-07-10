@@ -203,3 +203,33 @@ export const BULLET = {
   /** Placeholder draw radius (px). */
   radius: 3,
 } as const;
+
+/**
+ * Special-behavior weapon tunables (#16) — Flash `flameFrame` / `fireMinesFrame`
+ * / `railFrame` / `seekerFrame`.
+ */
+export const SPECIAL_PROJECTILE = {
+  /** FlameThrower aim jitter half-width (Flash `rot-10+random(20)`). */
+  flameSpreadHalfDeg: 10,
+  /**
+   * Flame particle lifetime in sim frames (stand-in for Flash flame gfx
+   * `_totalframes`; short so hold-to-fire streams continuous DoT).
+   */
+  flameLifetimeFrames: 10,
+  /** FireMines gravity per discrete move step (Flash `yspeed += 1`). */
+  mineGravity: 1,
+  /** Wall bounce scale on X (Flash `xspeed *= -0.5`). */
+  mineBounceScale: -0.5,
+  /**
+   * Planted mine lifetime after landing (Flash fades after `active > 30`,
+   * then removes when alpha ≤ 0 — ~10 fade frames → ~40 total).
+   */
+  mineActiveFrames: 40,
+  /** Seeker turn divisor (Flash `rotation += dif/15 * timeStep`). */
+  seekerTurnDivisor: 15,
+  /**
+   * RailGun beam linger after hitscan (Flash fades `_alpha` over a few
+   * anim ticks). Damage is applied on the first step only.
+   */
+  railLingerFrames: 3,
+} as const;

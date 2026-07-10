@@ -26,7 +26,7 @@ import {
   type WeaponInventory,
 } from '../combat/weaponInventory';
 import { PLAYER_SPAWN, Player } from '../player/player';
-import { HELI } from '../config/constants';
+import { BULLET, HELI } from '../config/constants';
 import { DebugBox } from '../world/debugBox';
 import {
   LEVEL1_HEIGHT_PX,
@@ -198,6 +198,8 @@ export class SimSession {
         spawn.rotationDeg,
         spawn.speed,
         spawn.damage,
+        spawn.maxLifetime ?? BULLET.maxLifetimeFrames,
+        spawn.behavior,
       );
       if (bullet !== null) {
         any = true;
@@ -238,6 +240,7 @@ export class SimSession {
           this.explosions.push(createHeliExplosion(event.heli.x, event.heli.y));
         }
       },
+      this.map,
     );
     for (let i = this.explosions.length - 1; i >= 0; i -= 1) {
       if (stepHeliExplosion(this.explosions[i]!, this.timeScale.timeStep)) {

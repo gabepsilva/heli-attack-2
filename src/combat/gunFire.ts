@@ -1,5 +1,5 @@
 /**
- * Per-weapon projectile spawn patterns — Flash `guns[i].gun(...)` (#15).
+ * Per-weapon projectile spawn patterns — Flash `guns[i].gun(...)` (#15/#16).
  *
  * Ballistic set (indices 1–6) plus MachineGun (0):
  * - AkimboMac10: twin-stream (muzzle + one-frame lead offset), ±8° jitter
@@ -7,12 +7,17 @@
  * - ShotgunRockets: three rockets at −10/0/+10°
  * - GrenadeLauncher / RPG / RocketLauncher: single projectile at aim
  *
- * Special / heavy guns (#16/#17) fall through to a single aimed shot until
- * their dedicated behaviors land.
+ * Special-behavior set (#16):
+ * - SeekerLauncher (7): single homing rocket
+ * - FlameThrower (8): hold-to-fire stream with ±10° jitter
+ * - FireMines (9): lobbed persistent mine
+ * - RailGun (11): hitscan-fast beam
  */
 
+import { SPECIAL_PROJECTILE } from '../config/constants';
 import { getWeaponDef, type WeaponDef } from '../config/weapons';
 import { velocityFromRotation } from './bullet';
+import { behaviorForWeapon, type BulletBehavior } from './specialProjectile';
 
 /** One projectile to acquire from the pool. */
 export type ProjectileSpawn = Readonly<{
@@ -21,6 +26,8 @@ export type ProjectileSpawn = Readonly<{
   rotationDeg: number;
   speed: number;
   damage: number;
+  behavior: BulletBehavior;
+  maxLifetime?: number;
 }>;
 
 /** Flash `random(n)` — integer in `[0, n)`. */
@@ -40,8 +47,14 @@ export const SHOTGUN_ROCKET_SPREAD_DEG = [-10, 0, 10] as const;
 /** Akimbo Mac-10 aim jitter half-width (Flash `rot-8+random(16)`). */
 export const AKIMBO_SPREAD_HALF_DEG = 8;
 
+/** FlameThrower aim jitter half-width (Flash `rot-10+random(20)`). */
+export const FLAME_SPREAD_HALF_DEG = SPECIAL_PROJECTILE.flameSpreadHalfDeg;
+
 /** Arsenal indices with distinct ballistic patterns (#15 deliverable). */
 export const BALLISTIC_WEAPON_INDICES = [1, 2, 3, 4, 5, 6] as const;
+
+/** Arsenal indices with special behaviors (#16 deliverable). */
+export { SPECIAL_WEAPON_INDICES } from './specialProjectile';
 
 /**
  * Build the projectile list for one successful fire of arsenal `weaponIndex`.
@@ -60,6 +73,7 @@ export function planWeaponFire(
   randomInt: RandomInt = flashRandomInt,
 ): ProjectileSpawn[] {
   const { speed, damage } = def;
+  const behavior = behaviorForWeapon(weaponIndex);
 
   switch (weaponIndex) {
     case 1:
@@ -71,6 +85,7 @@ export function planWeaponFire(
         rotationDeg: rotationDeg + offset,
         speed,
         damage,
+        behavior: 'ballistic' as const,
       }));
     case 3:
       return SHOTGUN_ROCKET_SPREAD_DEG.map((offset) => ({
@@ -79,15 +94,62 @@ export function planWeaponFire(
         rotationDeg: rotationDeg + offset,
         speed,
         damage,
+        behavior: 'ballistic' as const,
       }));
+    case 8:
+      return planFlameFire(x, y, rotationDeg, speed, damage, randomInt);
+    case 7:
+    case 9:
+    case 11:
+      return [
+        {
+          x,
+          y,
+          rotationDeg,
+          speed,
+          damage,
+          behavior,
+          maxLifetime:
+            weaponIndex === 11
+              ? SPECIAL_PROJECTILE.railLingerFrames
+              : undefined,
+        },
+      ];
     case 0:
     case 4:
     case 5:
     case 6:
     default:
       // Single aimed projectile (MG / grenade / RPG / rocket / later guns).
-      return [{ x, y, rotationDeg, speed, damage }];
+      return [{ x, y, rotationDeg, speed, damage, behavior }];
   }
+}
+
+/**
+ * Flash `flameThrower`: one particle with `rot-10+random(20)` jitter and a
+ * short lifetime so hold-to-fire (reload 1) streams continuous DoT.
+ */
+export function planFlameFire(
+  x: number,
+  y: number,
+  rotationDeg: number,
+  speed: number,
+  damage: number,
+  randomInt: RandomInt = flashRandomInt,
+): ProjectileSpawn[] {
+  const rot =
+    rotationDeg - FLAME_SPREAD_HALF_DEG + randomInt(FLAME_SPREAD_HALF_DEG * 2);
+  return [
+    {
+      x,
+      y,
+      rotationDeg: rot,
+      speed,
+      damage,
+      behavior: 'flame',
+      maxLifetime: SPECIAL_PROJECTILE.flameLifetimeFrames,
+    },
+  ];
 }
 
 /**
@@ -109,8 +171,22 @@ export function planAkimboFire(
     AKIMBO_SPREAD_HALF_DEG +
     randomInt(AKIMBO_SPREAD_HALF_DEG * 2);
   return [
-    { x, y, rotationDeg: jitter(), speed, damage },
-    { x: x + vx, y: y + vy, rotationDeg: jitter(), speed, damage },
+    {
+      x,
+      y,
+      rotationDeg: jitter(),
+      speed,
+      damage,
+      behavior: 'ballistic',
+    },
+    {
+      x: x + vx,
+      y: y + vy,
+      rotationDeg: jitter(),
+      speed,
+      damage,
+      behavior: 'ballistic',
+    },
   ];
 }
 

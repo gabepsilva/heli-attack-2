@@ -120,6 +120,7 @@ describe('projectile weapons / ballistic set (issue #15)', () => {
       rotationDeg: rot,
       speed: 8,
       damage: 9,
+      behavior: 'ballistic',
     });
     // Lead bullet: +speed along aim (cos0=1, sin0=0) → (108, 200).
     expect(spawns[1]).toEqual({
@@ -128,6 +129,7 @@ describe('projectile weapons / ballistic set (issue #15)', () => {
       rotationDeg: rot,
       speed: 8,
       damage: 9,
+      behavior: 'ballistic',
     });
   });
 
@@ -196,7 +198,14 @@ describe('projectile weapons / ballistic set (issue #15)', () => {
     const def = WEAPONS[6];
     const spawns = planWeaponFire(6, 50, 60, 30, def);
     expect(spawns).toEqual([
-      { x: 50, y: 60, rotationDeg: 30, speed: 7, damage: 100 },
+      {
+        x: 50,
+        y: 60,
+        rotationDeg: 30,
+        speed: 7,
+        damage: 100,
+        behavior: 'ballistic',
+      },
     ]);
     expect(projectileCountForWeapon(6)).toBe(1);
   });

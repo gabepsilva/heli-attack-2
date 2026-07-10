@@ -9,6 +9,9 @@
  */
 
 import { BULLET } from '../config/constants';
+import type { BulletBehavior } from './specialProjectile';
+
+export type { BulletBehavior };
 
 export type Bullet = {
   /** Fixed slot index in the owning pool (set once at construction). */
@@ -26,6 +29,17 @@ export type Bullet = {
   /** Accumulated sim age (increments by `timeStep` each tick). */
   age: number;
   maxLifetime: number;
+  /** Motion / hit model (#16 specials; default ballistic). */
+  behavior: BulletBehavior;
+  /**
+   * FireMines planted counter (Flash `active`). 0 = still lobbing;
+   * ≥1 = planted and counting persistence frames.
+   */
+  mineActive: number;
+  /** FireMines / flame discrete-step accumulator (Flash `stepc`). */
+  stepAccum: number;
+  /** RailGun: hitscan already applied this beam (Flash `anim == 1`). */
+  railFired: boolean;
 };
 
 /** Axis-aligned cull region in arena/world space. */
@@ -50,6 +64,10 @@ export function createInactiveBullet(index: number): Bullet {
     rotationDeg: 0,
     age: 0,
     maxLifetime: BULLET.maxLifetimeFrames,
+    behavior: 'ballistic',
+    mineActive: 0,
+    stepAccum: 0,
+    railFired: false,
   };
 }
 
@@ -103,6 +121,7 @@ export function activateBullet(
   speed: number = BULLET.defaultSpeed,
   damage: number = BULLET.defaultDamage,
   maxLifetime: number = BULLET.maxLifetimeFrames,
+  behavior: BulletBehavior = 'ballistic',
 ): void {
   const { vx, vy } = velocityFromRotation(speed, rotationDeg);
   bullet.active = true;
@@ -115,6 +134,10 @@ export function activateBullet(
   bullet.rotationDeg = rotationDeg;
   bullet.age = 0;
   bullet.maxLifetime = maxLifetime;
+  bullet.behavior = behavior;
+  bullet.mineActive = 0;
+  bullet.stepAccum = 0;
+  bullet.railFired = false;
 }
 
 /**
@@ -202,6 +225,7 @@ export class BulletPool {
     speed: number = BULLET.defaultSpeed,
     damage: number = BULLET.defaultDamage,
     maxLifetime: number = BULLET.maxLifetimeFrames,
+    behavior: BulletBehavior = 'ballistic',
   ): Bullet | null {
     if (this.freeTop <= 0) {
       return null;
@@ -209,7 +233,16 @@ export class BulletPool {
     this.freeTop -= 1;
     const index = this.freeStack[this.freeTop]!;
     const bullet = this.slots[index]!;
-    activateBullet(bullet, x, y, rotationDeg, speed, damage, maxLifetime);
+    activateBullet(
+      bullet,
+      x,
+      y,
+      rotationDeg,
+      speed,
+      damage,
+      maxLifetime,
+      behavior,
+    );
     this._activeCount += 1;
     this._acquireCount += 1;
     return bullet;

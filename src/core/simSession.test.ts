@@ -429,4 +429,70 @@ describe('SimSession', () => {
     expect(rpg.damage).toBe(75);
     expect(rpg.speed).toBeLessThan(grenadeSpeed);
   });
+
+  it('special weapons: flame streams DoT, seeker homes, rail hitscan (#16)', () => {
+    const session = new SimSession();
+    session.player.mouse = {
+      x: session.player.gunPivot.x + 400,
+      y: session.player.gunPivot.y,
+    };
+    for (let i = 0; i < 60; i += 1) {
+      session.update(1000 / 30);
+    }
+
+    // FlameThrower (digit 9 → index 8): reload 1, hold:true, flame behavior.
+    expect(selectWeaponByDigitKey(session.inventory, 9)).toBe(true);
+    expect(session.inventory.activeIndex).toBe(8);
+    expect(WEAPONS[8].reload).toBe(1);
+    expect(WEAPONS[8].hold).toBe(true);
+    session.bullets.reset();
+    session.weapon.reloadTime = Number.POSITIVE_INFINITY;
+    session.fireHeld = true;
+    session.update(1000 / 30);
+    session.update(1000 / 30);
+    session.update(1000 / 30);
+    const flames = session.bullets.slots.filter((b) => b.active);
+    expect(flames.length).toBeGreaterThanOrEqual(2);
+    for (const f of flames) {
+      expect(f.behavior).toBe('flame');
+      expect(f.speed).toBe(8);
+      expect(f.damage).toBe(2);
+    }
+
+    // SeekerLauncher (digit 8 → index 7).
+    expect(selectWeaponByDigitKey(session.inventory, 8)).toBe(true);
+    session.bullets.reset();
+    session.weapon.reloadTime = Number.POSITIVE_INFINITY;
+    session.fireHeld = true;
+    session.update(1000 / 30);
+    const seeker = session.bullets.slots.find((b) => b.active)!;
+    expect(seeker.behavior).toBe('seeker');
+    expect(seeker.speed).toBe(7);
+    expect(seeker.damage).toBe(100);
+
+    // RailGun (digit keys wrap — select by cycling to index 11).
+    session.inventory.activeIndex = 11;
+    session.weapon.type = 11;
+    session.weapon.reloadTime = Number.POSITIVE_INFINITY;
+    session.weapon.bullets = 3;
+    session.bullets.reset();
+    session.fireHeld = true;
+    session.update(1000 / 30);
+    const rail = session.bullets.slots.find((b) => b.active)!;
+    expect(rail.behavior).toBe('rail');
+    expect(rail.speed).toBe(20);
+    expect(rail.damage).toBe(150);
+
+    // FireMines (index 9).
+    session.inventory.activeIndex = 9;
+    session.weapon.type = 9;
+    session.weapon.reloadTime = Number.POSITIVE_INFINITY;
+    session.weapon.bullets = 3;
+    session.bullets.reset();
+    session.update(1000 / 30);
+    const mine = session.bullets.slots.find((b) => b.active)!;
+    expect(mine.behavior).toBe('mine');
+    expect(mine.speed).toBe(3);
+    expect(mine.damage).toBe(5);
+  });
 });
