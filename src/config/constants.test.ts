@@ -9,6 +9,7 @@ import {
   PLAYER_DEFAULTS,
   POWERUP,
   POWERUP_FRAMES,
+  SCORE,
   SIM_DT,
   SIM_DT_MS,
   SIM_HZ,
@@ -76,7 +77,9 @@ describe('config/constants (spec seed)', () => {
       onScreenFramesMin: 150,
       onScreenFramesRand: 100,
       explosionDurationFrames: 20,
+      hitFlashFrames: 1,
     });
+    expect(SCORE).toEqual({ displayScale: 100 });
     expect(POWERUP_FRAMES).toBe(500);
     expect(POWERUP).toEqual({
       TriDamage: 1,
