@@ -2,15 +2,27 @@ import { FixedTimestepAccumulator } from './fixedTimestep';
 import { TimeScale } from './timeScale';
 import { BulletPool, arenaCullBounds, type CullBounds } from '../combat/bullet';
 import {
+  EnemyBulletPool,
+  enemyBulletArenaCullBounds,
+  stepEnemyBulletsVsPlayer,
+} from '../combat/enemyBullet';
+import {
   createHeliExplosion,
   createSpawnRng,
   spawnHelicopter,
   stepBulletsVsHelis,
+  stepHeliCombat,
   stepHeliExplosion,
   stepHelicopter,
   type HeliExplosion,
   type Helicopter,
 } from '../combat/helicopter';
+import {
+  createPlayerHealth,
+  stepPlayerIFrames,
+  syncPlayerLastHealth,
+  type PlayerHealthState,
+} from '../combat/playerHealth';
 import {
   addDamageScore,
   createScoreState,
@@ -41,9 +53,9 @@ export const DEBUG_BOX_SPAWN = { x: 200, y: 200 } as const;
 /**
  * Per-run sim state for GameScene: fixed-step accumulator, timeStep, HUD
  * counters, original level map, player, bullet pool, weapon inventory (#14),
- * helicopter combat (#12/#13), and the debug box. Lives outside Phaser so
- * scene restarts and the update loop are unit-testable (Phaser reuses the
- * scene instance; only create() re-runs).
+ * helicopter combat (#12/#13), enemy return fire + player health (#18), and
+ * the debug box. Lives outside Phaser so scene restarts and the update loop
+ * are unit-testable (Phaser reuses the scene instance; only create() re-runs).
  *
  * The debug overlay (#8) is a DOM panel outside Phaser so it can host real
  * `<input>` controls for live physics tuning and toggle off for clean demos.
@@ -66,8 +78,17 @@ export class SimSession {
   /** Fixed-capacity projectile pool (#10) — never grows after construction. */
   readonly bullets = new BulletPool();
 
+  /** Enemy projectile pool (#18) — heli return fire. */
+  readonly enemyBullets = new EnemyBulletPool();
+
   /** Arena cull region for bullet off-screen recycle (Flash ±1 tile). */
   readonly bulletCullBounds: CullBounds = arenaCullBounds(
+    LEVEL1_WIDTH_PX,
+    LEVEL1_HEIGHT_PX,
+  );
+
+  /** Cull region for enemy bullets (same arena expansion). */
+  readonly enemyBulletCullBounds: CullBounds = enemyBulletArenaCullBounds(
     LEVEL1_WIDTH_PX,
     LEVEL1_HEIGHT_PX,
   );
@@ -90,6 +111,9 @@ export class SimSession {
 
   /** Damage-dealt score (Flash `score += damage`) (#13). */
   score: ScoreState = createScoreState();
+
+  /** Player vitals — health, i-frames, death (#18). */
+  playerHealth: PlayerHealthState = createPlayerHealth();
 
   /** Spawn RNG — fixed seed so tests and demos are reproducible. */
   readonly spawnRng = createSpawnRng(12);
@@ -129,6 +153,7 @@ export class SimSession {
     };
     this.player.placeAt(PLAYER_SPAWN.x, PLAYER_SPAWN.y);
     this.bullets.reset();
+    this.enemyBullets.reset();
     this.fireHeld = false;
     this.inventory = createWeaponInventory({ testGrant: true });
     this.helicopters = [
@@ -141,6 +166,7 @@ export class SimSession {
     ];
     this.explosions = [];
     this.score = createScoreState();
+    this.playerHealth = createPlayerHealth();
     this.debugBox.dragging = false;
     this.debugBox.placeAt(DEBUG_BOX_SPAWN.x, DEBUG_BOX_SPAWN.y);
   }
@@ -211,24 +237,46 @@ export class SimSession {
   private simTick(): void {
     this.simTickCount += 1;
     this.ticksThisSecond += 1;
-    this.player.step(this.map, this.timeScale.timeStep);
-    // Flash: reload++ every move frame; fire when held && reloadtime >= reload.
-    const def = getActiveWeaponDef(this.inventory);
-    if (stepWeaponFire(this.weapon, this.fireHeld, def)) {
-      this.tryFire();
-      fallbackIfActiveEmpty(this.inventory);
+
+    // Dead players stop moving / firing; helis still update so the scene reads.
+    if (this.playerHealth.alive) {
+      this.player.step(this.map, this.timeScale.timeStep);
+      const def = getActiveWeaponDef(this.inventory);
+      if (stepWeaponFire(this.weapon, this.fireHeld, def)) {
+        this.tryFire();
+        fallbackIfActiveEmpty(this.inventory);
+      }
     }
+
+    stepPlayerIFrames(this.playerHealth, this.timeScale.timeStep);
+
     const playerBody = this.player.body;
+    const playerCenterX = playerBody.x + playerBody.w / 2;
+    const playerCenterY = playerBody.y + playerBody.h / 2;
+
     for (let i = 0; i < this.helicopters.length; i += 1) {
-      stepHelicopter(
-        this.helicopters[i]!,
+      const heli = this.helicopters[i]!;
+      const moved = stepHelicopter(
+        heli,
         this.timeScale.timeStep,
-        playerBody.x + playerBody.w / 2,
+        playerCenterX,
         playerBody.y,
         LEVEL1_WIDTH_PX,
         LEVEL1_HEIGHT_PX,
       );
+      if (this.playerHealth.alive) {
+        stepHeliCombat(
+          heli,
+          this.timeScale.timeStep,
+          playerCenterX,
+          playerCenterY,
+          this.enemyBullets,
+          this.spawnRng,
+          moved,
+        );
+      }
     }
+
     stepBulletsVsHelis(
       this.bullets,
       this.helicopters,
@@ -243,6 +291,17 @@ export class SimSession {
       this.map,
       playerBody,
     );
+
+    stepEnemyBulletsVsPlayer(
+      this.enemyBullets,
+      playerBody,
+      this.playerHealth,
+      this.enemyBulletCullBounds,
+      this.timeScale.timeStep,
+      this.map,
+    );
+    syncPlayerLastHealth(this.playerHealth);
+
     for (let i = this.explosions.length - 1; i >= 0; i -= 1) {
       if (stepHeliExplosion(this.explosions[i]!, this.timeScale.timeStep)) {
         this.explosions.splice(i, 1);

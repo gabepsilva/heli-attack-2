@@ -108,6 +108,10 @@ export function resetPhysicsConstants(): void {
 export const HELI = {
   hp: 300,
   bulletSpeed: 7,
+  /**
+   * Aim jitter width in degrees (Flash `gun._rotation-5+random(10)` → ±5°).
+   * Spec portable config: `aimSpreadDeg: 10`.
+   */
   aimSpreadDeg: 10,
   /** Flash `heli.png` logical size (game-space pixels). */
   spriteW: 212,
@@ -122,6 +126,43 @@ export const HELI = {
    * single heliFrame where `lasthealth != health` after a bullet hit.
    */
   hitFlashFrames: 1,
+  /**
+   * Fire cadence at level 0 (Flash `shoot++%Math.max(10,16-level)`).
+   * Fires when the counter modulo this equals 1.
+   */
+  fireIntervalFrames: 16,
+  /** Flash gun turn: `dif/Math.max(1,10-level)` at level 0. */
+  gunTurnDivisor: 10,
+  /** Muzzle distance from heli center along the barrel (px). */
+  muzzleOffset: 40,
+} as const;
+
+/**
+ * Enemy projectiles (#18) — Flash `addEnemyBullet` / `enemyBulletFrame`.
+ * Damage is a flat 10 (not weapon-table driven).
+ */
+export const ENEMY_BULLET = {
+  /** Flash `player.health -= 10` on hit. */
+  damage: 10,
+  /** Same as {@link HELI.bulletSpeed}. */
+  speed: 7,
+  poolCapacity: 64,
+  maxLifetimeFrames: 300,
+  cullMargin: WORLD_DEFAULTS.tile,
+  /** Placeholder draw radius (px). */
+  radius: 3,
+} as const;
+
+/**
+ * Player combat vitals (#18). Max health matches {@link PLAYER_DEFAULTS.health}.
+ * I-frames are a brief post-hit window called out in the ticket — the original
+ * stacks every bullet; i-frames prevent same-volley instant death while staying
+ * shorter than {@link HELI.fireIntervalFrames} so successive heli shots still land.
+ */
+export const PLAYER_COMBAT = {
+  maxHealth: 100,
+  /** Brief post-hit invulnerability in sim frames. */
+  iFrameFrames: 10,
 } as const;
 
 /**

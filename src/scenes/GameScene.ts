@@ -6,13 +6,21 @@ import { getGameAudio } from '../audio/gameAudio';
 import { ATLAS_KEY } from '../config/art';
 import { AUDIO_TEST_SFX_ID } from '../config/audio';
 import { formatScoreHud } from '../combat/score';
+import { formatHealthHud } from '../combat/playerHealth';
 import {
   getActiveWeaponDef,
   nextWeapon,
   prevWeapon,
   selectWeaponByDigitKey,
 } from '../combat/weaponInventory';
-import { BULLET, GUN, PLAYER, SIM_HZ, WORLD } from '../config/constants';
+import {
+  BULLET,
+  ENEMY_BULLET,
+  GUN,
+  PLAYER,
+  SIM_HZ,
+  WORLD,
+} from '../config/constants';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/game';
 import { SCENE_KEYS } from '../config/scenes';
 import { SimSession } from '../core/simSession';
@@ -32,9 +40,12 @@ const GUN_COLOR = 0xc9ada7;
 const GUN_STROKE = 0xf2e9e4;
 const MUZZLE_COLOR = 0xff6b6b;
 const BULLET_COLOR = 0xffe066;
+const ENEMY_BULLET_COLOR = 0xff6b6b;
 const HELI_TINT = 0xffffff;
 const EXPLOSION_COLOR = 0xff9f1c;
 const SCORE_COLOR = '#ffe066';
+const HEALTH_COLOR = '#7dcfb6';
+const HEALTH_DEAD_COLOR = '#e63946';
 const HELI_FRAME = 'heli';
 const HELI_HIT_FRAME = 'heli_hit';
 
@@ -63,9 +74,14 @@ export class GameScene extends Phaser.Scene {
   private muzzleDot!: Phaser.GameObjects.Arc;
   /** One visual per pool slot — toggled visible when the slot is active. */
   private bulletDots: Phaser.GameObjects.Arc[] = [];
+  /** Enemy return-fire visuals (#18). */
+  private enemyBulletDots: Phaser.GameObjects.Arc[] = [];
   private heliSprite!: Phaser.GameObjects.Image;
   private explosionSprite!: Phaser.GameObjects.Arc;
   private scoreText!: Phaser.GameObjects.Text;
+  private healthText!: Phaser.GameObjects.Text;
+  private healthBarFill!: Phaser.GameObjects.Rectangle;
+  private deathText!: Phaser.GameObjects.Text;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private audioHud: AudioHud | null = null;
   private boostKey!: Phaser.Input.Keyboard.Key;
@@ -98,6 +114,7 @@ export class GameScene extends Phaser.Scene {
     this.createBulletVisuals();
     this.createHeliVisual();
     this.createScoreHud();
+    this.createHealthHud();
     this.createDebugBoxVisual();
     this.setupAudioDemo();
 
@@ -261,8 +278,10 @@ export class GameScene extends Phaser.Scene {
     this.syncPlayerVisual();
     this.syncGunVisual();
     this.syncBulletVisuals();
+    this.syncEnemyBulletVisuals();
     this.syncHeliVisual();
     this.syncScoreHud();
+    this.syncHealthHud();
     this.syncBoxVisual();
   }
 
@@ -395,6 +414,13 @@ export class GameScene extends Phaser.Scene {
         .setVisible(false);
       this.bulletDots.push(dot);
     }
+    this.enemyBulletDots = [];
+    for (let i = 0; i < this.session.enemyBullets.capacity; i += 1) {
+      const dot = this.add
+        .circle(0, 0, ENEMY_BULLET.radius, ENEMY_BULLET_COLOR)
+        .setVisible(false);
+      this.enemyBulletDots.push(dot);
+    }
   }
 
   private syncBulletVisuals(): void {
@@ -402,6 +428,23 @@ export class GameScene extends Phaser.Scene {
     for (let i = 0; i < slots.length; i += 1) {
       const bullet = slots[i]!;
       const dot = this.bulletDots[i]!;
+      if (!bullet.active) {
+        dot.setVisible(false);
+        continue;
+      }
+      dot.setVisible(true);
+      dot.setPosition(
+        this.arenaOriginX + bullet.x,
+        this.arenaOriginY + bullet.y,
+      );
+    }
+  }
+
+  private syncEnemyBulletVisuals(): void {
+    const slots = this.session.enemyBullets.slots;
+    for (let i = 0; i < slots.length; i += 1) {
+      const bullet = slots[i]!;
+      const dot = this.enemyBulletDots[i]!;
       if (!bullet.active) {
         dot.setVisible(false);
         continue;
@@ -446,6 +489,66 @@ export class GameScene extends Phaser.Scene {
 
   private syncScoreHud(): void {
     this.scoreText.setText(formatScoreHud(this.session.score.value));
+  }
+
+  private createHealthHud(): void {
+    // Temporary health bar (#18) until the full HUD lands in #23.
+    const barX = 40;
+    const barY = 100;
+    const barW = 280;
+    const barH = 28;
+
+    this.add
+      .rectangle(barX, barY, barW, barH, 0x1b263b)
+      .setOrigin(0, 0)
+      .setStrokeStyle(2, 0x415a77)
+      .setDepth(20);
+
+    this.healthBarFill = this.add
+      .rectangle(barX + 2, barY + 2, barW - 4, barH - 4, 0x2a9d8f)
+      .setOrigin(0, 0)
+      .setDepth(21);
+
+    this.healthText = this.add
+      .text(barX, barY + barH + 8, formatHealthHud(this.session.playerHealth), {
+        fontFamily: 'monospace',
+        fontSize: '28px',
+        color: HEALTH_COLOR,
+      })
+      .setOrigin(0, 0)
+      .setDepth(20);
+
+    this.deathText = this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'YOU DIED', {
+        fontFamily: 'monospace',
+        fontSize: '96px',
+        color: HEALTH_DEAD_COLOR,
+      })
+      .setOrigin(0.5)
+      .setDepth(30)
+      .setVisible(false);
+  }
+
+  private syncHealthHud(): void {
+    const health = this.session.playerHealth;
+    const frac = Math.max(0, Math.min(1, health.health / health.maxHealth));
+    const innerW = 280 - 4;
+    this.healthBarFill.width = Math.max(0, innerW * frac);
+    this.healthBarFill.setFillStyle(health.alive ? 0x2a9d8f : 0xe63946);
+    this.healthText.setText(formatHealthHud(health));
+    this.healthText.setColor(health.alive ? HEALTH_COLOR : HEALTH_DEAD_COLOR);
+    this.deathText.setVisible(!health.alive);
+
+    // Brief red tint on the player hitbox while hurt-flashing / i-framed.
+    if (health.iFramesRemaining > 0 && health.alive) {
+      this.playerHitbox.setStrokeStyle(2, 0xe63946, 1);
+      this.playerSprite.setAlpha(
+        0.55 + 0.45 * Math.sin(health.iFramesRemaining),
+      );
+    } else {
+      this.playerHitbox.setStrokeStyle(1, PLAYER_HITBOX_STROKE, 0.7);
+      this.playerSprite.setAlpha(health.alive ? 1 : 0.35);
+    }
   }
 
   private syncHeliVisual(): void {
