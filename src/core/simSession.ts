@@ -51,6 +51,7 @@ import {
   stepPlayerPowerup,
   syncPredatorWeapon,
   weaponDamageMultiplier,
+  isJetpackActive,
 } from '../combat/powerupEffects';
 import {
   addDamageScore,
@@ -67,6 +68,16 @@ import {
   type WeaponInventory,
 } from '../combat/weaponInventory';
 import type { GameAudioEvent } from '../audio/eventMap';
+import {
+  buildBloodFx,
+  buildImpactFx,
+  buildKillFx,
+  buildMuzzleFx,
+  buildSmokeFx,
+  shouldEmitJetpackSmoke,
+} from '../fx/particleEvents';
+import { ParticleFxQueue } from '../fx/particleQueue';
+import { shouldEmitSmokeTrail } from '../fx/smokeTrail';
 import { PLAYER_SPAWN, Player } from '../player/player';
 import { BULLET, HELI, POWERUP } from '../config/constants';
 import { DebugBox } from '../world/debugBox';
@@ -86,7 +97,8 @@ export const DEBUG_BOX_SPAWN = { x: 200, y: 200 } as const;
  * helicopter combat (#12/#13), enemy return fire + player health (#18),
  * replacement spawn treadmill + difficulty ramp (#19), parachuting powerup
  * drops (#21), timed state powerup effects (#22), manual bullet-time meter
- * (#42), event-driven SFX cues (#27), and the debug box.
+ * (#42), event-driven SFX cues (#27), pooled particle FX cues (#35), and the
+ * debug box.
  * Lives outside Phaser so scene restarts and the update loop are
  * unit-testable (Phaser reuses the scene instance; only create() re-runs).
  *
@@ -105,6 +117,15 @@ export class SimSession {
    * GameScene drains via {@link drainAudioEvents} after each render update.
    */
   private readonly audioEvents: GameAudioEvent[] = [];
+
+  /**
+   * Particle FX cues (issue #35). Fixed-capacity ring — GameScene drains via
+   * {@link drainParticleFx} after each render update.
+   */
+  readonly particleFx = new ParticleFxQueue();
+
+  /** Jetpack smoke frame counter (Flash `smok++`). */
+  private jetpackSmokeCounter = 0;
 
   simTickCount = 0;
   ticksThisSecond = 0;
@@ -252,6 +273,8 @@ export class SimSession {
     this.playerPowerup = createPlayerPowerupState();
     this.predatorFlicker = 0;
     this.audioEvents.length = 0;
+    this.particleFx.reset();
+    this.jetpackSmokeCounter = 0;
     this.debugBox.dragging = false;
     this.debugBox.placeAt(DEBUG_BOX_SPAWN.x, DEBUG_BOX_SPAWN.y);
   }
@@ -265,6 +288,14 @@ export class SimSession {
       return [];
     }
     return this.audioEvents.splice(0, this.audioEvents.length);
+  }
+
+  /**
+   * Take ownership of every particle FX cue queued since the last drain
+   * (issue #35). Call once per render frame after {@link update}.
+   */
+  drainParticleFx() {
+    return this.particleFx.drain();
   }
 
   /**
@@ -323,6 +354,7 @@ export class SimSession {
         spawn.damage * damageMult,
         spawn.maxLifetime ?? BULLET.maxLifetimeFrames,
         spawn.behavior,
+        spawn.smokeTrailInterval ?? 0,
       );
       if (bullet !== null) {
         any = true;
@@ -331,6 +363,9 @@ export class SimSession {
     }
     if (any) {
       this.audioEvents.push({ type: 'weaponFire', weaponIndex: weapon.type });
+      this.particleFx.pushAll(
+        buildMuzzleFx(muzzle.x, muzzle.y, gunAim.rotationDeg),
+      );
     }
     return any;
   }
@@ -420,6 +455,7 @@ export class SimSession {
         }
         if (event.killed) {
           this.explosions.push(createHeliExplosion(event.heli.x, event.heli.y));
+          this.particleFx.pushAll(buildKillFx(event.heli.x, event.heli.y));
           this.audioEvents.push({ type: 'heliBoom' });
           // State only — never splice/push helis here. Rail + A-Bomb keep
           // iterating the same array after a kill (#19 Lead review).
@@ -434,6 +470,9 @@ export class SimSession {
             this.spawnRng,
           );
           killsThisTick += 1;
+        } else if (event.firstContact) {
+          // Distinct non-fatal impact FX (not the kill boom).
+          this.particleFx.pushAll(buildImpactFx(event.heli.x, event.heli.y));
         }
       },
       this.map,
@@ -462,10 +501,51 @@ export class SimSession {
       this.map,
       () => {
         this.audioEvents.push({ type: 'hurt' });
+        this.particleFx.pushAll(
+          buildBloodFx(
+            playerBody.x + playerBody.w / 2,
+            playerBody.y + playerBody.h / 2,
+          ),
+        );
       },
       this.playerPowerup.powerupOn,
     );
     syncPlayerLastHealth(this.playerHealth);
+
+    // Rocket / seeker smoke trails (#35) — Flash attachMovie("smoke") cadence.
+    const trailStep = this.timeScale.timeStep;
+    for (let i = 0; i < this.bullets.slots.length; i += 1) {
+      const bullet = this.bullets.slots[i]!;
+      if (
+        !bullet.active ||
+        !shouldEmitSmokeTrail(bullet.age, trailStep, bullet.smokeTrailInterval)
+      ) {
+        continue;
+      }
+      this.particleFx.pushAll(buildSmokeFx(bullet.x, bullet.y));
+    }
+
+    // Jetpack smoke while thrusting (Flash smok++%5 under jump).
+    if (
+      shouldEmitJetpackSmoke(
+        this.playerPowerup.powerupOn,
+        isJetpackActive(this.playerPowerup.powerupOn, this.player.input.jump) ||
+          this.player.jumpState.jump,
+        this.jetpackSmokeCounter,
+      )
+    ) {
+      this.particleFx.pushAll(
+        buildSmokeFx(
+          playerBody.x + playerBody.w / 2,
+          playerBody.y + playerBody.h,
+        ),
+      );
+    }
+    if (this.playerPowerup.powerupOn === POWERUP.Jetpack) {
+      this.jetpackSmokeCounter += 1;
+    } else {
+      this.jetpackSmokeCounter = 0;
+    }
 
     stepPowerups(this.powerups, this.map, this.timeScale.timeStep);
     if (this.playerHealth.alive) {
