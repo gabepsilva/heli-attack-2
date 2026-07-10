@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { PLAYER, SIM_HZ, WORLD } from '../config/constants';
+import { GUN, PLAYER, SIM_HZ, WORLD } from '../config/constants';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/game';
 import { SCENE_KEYS } from '../config/scenes';
 import { SimSession } from '../core/simSession';
@@ -21,11 +21,14 @@ const BOX_COLOR = 0xe09f3e;
 const BOX_DRAG_COLOR = 0xf4a261;
 const PLAYER_COLOR = 0x90be6d;
 const PLAYER_STROKE = 0xd8f3dc;
+const GUN_COLOR = 0xc9ada7;
+const GUN_STROKE = 0xf2e9e4;
+const MUZZLE_COLOR = 0xff6b6b;
 
 /**
  * Thin Phaser shell: banks render deltas into a 30 Hz fixed sim, draws the
- * hand-authored tile arena, hosts a controllable player (←/→ walk), and a
- * draggable debug box. Game logic lives in plain modules under src/.
+ * hand-authored tile arena, hosts a controllable player (←/→ walk + mouse aim),
+ * and a draggable debug box. Game logic lives in plain modules under src/.
  */
 export class GameScene extends Phaser.Scene {
   private readonly session = new SimSession();
@@ -33,9 +36,12 @@ export class GameScene extends Phaser.Scene {
   private rateText!: Phaser.GameObjects.Text;
   private timeStepText!: Phaser.GameObjects.Text;
   private playerText!: Phaser.GameObjects.Text;
+  private aimText!: Phaser.GameObjects.Text;
   private boxText!: Phaser.GameObjects.Text;
   private boxRect!: Phaser.GameObjects.Rectangle;
   private playerRect!: Phaser.GameObjects.Rectangle;
+  private gunRect!: Phaser.GameObjects.Rectangle;
+  private muzzleDot!: Phaser.GameObjects.Arc;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private arenaOriginX = 0;
   private arenaOriginY = 0;
@@ -56,12 +62,13 @@ export class GameScene extends Phaser.Scene {
 
     this.drawArena();
     this.createPlayerVisual();
+    this.createGunVisual();
     this.createDebugBoxVisual();
 
     this.cursors = this.input.keyboard!.createCursorKeys();
 
     this.add
-      .text(GAME_WIDTH / 2, 28, 'Walk ←/→ — watch vx ramp & decay', {
+      .text(GAME_WIDTH / 2, 28, 'Walk ←/→ · aim with mouse', {
         fontFamily: 'Arial, Helvetica, sans-serif',
         fontSize: '36px',
         color: '#f5f5f5',
@@ -71,12 +78,13 @@ export class GameScene extends Phaser.Scene {
     this.rateText = this.add.text(40, 70, '', HUD_STYLE);
     this.timeStepText = this.add.text(40, 98, '', HUD_STYLE);
     this.playerText = this.add.text(40, 126, '', HUD_STYLE);
-    this.boxText = this.add.text(40, 154, '', HUD_STYLE);
+    this.aimText = this.add.text(40, 154, '', HUD_STYLE);
+    this.boxText = this.add.text(40, 182, '', HUD_STYLE);
 
     this.add.text(
       40,
       GAME_HEIGHT - 60,
-      '←/→ walk · drag box · 1/2 = timeStep 1.0/0.5 · Esc → BootScene',
+      '←/→ walk · mouse aim · drag box · 1/2 = timeStep 1.0/0.5 · Esc → BootScene',
       { ...HUD_STYLE, fontSize: '20px', color: '#9ab' },
     );
 
@@ -96,6 +104,10 @@ export class GameScene extends Phaser.Scene {
       left: this.cursors.left.isDown,
       right: this.cursors.right.isDown,
     };
+    this.session.player.mouse = {
+      x: this.input.activePointer.worldX - this.arenaOriginX,
+      y: this.input.activePointer.worldY - this.arenaOriginY,
+    };
 
     this.session.update(delta);
 
@@ -112,12 +124,20 @@ export class GameScene extends Phaser.Scene {
         `${p.onGround ? 'grounded' : 'air'}  ` +
         `cap±${PLAYER.walkCap}/hard±${PLAYER.hardCap}`,
     );
+    const aim = this.session.player.gunAim;
+    const muzzle = this.session.player.muzzle;
+    this.aimText.setText(
+      `aim ${aim.rotationDeg.toFixed(0)}°  ` +
+        `${aim.flipY ? 'flipY' : 'upright'}  ` +
+        `muzzle (${muzzle.x.toFixed(0)}, ${muzzle.y.toFixed(0)})`,
+    );
     const b = this.session.debugBox.body;
     this.boxText.setText(
       `box (${b.x.toFixed(0)}, ${b.y.toFixed(0)})  vy=${b.vy.toFixed(1)}  ${b.onGround ? 'grounded' : 'air'}`,
     );
 
     this.syncPlayerVisual();
+    this.syncGunVisual();
     this.syncBoxVisual();
   }
 
@@ -175,6 +195,48 @@ export class GameScene extends Phaser.Scene {
     this.playerRect.setPosition(
       this.arenaOriginX + p.x + p.w / 2,
       this.arenaOriginY + p.y + p.h / 2,
+    );
+  }
+
+  private createGunVisual(): void {
+    const pivot = this.session.player.gunPivot;
+    // Rectangle origin is center by default; shift so the grip (pivotX) sits
+    // on the gun pivot — matches Phaser Image.setOrigin(GUN.pivotX, pivotY).
+    this.gunRect = this.add
+      .rectangle(
+        this.arenaOriginX + pivot.x,
+        this.arenaOriginY + pivot.y,
+        GUN.spriteW,
+        GUN.spriteH,
+        GUN_COLOR,
+      )
+      .setStrokeStyle(1, GUN_STROKE)
+      .setOrigin(GUN.pivotX, GUN.pivotY);
+
+    this.muzzleDot = this.add.circle(
+      this.arenaOriginX + this.session.player.muzzle.x,
+      this.arenaOriginY + this.session.player.muzzle.y,
+      3,
+      MUZZLE_COLOR,
+    );
+  }
+
+  private syncGunVisual(): void {
+    const player = this.session.player;
+    const pivot = player.gunPivot;
+    const aim = player.gunAim;
+
+    this.gunRect.setPosition(
+      this.arenaOriginX + pivot.x,
+      this.arenaOriginY + pivot.y,
+    );
+    this.gunRect.setAngle(aim.rotationDeg);
+    // Flash `_yscale = -100` when aiming left — Phaser flipY.
+    this.gunRect.setScale(1, aim.flipY ? -1 : 1);
+
+    this.muzzleDot.setPosition(
+      this.arenaOriginX + player.muzzle.x,
+      this.arenaOriginY + player.muzzle.y,
     );
   }
 

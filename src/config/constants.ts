@@ -52,6 +52,31 @@ export const HELI = {
   aimSpreadDeg: 10,
 } as const;
 
+/**
+ * Held starting gun (machine gun). Size/pivot match Flash `machineGun.png`
+ * (29×16, grip at 0.2×0.5). Attach is the grip offset from the player AABB
+ * top-left (chest mount). Aim turn rate matches Flash `dif/2*timeStep`.
+ */
+export const GUN = {
+  /** Grip offset from player AABB top-left → gun pivot (world, unrotated). */
+  attachX: 5,
+  attachY: 16,
+  /** Machine-gun draw size (Flash `machineGun.png`). */
+  spriteW: 29,
+  spriteH: 16,
+  /** Normalized Phaser origin — grip-biased. */
+  pivotX: 0.2,
+  pivotY: 0.5,
+  /**
+   * Muzzle tip in gun-local space relative to the grip pivot, along +X barrel.
+   * `(1 - pivotX) * spriteW` = distance from grip to the sprite's right edge.
+   */
+  muzzleLocalX: (1 - 0.2) * 29,
+  muzzleLocalY: 0,
+  /** Flash: `gun._rotation += dif / turnDivisor * timeStep`. */
+  turnDivisor: 2,
+} as const;
+
 /** Timed "state" powerups each last this many sim frames (~16.7s @30Hz). */
 export const POWERUP_FRAMES = 500;
 

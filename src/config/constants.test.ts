@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   BULLET_TIME,
+  GUN,
   HEALTH_PICKUP,
   HELI,
   PLAYER,
@@ -61,5 +62,19 @@ describe('config/constants (spec seed)', () => {
     expect(BULLET_TIME.refillPerKill).toBeCloseTo(83.333, 3);
     expect(BULLET_TIME.minScale).toBe(0.2);
     expect(BULLET_TIME.easePerFrame).toBe(0.1);
+  });
+
+  it('seeds GUN from Flash machineGun.png size/pivot + aim turn rate', () => {
+    expect(GUN).toEqual({
+      attachX: 5,
+      attachY: 16,
+      spriteW: 29,
+      spriteH: 16,
+      pivotX: 0.2,
+      pivotY: 0.5,
+      muzzleLocalX: (1 - 0.2) * 29,
+      muzzleLocalY: 0,
+      turnDivisor: 2,
+    });
   });
 });
