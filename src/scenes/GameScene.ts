@@ -15,6 +15,7 @@ import {
 import {
   BULLET,
   ENEMY_BULLET,
+  GAME_FLOW,
   GUN,
   HELI_LOOK_TINT,
   PLAYER,
@@ -25,6 +26,15 @@ import {
 } from '../config/constants';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/game';
 import { SCENE_KEYS } from '../config/scenes';
+import {
+  beginDeath,
+  createGameFlowState,
+  pauseGame,
+  resumeGame,
+  startPlaying,
+  tickDeath,
+  type GameFlowState,
+} from '../core/gameFlow';
 import { SimSession } from '../core/simSession';
 import { DebugOverlay } from '../tooling/debugOverlay';
 import { buildHudSnapshot } from '../ui/hud';
@@ -61,10 +71,10 @@ const POWERUP_FRAME = 'powerup';
  * hold-to-fire, weapon switch via 1–0 / Q–E (#14), pooled bullets) rendered
  * from the packed atlas (#32), shootable heli variants with hit flash / death
  * boom (#12/#13/#20), parachuting powerup crates (#21), full in-game HUD
- * (#23), and a draggable debug box.
+ * (#23), menu/pause/game-over session loop (#24), and a draggable debug box.
  * Game logic lives in plain modules under src/.
  *
- * Audio (#26): click plays the test SFX after Boot unlock; DOM HUD owns
+ * Audio (#26): click plays the test SFX after menu unlock; DOM HUD owns
  * master volume + mute. Pooling / gain math lives in {@link AudioManager}.
  *
  * The debug overlay (#8) is a DOM panel outside Phaser so it can host real
@@ -72,6 +82,7 @@ const POWERUP_FRAME = 'powerup';
  */
 export class GameScene extends Phaser.Scene {
   private readonly session = new SimSession();
+  private readonly flow: GameFlowState = createGameFlowState('playing');
 
   private boxRect!: Phaser.GameObjects.Rectangle;
   private playerSprite!: Phaser.GameObjects.Image;
@@ -93,9 +104,15 @@ export class GameScene extends Phaser.Scene {
   private audioHud: AudioHud | null = null;
   private boostKey!: Phaser.Input.Keyboard.Key;
   private bulletTimeKey!: Phaser.Input.Keyboard.Key;
+  private pauseKey!: Phaser.Input.Keyboard.Key;
+  private escKey!: Phaser.Input.Keyboard.Key;
   private overlay: DebugOverlay | null = null;
   private arenaOriginX = 0;
   private arenaOriginY = 0;
+
+  private readonly onResume = (): void => {
+    resumeGame(this.flow);
+  };
 
   constructor() {
     super({ key: SCENE_KEYS.Game });
@@ -104,6 +121,7 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     // Phaser reuses this instance across scene.start — only create() re-runs.
     this.session.reset();
+    startPlaying(this.flow);
     this.audioHud?.destroy();
     this.overlay?.destroy();
     this.overlay = new DebugOverlay({
@@ -150,7 +168,7 @@ export class GameScene extends Phaser.Scene {
     this.add.text(
       40,
       GAME_HEIGHT - 60,
-      '←/→ walk · ↑ jump · Ctrl boost · Shift slow-mo · ↓ duck · mouse aim · hold fire · 1–0 weapons · Q/E prev/next · -/= timeStep · click SFX · drag box · ` debug · Esc → Boot',
+      '←/→ walk · ↑ jump · Ctrl boost · Shift slow-mo · ↓ duck · mouse aim · hold fire · 1–0 weapons · Q/E prev/next · -/= timeStep · click SFX · drag box · ` debug · P/Esc pause',
       {
         fontFamily: 'monospace',
         fontSize: '20px',
@@ -193,20 +211,43 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-E', () => {
       nextWeapon(this.session.inventory, this.session.playerPowerup.powerupOn);
     });
-    this.input.keyboard?.on('keydown-ESC', () => {
-      this.scene.start(SCENE_KEYS.Boot);
+    // Flash pauseKey (80 / P) via GAME_FLOW — addKey avoids OS key-repeat strobe.
+    this.pauseKey = this.input.keyboard!.addKey(GAME_FLOW.pauseKeyCode);
+    this.pauseKey.on('down', () => {
+      this.enterPause();
+    });
+    this.escKey = this.input.keyboard!.addKey(
+      Phaser.Input.Keyboard.KeyCodes.ESC,
+    );
+    this.escKey.on('down', () => {
+      this.enterPause();
     });
     // Backtick / tilde key — toggle overlay for clean demos (issue #8).
     this.input.keyboard?.on('keydown-BACKTICK', () => {
       this.overlay?.toggle();
     });
 
+    // Resume may re-enter without a full create() — keep flow in sync.
+    this.events.on(Phaser.Scenes.Events.RESUME, this.onResume);
+
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.events.off(Phaser.Scenes.Events.RESUME, this.onResume);
+      this.pauseKey?.off('down');
+      this.escKey?.off('down');
       this.audioHud?.destroy();
       this.audioHud = null;
       this.overlay?.destroy();
       this.overlay = null;
     });
+  }
+
+  /** Pause gameplay and launch the pause overlay (#24). */
+  private enterPause(): void {
+    if (!pauseGame(this.flow)) {
+      return;
+    }
+    this.scene.pause();
+    this.scene.launch(SCENE_KEYS.Pause);
   }
 
   private setupAudioDemo(): void {
@@ -243,14 +284,37 @@ export class GameScene extends Phaser.Scene {
       y: this.input.activePointer.worldY - this.arenaOriginY,
     };
 
-    // Held fire (Flash mouseD). Skip while dragging the debug box.
+    // Held fire (Flash mouseD). Skip while dragging the debug box / dying.
     const pointer = this.input.activePointer;
     this.session.fireHeld =
+      this.flow.phase === 'playing' &&
       pointer.isDown &&
       !pointer.rightButtonDown() &&
       !this.session.debugBox.dragging;
 
+    const wasDying = this.flow.phase === 'dying';
+    const ticksBefore = this.session.simTickCount;
     this.session.update(delta);
+    const simSteps = this.session.simTickCount - ticksBefore;
+
+    if (!this.session.playerHealth.alive) {
+      if (this.flow.phase === 'playing') {
+        beginDeath(this.flow, this.session.score.value);
+      }
+      if (this.flow.phase === 'dying') {
+        // Count only steps while already dead; on the death frame count one
+        // (sim steps before the killing blow were still alive).
+        const deathTicks = wasDying ? simSteps : simSteps > 0 ? 1 : 0;
+        for (let i = 0; i < deathTicks; i += 1) {
+          if (tickDeath(this.flow)) {
+            this.scene.start(SCENE_KEYS.GameOver, {
+              finalScore: this.flow.finalScore,
+            });
+            return;
+          }
+        }
+      }
+    }
 
     const p = this.session.player.body;
     const pl = this.session.player;
