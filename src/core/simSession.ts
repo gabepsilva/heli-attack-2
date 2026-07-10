@@ -34,9 +34,14 @@ export class SimSession {
 
   /**
    * Drive one render frame. `deltaMs` is Phaser's update delta (milliseconds);
-   * converted to seconds for the accumulator.
+   * converted to seconds for the accumulator. Non-finite / negative deltas are
+   * ignored so neither the bank nor the HUD rate timer can be poisoned.
    */
   update(deltaMs: number): void {
+    if (!Number.isFinite(deltaMs) || deltaMs < 0) {
+      return;
+    }
+
     const steps = this.accumulator.advance(deltaMs / 1000);
 
     for (let i = 0; i < steps; i += 1) {

@@ -19,7 +19,7 @@ describe('TimeScale / timeStep', () => {
     expect(half).toBe(full / 2);
   });
 
-  it('lets callers set and reset the global timeStep factor', () => {
+  it('lets callers set and reset the live timeStep factor', () => {
     const scale = new TimeScale();
     scale.setTimeStep(0.5);
     expect(scale.timeStep).toBe(0.5);

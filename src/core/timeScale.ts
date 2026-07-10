@@ -1,8 +1,10 @@
 import { WORLD } from '../config/constants';
 
 /**
- * Global per-frame time-scale (`timeStep`) applied to entity motion.
- * Default 1; bullet-time eases toward 0.2, TimeRift reuses the same path.
+ * Per-session live time-scale (`timeStep`) applied to entity motion.
+ * Owned by each {@link SimSession} (not a module singleton). Seeded from
+ * {@link WORLD.timeStep} (default 1); bullet-time eases toward 0.2, TimeRift
+ * reuses the same path. Pass `timeScale.timeStep` into entity updates.
  */
 export class TimeScale {
   private _timeStep: number = WORLD.timeStep;

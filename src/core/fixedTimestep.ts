@@ -3,7 +3,8 @@ import { SIM_DT } from '../config/constants';
 /**
  * Frame-rate-independent fixed-update accumulator.
  * Wall-clock deltas (any refresh rate) are banked and spent in {@link SIM_DT} chunks
- * so the sim always advances at a steady {@link SIM_HZ} ticks per real second.
+ * so the sim always advances at a steady
+ * {@link import('../config/constants').SIM_HZ} ticks per real second.
  */
 export class FixedTimestepAccumulator {
   private accumulator = 0;

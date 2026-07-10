@@ -13,7 +13,8 @@ describe('SimSession', () => {
     expect(session.timeScale.timeStep).toBe(0.5);
     expect(session.demoX).toBeGreaterThan(0);
     expect(session.simTickCount).toBeGreaterThan(0);
-    expect(session.accumulator.leftoverSeconds).toBeGreaterThanOrEqual(0);
+    // Half a SIM_DT was banked before the full-tick update; that half remains.
+    expect(session.accumulator.leftoverSeconds).toBeCloseTo(SIM_DT / 2);
 
     // Game → Boot → Game: create() must call reset() so state does not leak.
     session.reset();
@@ -25,6 +26,22 @@ describe('SimSession', () => {
     expect(session.secondTimerMs).toBe(0);
     expect(session.displayedSimRate).toBe(0);
     expect(session.accumulator.leftoverSeconds).toBe(0);
+  });
+
+  it('ignores NaN deltas so the HUD rate timer cannot freeze', () => {
+    const session = new SimSession();
+    for (let i = 0; i < 30; i += 1) {
+      session.update(1000 / 30);
+    }
+    expect(session.displayedSimRate).toBeCloseTo(SIM_HZ, 0);
+
+    session.update(Number.NaN);
+    for (let i = 0; i < 300; i += 1) {
+      session.update(1000 / 30);
+    }
+
+    expect(Number.isNaN(session.secondTimerMs)).toBe(false);
+    expect(session.displayedSimRate).toBeCloseTo(SIM_HZ, 0);
   });
 
   it('converts Phaser delta ms → seconds and steps at ~30 Hz for 60 Hz frames', () => {

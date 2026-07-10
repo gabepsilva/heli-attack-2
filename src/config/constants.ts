@@ -1,7 +1,11 @@
 /**
  * Central game constants seeded from the reverse-engineered HA2 spec.
  * Speeds / reloads are per sim frame at {@link SIM_HZ} (original Flash ~30 fps).
- * Every entity update multiplies motion by the global {@link WORLD.timeStep}.
+ *
+ * {@link WORLD.timeStep} is only the **initial default** (1) used to seed a
+ * live {@link TimeScale} instance. Entity motion must multiply by the live
+ * `timeScale.timeStep` — never by `WORLD.timeStep` directly — or bullet-time
+ * / TimeRift will silently no-op for that entity.
  */
 
 /** Fixed simulation rate matching the original Flash stage framerate. */
@@ -17,7 +21,10 @@ export const WORLD = {
   tile: 50,
   gravity: 1,
   terminal: 50,
-  /** Per-frame time-scale multiplier; default 1. Bullet-time / TimeRift scale this. */
+  /**
+   * Initial time-scale seed (default 1). Not the live factor — entities must
+   * read `TimeScale.timeStep` from their scene's SimSession / TimeScale.
+   */
   timeStep: 1,
 } as const;
 
