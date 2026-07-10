@@ -16,7 +16,12 @@ describe('SimSession', () => {
     expect(session.simTickCount).toBeGreaterThan(0);
     expect(session.accumulator.leftoverSeconds).toBeCloseTo(SIM_DT / 2);
 
-    session.player.input = { left: false, right: true };
+    session.player.input = {
+      left: false,
+      right: true,
+      jump: false,
+      duck: false,
+    };
     session.player.placeAt(400, 50);
     session.debugBox.placeAt(400, 50);
     session.debugBox.dragging = true;
@@ -29,7 +34,12 @@ describe('SimSession', () => {
     expect(session.player.body.y).toBe(PLAYER_SPAWN.y);
     expect(session.player.body.vx).toBe(0);
     expect(session.player.body.vy).toBe(0);
-    expect(session.player.input).toEqual({ left: false, right: false });
+    expect(session.player.input).toEqual({
+      left: false,
+      right: false,
+      jump: false,
+      duck: false,
+    });
     expect(session.debugBox.body.x).toBe(DEBUG_BOX_SPAWN.x);
     expect(session.debugBox.body.y).toBe(DEBUG_BOX_SPAWN.y);
     expect(session.debugBox.body.vx).toBe(0);
@@ -50,7 +60,12 @@ describe('SimSession', () => {
     }
     expect(session.player.body.onGround).toBe(true);
 
-    session.player.input = { left: false, right: true };
+    session.player.input = {
+      left: false,
+      right: true,
+      jump: false,
+      duck: false,
+    };
     const ramp: number[] = [];
     for (let i = 0; i < 8; i += 1) {
       session.update(1000 / 30);
@@ -59,7 +74,12 @@ describe('SimSession', () => {
     expect(ramp).toEqual([1, 2, 3, 4, 5, 5, 5, 5]);
     expect(session.player.body.vx).toBe(PLAYER.walkCap);
 
-    session.player.input = { left: false, right: false };
+    session.player.input = {
+      left: false,
+      right: false,
+      jump: false,
+      duck: false,
+    };
     const decay: number[] = [];
     for (let i = 0; i < 6; i += 1) {
       session.update(1000 / 30);
