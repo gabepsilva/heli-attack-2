@@ -81,10 +81,17 @@ The original code and assets in `reference/` are **GPL-3.0**. Two implications:
 
 ## Status
 
-🚧 **M0 scaffold in progress** ([#1](https://github.com/gabepsilva/heli-attack-2/issues/1)).
+🚧 **M0 foundation** — scaffold ([#1](https://github.com/gabepsilva/heli-attack-2/issues/1))
+and local tooling ([#2](https://github.com/gabepsilva/heli-attack-2/issues/2)).
 All 42 implementation tickets are tracked as
 [GitHub issues](https://github.com/gabepsilva/heli-attack-2/issues) across
 milestones M0–M11.
+
+## License
+
+Application code in this repository is **MIT** (see [`LICENSE`](LICENSE)).
+Original Flash reference material under `reference/` remains **GPL-3.0** and is
+not shipped in production builds — see the licensing note above.
 
 ## Getting started
 
@@ -93,11 +100,14 @@ npm install
 npm run dev       # Vite dev server with HMR (http://localhost:5173)
 npm run build     # typecheck + production web build → dist/
 npm run preview   # serve dist/ locally (http://localhost:4173)
-npm run typecheck # strict TypeScript check
+npm run typecheck # strict TS check (src + vite.config.ts)
 npm run lint      # ESLint (type-aware)
 npm run format    # Prettier --write (format:check to verify only)
 npm test          # Vitest (test:watch for watch mode)
 ```
+
+`npm install` also points git at [`.githooks/`](.githooks/) so commits run
+`lint` + `typecheck` locally (optional quality gate from #2).
 
 CI runs typecheck, lint, format check, tests, and build on every PR.
 
