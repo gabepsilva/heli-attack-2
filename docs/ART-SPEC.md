@@ -18,8 +18,8 @@
 | Phaser atlas key | `game-atlas` |
 | Background plate | `public/art/bg.png` (not packed; 452×322 @ 4×) |
 
-All catalog frames are **final** hi-res redraws (#33 player, #34 world). Do not
-ship original GPL art as final product art.
+Shipped art is **temporary original Flash** sprites from iopred `ha2/assets`
+(#95), nearest-neighbor upscaled into the atlas pipeline. Hi-res redraws TBD.
 
 ## Pivot convention
 
@@ -63,35 +63,35 @@ origin  = (pivot.x, pivot.y)   // usually (0.5, 1)
 
 | Frame id | Source file | Original (Flash) | Texture | Game draw size | Pivot | Role |
 |---|---|---|---|---|---|---|
-| `player_idle` | `player_idle.png` | 24×49 | 192×392 (final) | 48×48 | (0.5, 1) | Player stand / idle (final hi-res; Flash guy.png pose) |
-| `player_duck` | `player_duck.png` | 25×39 | 200×312 (final) | 48×48 | (0.5, 1) | Player duck (final hi-res; Flash gfx frame 2 / duck.png) |
-| `player_jump` | `player_jump.png` | 25×55 | 200×440 (final) | 48×48 | (0.5, 1) | Player jump (final hi-res; Flash gfx frame 3) |
-| `player_jump2` | `player_jump2.png` | 25×55 | 200×440 (final) | 48×48 | (0.5, 1) | Player double-jump (final hi-res; Flash gfx frame 5) |
-| `player_step1` | `player_step1.png` | 24×49 | 192×392 (final) | 48×48 | (0.5, 1) | Player walk cycle frame 1 (final hi-res; Flash gfx frame 4) |
-| `player_step2` | `player_step2.png` | 24×49 | 192×392 (final) | 48×48 | (0.5, 1) | Player walk cycle frame 2 (final hi-res; Flash gfx frame 4) |
-| `player_hurt` | `player_hurt.png` | 24×49 | 192×392 (final) | 48×48 | (0.5, 1) | Player hurt flash pose (final hi-res; shown during i-frames) |
-| `player_death` | `player_death.png` | 40×49 | 320×392 (final) | 48×48 | (0.5, 1) | Player death (final hi-res; Flash guyBurned swap) |
-| `heli` | `heli.png` | 212×106 | 848×424 (final) | 212×106 | (0.5, 0.5) | Enemy helicopter look 0 / hover (final hi-res; warm desert) |
-| `heli_strafe` | `heli_strafe.png` | 212×106 | 848×424 (final) | 212×106 | (0.5, 0.5) | Enemy helicopter look 1 / strafe (final hi-res; cool steel) |
-| `heli_hit` | `heli_hit.png` | 212×106 | 848×424 (final) | 212×106 | (0.5, 0.5) | Helicopter damaged flash (final hi-res) |
-| `heli_destroyed` | `heliDestroyed.png` | 173×89 | 692×356 (final) | 173×89 | (0.5, 0.5) | Helicopter wreck (final hi-res) |
-| `enemy_guy` | `enemyguy.png` | 25×50 | 100×200 (final) | 25×50 | (0.5, 1) | Paratrooper / ground enemy (final hi-res) |
-| `bullet_player` | `bullett.png` | 10×9 | 40×36 (final) | 10×9 | (0.5, 0.5) | Player projectile (final hi-res) |
-| `bullet_enemy` | `enemybullet.png` | 10×9 | 40×36 (final) | 10×9 | (0.5, 0.5) | Enemy projectile (final hi-res) |
-| `weapon_machinegun` | `machineGun.png` | 29×16 | 116×64 (final) | 29×16 | (0.2, 0.5) | Starting machine gun (final hi-res) |
-| `muzzle_flash` | `muzzle_flash.png` | 16×16 | 64×64 (final) | 18×18 | (0.5, 0.5) | Weapon muzzle flash (final hi-res) |
-| `grenade` | `grenade.png` | 19×11 | 76×44 (final) | 19×11 | (0.5, 0.5) | Grenade projectile (final hi-res) |
-| `rocket` | `Rocket.png` | 21×15 | 84×60 (final) | 21×15 | (0.5, 0.5) | Rocket projectile (final hi-res) |
-| `smoke` | `smoke.png` | 28×27 | 112×108 (final) | 28×27 | (0.5, 0.5) | Smoke VFX (final hi-res) |
-| `blood` | `blood.png` | 30×30 | 120×120 (final) | 30×30 | (0.5, 0.5) | Hit / blood VFX (final hi-res) |
-| `explosion` | `explosion.png` | 187×186 | 748×744 (final) | 120×120 | (0.5, 0.5) | Heli death explosion (final hi-res; half Flash bigboom) |
-| `powerup` | `powerup.png` | 33×32 | 132×128 (final) | 33×32 | (0.5, 0.5) | Powerup crate base (final hi-res) |
-| `tile_floor` | `Floor.png` | 52×52 | 208×208 (final) | 50×50 | (0, 0) | Solid floor tile (final hi-res; maps to WORLD.tile) |
+| `player_idle` | `player_idle.png` | 24×49 | 192×392 (final) | 48×48 | (0.5, 1) | Player stand / idle (temp Flash guy.png) |
+| `player_duck` | `player_duck.png` | 25×39 | 200×312 (final) | 48×48 | (0.5, 1) | Player duck (temp Flash duck.png) |
+| `player_jump` | `player_jump.png` | 25×55 | 200×440 (final) | 48×48 | (0.5, 1) | Player jump (temp Flash jump.png) |
+| `player_jump2` | `player_jump2.png` | 25×55 | 200×440 (final) | 48×48 | (0.5, 1) | Player double-jump (temp Flash jump2.png) |
+| `player_step1` | `player_step1.png` | 24×49 | 192×392 (final) | 48×48 | (0.5, 1) | Player walk cycle frame 1 (temp Flash step1.png) |
+| `player_step2` | `player_step2.png` | 24×49 | 192×392 (final) | 48×48 | (0.5, 1) | Player walk cycle frame 2 (temp Flash step2.png) |
+| `player_hurt` | `player_hurt.png` | 24×49 | 192×392 (final) | 48×48 | (0.5, 1) | Player hurt flash (stub: reuse guy.png — no dedicated original) |
+| `player_death` | `player_death.png` | 40×49 | 320×392 (final) | 48×48 | (0.5, 1) | Player death (temp Flash guyburned.png) |
+| `heli` | `heli.png` | 212×106 | 848×424 (final) | 212×106 | (0.5, 0.5) | Enemy helicopter look 0 / hover (temp Flash heli.png) |
+| `heli_strafe` | `heli_strafe.png` | 212×106 | 848×424 (final) | 212×106 | (0.5, 0.5) | Enemy helicopter look 1 / strafe (stub: reuse heli.png) |
+| `heli_hit` | `heli_hit.png` | 212×106 | 848×424 (final) | 212×106 | (0.5, 0.5) | Helicopter damaged flash (temp Flash heli_hit.png) |
+| `heli_destroyed` | `heliDestroyed.png` | 173×89 | 692×356 (final) | 173×89 | (0.5, 0.5) | Helicopter wreck (temp Flash heliDestroyed.png) |
+| `enemy_guy` | `enemyguy.png` | 25×50 | 100×200 (final) | 25×50 | (0.5, 1) | Paratrooper / ground enemy (temp Flash enemyguy.png) |
+| `bullet_player` | `bullett.png` | 10×9 | 40×36 (final) | 10×9 | (0.5, 0.5) | Player projectile (temp Flash bullett.png) |
+| `bullet_enemy` | `enemybullet.png` | 10×9 | 40×36 (final) | 10×9 | (0.5, 0.5) | Enemy projectile (temp Flash enemybullet.png) |
+| `weapon_machinegun` | `machineGun.png` | 29×16 | 116×64 (final) | 29×16 | (0.2, 0.5) | Starting machine gun (temp Flash machineGun.png) |
+| `muzzle_flash` | `muzzle_flash.png` | 16×16 | 64×64 (final) | 18×18 | (0.5, 0.5) | Weapon muzzle flash (generated stub — no Flash original) |
+| `grenade` | `grenade.png` | 19×11 | 76×44 (final) | 19×11 | (0.5, 0.5) | Grenade projectile (temp Flash grenade.png) |
+| `rocket` | `Rocket.png` | 21×15 | 84×60 (final) | 21×15 | (0.5, 0.5) | Rocket projectile (temp Flash Rocket.png) |
+| `smoke` | `smoke.png` | 28×27 | 112×108 (final) | 28×27 | (0.5, 0.5) | Smoke VFX (temp Flash smoke.png) |
+| `blood` | `blood.png` | 30×30 | 120×120 (final) | 30×30 | (0.5, 0.5) | Hit / blood VFX (temp Flash blood.png) |
+| `explosion` | `explosion.png` | 187×186 | 748×744 (final) | 120×120 | (0.5, 0.5) | Heli death explosion (temp Flash bigboom.png, half-res catalog) |
+| `powerup` | `powerup.png` | 33×32 | 132×128 (final) | 33×32 | (0.5, 0.5) | Powerup crate base (temp Flash powerup.png) |
+| `tile_floor` | `Floor.png` | 52×52 | 208×208 (final) | 50×50 | (0, 0) | Solid floor tile (temp Flash assets/new/Floor.png; maps to WORLD.tile) |
 
 ## Adding a new sprite
 
-1. **Final art:** add / regenerate under `art/player/` (`npm run art:player`)
-   or `art/world/` (`npm run art:world`), then set `final: true` on the catalog
+1. **Source art:** import originals via `npm run art:import-original` (or drop
+   PNGs under `art/player/` / `art/world/`), then set `final: true` on the catalog
    entry.
 2. Append a `SpriteDef` to `SPRITE_DEFS` in `src/art/catalog.ts` with measured
    `originalW` / `originalH`, pivot, and role.
@@ -101,16 +101,13 @@ origin  = (pivot.x, pivot.y)   // usually (0.5, 1)
 5. Use the frame via `ATLAS_KEY` + frame id (see `selectPlayerAnimFrame`,
    `heliFrameForLook`).
 6. Add / update unit tests in `src/art/*.test.ts` if sizes, pivots, or
-   final-vs-placeholder acceptance are critical.
+   Flash-original acceptance are critical.
 
 ## Pipeline commands
 
 ```bash
-# Regenerate final player redraws (Pillow)
-npm run art:player
-
-# Regenerate final world redraws (Pillow) — helis, weapons, VFX, tiles, bg
-npm run art:world
+# Import temporary original Flash sprites (Pillow; needs reference/ha2-source/gfx)
+npm run art:import-original
 
 # Pack atlas (requires ImageMagick)
 npm run art:pack
@@ -118,8 +115,8 @@ npm run art:pack
 
 Outputs (committed):
 
-- `art/player/player_*.png` (final player sources)
-- `art/world/*.png` (final world sources + bg plate)
+- `art/player/player_*.png` (player sources — temp Flash #95)
+- `art/world/*.png` (world sources + bg plate — temp Flash #95)
 - `public/atlas/game-atlas.png`
 - `public/atlas/game-atlas.json`
 - `public/art/bg.png`

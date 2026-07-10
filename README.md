@@ -15,9 +15,9 @@ packageable for Steam.
 
 - **Same game, modernized.** The mechanics, weapon balance, and movement feel are
   ported 1:1 from the original ActionScript — no re-balancing, no "reimagining."
-- **High resolution.** Designed at **1920×1080**, scaling responsively down to
-  mobile (CrazyGames-style fit), with crisp hi-res art (the original sprites were
-  ~24px tall — reference only, not shipped).
+- **High resolution canvas.** Designed at **1920×1080**, scaling responsively
+  down to mobile (CrazyGames-style fit). Shipped sprites are temporarily the
+  original Flash art (nearest-neighbor upscaled; #95) — hi-res redraws TBD.
 - **Runs everywhere.** One codebase → web (browser), and wrapped for Steam desktop.
 - **Instant load.** Stays a lightweight web game — no heavy runtime, no WASM blob.
 
@@ -43,7 +43,7 @@ The original source gives us three things, with very different reuse value:
 |---|---|---|
 | **Physics / game logic** | ✅ Fully recovered, exact values | **Port 1:1** — see [`reference/spec/HELIATTACK2-SPEC.md`](reference/spec/HELIATTACK2-SPEC.md) |
 | **Sounds** | ✅ 39 WAV files, complete | **Reuse** — transcode to web audio formats |
-| **Graphics** | ⚠️ Authentic but ~24–212px (Flash-era) | **Recreate at hi-res** — originals are the *art bible*, not shipped assets |
+| **Graphics** | ⚠️ Authentic but ~24–212px (Flash-era) | **Temporary:** ship originals (#95) for Flash loyalty; **hi-res redraws TBD** |
 
 The precise, hard-to-get-right parts (game feel + audio) are handed to us; the part
 that *must* be new for a modern look (art) is the part we'd want to redo anyway.
@@ -62,11 +62,11 @@ heli-attack-2/
 └── src/                          ← (created in M0) the new game
 ```
 
-> **No binary originals in this repo.** The original Flash `.fla` files and the
-> PNG/WAV assets are **not** committed (they're large and GPL-licensed). The
-> canonical source lives upstream at
+> **Reference binaries stay gitignored.** The original Flash `.fla` and raw
+> `reference/ha2-source/` PNG/WAV trees are **not** committed. Canonical source:
 > [github.com/iopred/heliattack](https://github.com/iopred/heliattack) (`ha2/`).
-> Pull assets from there when a ticket needs them; keep them out of this repo.
+> #95 temporarily ships nearest-neighbor upscales of those PNGs under `art/` +
+> `public/atlas/` for a loyal Flash look; hi-res redraws will replace them later.
 
 ## Licensing note ⚠️
 
@@ -74,11 +74,11 @@ The original code and assets in `reference/` are **GPL-3.0**. Two implications:
 
 - **Game mechanics / numbers are facts** (not copyrightable) — porting weapon
   stats and physics values is fine and does not encumber our code.
-- **Original art and sound are copyrighted** and GPL-licensed. If we ever want to
-  ship **closed-source / commercially on Steam**, we must ship **our own art** and
-  either **our own audio** or audio we have rights to — hence the "recreate art"
-  plan. Reusing the original sounds keeps us GPL; that's a decision to lock before
-  release. Nothing in `reference/` should be bundled into a distributed build.
+- **Original art and sound are copyrighted** and GPL-licensed. Shipping the
+  temporary Flash sprites (#95) and/or original sounds keeps the distributed
+  build under GPL obligations. For a **closed-source / commercial Steam** build
+  we must replace them with our own art (and audio we have rights to). Hi-res
+  redraws remain the long-term plan.
 
 ## Status
 
@@ -91,8 +91,9 @@ milestones M0–M11.
 ## License
 
 Application code in this repository is **MIT** (see [`LICENSE`](LICENSE)).
-Original Flash reference material under `reference/` remains **GPL-3.0** and is
-not shipped in production builds — see the licensing note above.
+Original Flash reference material under `reference/` remains **GPL-3.0**.
+Temporary Flash sprites shipped under `art/` / `public/atlas/` (#95) are also
+GPL-sourced — see the licensing note above. Hi-res redraws will replace them.
 
 ## Getting started
 
@@ -105,17 +106,16 @@ npm run typecheck # strict TS check (src + vite.config.ts)
 npm run lint      # ESLint (type-aware)
 npm run format    # Prettier --write (format:check to verify only)
 npm test          # Vitest (test:watch for watch mode)
-npm run art:player # regenerate final player PNGs (Pillow)
-npm run art:world  # regenerate final world PNGs + bg (Pillow)
+npm run art:import-original  # NN-upscale Flash originals → art/ (needs gfx/)
 npm run art:pack   # pack atlas + ART-SPEC (needs ImageMagick)
 npm run audio:transcode  # WAV → public/audio (.ogg/.webm/.mp3); needs ffmpeg
 ```
 
-Packed atlas lives in `public/atlas/` (committed). Final player sources live in
-`art/player/` (#33). Final world sources (helis, weapons, VFX, tiles, bg) live in
-`art/world/` (#34). Background plate is copied to `public/art/bg.png` by the packer.
-Reference PNGs under `reference/ha2-source/gfx/` stay gitignored (art bible only —
-not packed after #34). See [`docs/ART-SPEC.md`](docs/ART-SPEC.md).
+Packed atlas lives in `public/atlas/` (committed). Shipped art is **temporary
+original Flash** (#95): player sources in `art/player/` (8×), world sources in
+`art/world/` (4×), background copied to `public/art/bg.png` by the packer.
+Pull iopred `ha2/assets` into `reference/ha2-source/gfx/` (gitignored) before
+`art:import-original`. Hi-res redraws TBD. See [`docs/ART-SPEC.md`](docs/ART-SPEC.md).
 
 Web-ready SFX live in `public/audio/` (committed). Source WAVs stay gitignored under
 `reference/ha2-source/wav/` — pull from [iopred/heliattack](https://github.com/iopred/heliattack)

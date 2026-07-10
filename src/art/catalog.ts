@@ -1,8 +1,9 @@
 /**
- * Sprite catalog for the art pipeline (#32 / #33 / #34).
- * Every entry is a committed final redraw (`final: true`) — no placeholders.
- * Player frames live under {@link ART_PLAYER_FINAL_DIR} (8×); world frames
- * under {@link ART_WORLD_FINAL_DIR} (4×). Frame names are Phaser atlas keys.
+ * Sprite catalog for the art pipeline (#32 / #33 / #34 / #95).
+ * Every entry is a committed atlas source (`final: true`).
+ * #95 ships temporary original Flash sprites (nearest-neighbor upscaled);
+ * hi-res redraws are TBD. Player frames live under {@link ART_PLAYER_FINAL_DIR}
+ * (8×); world frames under {@link ART_WORLD_FINAL_DIR} (4×).
  */
 
 import {
@@ -33,14 +34,14 @@ export type SpriteDef = Readonly<{
   /** Short role note for ART-SPEC / artists. */
   role: string;
   /**
-   * When true, the packer loads the committed final PNG (no placeholder
-   * upscale). All catalog entries are final after #34.
+   * When true, the packer loads the committed source PNG (no runtime
+   * placeholder upscale). All catalog entries are committed after #34.
    */
   final?: boolean;
 }>;
 
 /**
- * Curated atlas set — all final hi-res redraws (#33 player, #34 world).
+ * Curated atlas set — temporary original Flash art (#95), hi-res TBD.
  */
 export const SPRITE_DEFS = [
   {
@@ -49,7 +50,7 @@ export const SPRITE_DEFS = [
     originalW: 24,
     originalH: 49,
     pivot: { x: 0.5, y: 1 },
-    role: 'Player stand / idle (final hi-res; Flash guy.png pose)',
+    role: 'Player stand / idle (temp Flash guy.png)',
     final: true,
   },
   {
@@ -58,7 +59,7 @@ export const SPRITE_DEFS = [
     originalW: 25,
     originalH: 39,
     pivot: { x: 0.5, y: 1 },
-    role: 'Player duck (final hi-res; Flash gfx frame 2 / duck.png)',
+    role: 'Player duck (temp Flash duck.png)',
     final: true,
   },
   {
@@ -67,7 +68,7 @@ export const SPRITE_DEFS = [
     originalW: 25,
     originalH: 55,
     pivot: { x: 0.5, y: 1 },
-    role: 'Player jump (final hi-res; Flash gfx frame 3)',
+    role: 'Player jump (temp Flash jump.png)',
     final: true,
   },
   {
@@ -76,7 +77,7 @@ export const SPRITE_DEFS = [
     originalW: 25,
     originalH: 55,
     pivot: { x: 0.5, y: 1 },
-    role: 'Player double-jump (final hi-res; Flash gfx frame 5)',
+    role: 'Player double-jump (temp Flash jump2.png)',
     final: true,
   },
   {
@@ -85,7 +86,7 @@ export const SPRITE_DEFS = [
     originalW: 24,
     originalH: 49,
     pivot: { x: 0.5, y: 1 },
-    role: 'Player walk cycle frame 1 (final hi-res; Flash gfx frame 4)',
+    role: 'Player walk cycle frame 1 (temp Flash step1.png)',
     final: true,
   },
   {
@@ -94,7 +95,7 @@ export const SPRITE_DEFS = [
     originalW: 24,
     originalH: 49,
     pivot: { x: 0.5, y: 1 },
-    role: 'Player walk cycle frame 2 (final hi-res; Flash gfx frame 4)',
+    role: 'Player walk cycle frame 2 (temp Flash step2.png)',
     final: true,
   },
   {
@@ -103,7 +104,7 @@ export const SPRITE_DEFS = [
     originalW: 24,
     originalH: 49,
     pivot: { x: 0.5, y: 1 },
-    role: 'Player hurt flash pose (final hi-res; shown during i-frames)',
+    role: 'Player hurt flash (stub: reuse guy.png — no dedicated original)',
     final: true,
   },
   {
@@ -112,7 +113,7 @@ export const SPRITE_DEFS = [
     originalW: 40,
     originalH: 49,
     pivot: { x: 0.5, y: 1 },
-    role: 'Player death (final hi-res; Flash guyBurned swap)',
+    role: 'Player death (temp Flash guyburned.png)',
     final: true,
   },
   {
@@ -121,7 +122,7 @@ export const SPRITE_DEFS = [
     originalW: 212,
     originalH: 106,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Enemy helicopter look 0 / hover (final hi-res; warm desert)',
+    role: 'Enemy helicopter look 0 / hover (temp Flash heli.png)',
     final: true,
   },
   {
@@ -130,7 +131,7 @@ export const SPRITE_DEFS = [
     originalW: 212,
     originalH: 106,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Enemy helicopter look 1 / strafe (final hi-res; cool steel)',
+    role: 'Enemy helicopter look 1 / strafe (stub: reuse heli.png)',
     final: true,
   },
   {
@@ -139,7 +140,7 @@ export const SPRITE_DEFS = [
     originalW: 212,
     originalH: 106,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Helicopter damaged flash (final hi-res)',
+    role: 'Helicopter damaged flash (temp Flash heli_hit.png)',
     final: true,
   },
   {
@@ -148,7 +149,7 @@ export const SPRITE_DEFS = [
     originalW: 173,
     originalH: 89,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Helicopter wreck (final hi-res)',
+    role: 'Helicopter wreck (temp Flash heliDestroyed.png)',
     final: true,
   },
   {
@@ -157,7 +158,7 @@ export const SPRITE_DEFS = [
     originalW: 25,
     originalH: 50,
     pivot: { x: 0.5, y: 1 },
-    role: 'Paratrooper / ground enemy (final hi-res)',
+    role: 'Paratrooper / ground enemy (temp Flash enemyguy.png)',
     final: true,
   },
   {
@@ -166,7 +167,7 @@ export const SPRITE_DEFS = [
     originalW: 10,
     originalH: 9,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Player projectile (final hi-res)',
+    role: 'Player projectile (temp Flash bullett.png)',
     final: true,
   },
   {
@@ -175,7 +176,7 @@ export const SPRITE_DEFS = [
     originalW: 10,
     originalH: 9,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Enemy projectile (final hi-res)',
+    role: 'Enemy projectile (temp Flash enemybullet.png)',
     final: true,
   },
   {
@@ -184,7 +185,7 @@ export const SPRITE_DEFS = [
     originalW: 29,
     originalH: 16,
     pivot: { x: 0.2, y: 0.5 },
-    role: 'Starting machine gun (final hi-res)',
+    role: 'Starting machine gun (temp Flash machineGun.png)',
     final: true,
   },
   {
@@ -193,7 +194,7 @@ export const SPRITE_DEFS = [
     originalW: 16,
     originalH: 16,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Weapon muzzle flash (final hi-res)',
+    role: 'Weapon muzzle flash (generated stub — no Flash original)',
     final: true,
   },
   {
@@ -202,7 +203,7 @@ export const SPRITE_DEFS = [
     originalW: 19,
     originalH: 11,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Grenade projectile (final hi-res)',
+    role: 'Grenade projectile (temp Flash grenade.png)',
     final: true,
   },
   {
@@ -211,7 +212,7 @@ export const SPRITE_DEFS = [
     originalW: 21,
     originalH: 15,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Rocket projectile (final hi-res)',
+    role: 'Rocket projectile (temp Flash Rocket.png)',
     final: true,
   },
   {
@@ -220,7 +221,7 @@ export const SPRITE_DEFS = [
     originalW: 28,
     originalH: 27,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Smoke VFX (final hi-res)',
+    role: 'Smoke VFX (temp Flash smoke.png)',
     final: true,
   },
   {
@@ -229,7 +230,7 @@ export const SPRITE_DEFS = [
     originalW: 30,
     originalH: 30,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Hit / blood VFX (final hi-res)',
+    role: 'Hit / blood VFX (temp Flash blood.png)',
     final: true,
   },
   {
@@ -238,7 +239,7 @@ export const SPRITE_DEFS = [
     originalW: 187,
     originalH: 186,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Heli death explosion (final hi-res; half Flash bigboom)',
+    role: 'Heli death explosion (temp Flash bigboom.png, half-res catalog)',
     final: true,
   },
   {
@@ -247,7 +248,7 @@ export const SPRITE_DEFS = [
     originalW: 33,
     originalH: 32,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Powerup crate base (final hi-res)',
+    role: 'Powerup crate base (temp Flash powerup.png)',
     final: true,
   },
   {
@@ -256,7 +257,7 @@ export const SPRITE_DEFS = [
     originalW: 52,
     originalH: 52,
     pivot: { x: 0, y: 0 },
-    role: 'Solid floor tile (final hi-res; maps to WORLD.tile)',
+    role: 'Solid floor tile (temp Flash assets/new/Floor.png; maps to WORLD.tile)',
     final: true,
   },
 ] as const satisfies readonly SpriteDef[];
@@ -285,7 +286,7 @@ export const PLAYER_ANIM_FRAMES = {
   death: SpriteId;
 };
 
-/** All player atlas frame ids (final art — no placeholder player remains). */
+/** All player atlas frame ids. */
 export const PLAYER_FINAL_FRAME_IDS: readonly SpriteId[] = [
   PLAYER_ANIM_FRAMES.idle,
   PLAYER_ANIM_FRAMES.duck,
@@ -297,18 +298,56 @@ export const PLAYER_FINAL_FRAME_IDS: readonly SpriteId[] = [
 ];
 
 /**
- * Heli look → atlas frame (#20 / #34).
- * Look 0 = hover (warm desert), look 1 = strafe (cool steel).
+ * Heli look → atlas frame (#20 / #34 / #95).
+ * Look 0 = hover, look 1 = strafe (stub reuses heli.png until a dedicated original).
  */
 export const HELI_LOOK_FRAMES = [
   'heli',
   'heli_strafe',
 ] as const satisfies readonly SpriteId[];
 
-/** World (non-player) final frame ids — acceptance: zero placeholders (#34). */
+/** World (non-player) frame ids. */
 export const WORLD_FINAL_FRAME_IDS: readonly SpriteId[] = SPRITE_DEFS.filter(
   (d) => !d.id.startsWith('player_'),
 ).map((d) => d.id);
+
+/**
+ * Catalog id → iopred `ha2/assets` basename used by the import script (#95).
+ * Stubs document the reuse / generated source when no dedicated original exists.
+ */
+export const FLASH_ORIGINAL_SOURCES = {
+  player_idle: 'guy.png',
+  player_duck: 'duck.png',
+  player_jump: 'jump.png',
+  player_jump2: 'jump2.png',
+  player_step1: 'step1.png',
+  player_step2: 'step2.png',
+  player_hurt: 'guy.png', // stub reuse
+  player_death: 'guyburned.png',
+  heli: 'heli.png',
+  heli_strafe: 'heli.png', // stub reuse
+  heli_hit: 'heli_hit.png',
+  heli_destroyed: 'heliDestroyed.png',
+  enemy_guy: 'enemyguy.png',
+  bullet_player: 'bullett.png',
+  bullet_enemy: 'enemybullet.png',
+  weapon_machinegun: 'machineGun.png',
+  muzzle_flash: null, // generated stub
+  grenade: 'grenade.png',
+  rocket: 'Rocket.png',
+  smoke: 'smoke.png',
+  blood: 'blood.png',
+  explosion: 'bigboom.png',
+  powerup: 'powerup.png',
+  tile_floor: 'new/Floor.png',
+} as const satisfies Record<SpriteId, string | null>;
+
+/** Frame ids with no dedicated Flash original (documented stubs). */
+export const FLASH_STUB_FRAME_IDS = [
+  'player_hurt',
+  'heli_strafe',
+  'muzzle_flash',
+] as const satisfies readonly SpriteId[];
 
 export function getSpriteDef(id: SpriteId): SpriteDef {
   const def = SPRITE_DEFS.find((s) => s.id === id);
@@ -322,12 +361,12 @@ export function isSpriteId(value: string): value is SpriteId {
   return SPRITE_DEFS.some((s) => s.id === value);
 }
 
-/** True when this catalog entry is a committed final redraw (not a placeholder). */
+/** True when this catalog entry is a committed atlas source (not a runtime placeholder). */
 export function isFinalSprite(def: SpriteDef): boolean {
   return def.final === true;
 }
 
-/** True when every catalog sprite is a committed final redraw (#34). */
+/** True when every catalog sprite is a committed atlas source. */
 export function catalogHasNoPlaceholders(): boolean {
   return SPRITE_DEFS.every((d) => isFinalSprite(d));
 }
@@ -363,7 +402,7 @@ export function textureScaleFor(def: SpriteDef): number {
 
 /**
  * Texture pixel size in the packed atlas.
- * Final player frames use {@link ART_PLAYER_FINAL_SCALE}; world finals use
+ * Player frames use {@link ART_PLAYER_FINAL_SCALE}; world frames use
  * {@link ART_WORLD_FINAL_SCALE}.
  */
 export function textureSize(def: SpriteDef): { w: number; h: number } {

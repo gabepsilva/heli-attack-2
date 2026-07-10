@@ -53,8 +53,8 @@ export function renderArtSpecMarkdown(): string {
 | Phaser atlas key | \`${ATLAS_KEY}\` |
 | Background plate | \`public/${BG_IMAGE_PATH}\` (not packed; ${BG_ORIGINAL_W}×${BG_ORIGINAL_H} @ ${ART_WORLD_FINAL_SCALE}×) |
 
-All catalog frames are **final** hi-res redraws (#33 player, #34 world). Do not
-ship original GPL art as final product art.
+Shipped art is **temporary original Flash** sprites from iopred \`ha2/assets\`
+(#95), nearest-neighbor upscaled into the atlas pipeline. Hi-res redraws TBD.
 
 ## Pivot convention
 
@@ -102,8 +102,8 @@ ${rows}
 
 ## Adding a new sprite
 
-1. **Final art:** add / regenerate under \`${ART_PLAYER_FINAL_DIR}/\` (\`npm run art:player\`)
-   or \`${ART_WORLD_FINAL_DIR}/\` (\`npm run art:world\`), then set \`final: true\` on the catalog
+1. **Source art:** import originals via \`npm run art:import-original\` (or drop
+   PNGs under \`${ART_PLAYER_FINAL_DIR}/\` / \`${ART_WORLD_FINAL_DIR}/\`), then set \`final: true\` on the catalog
    entry.
 2. Append a \`SpriteDef\` to \`SPRITE_DEFS\` in \`src/art/catalog.ts\` with measured
    \`originalW\` / \`originalH\`, pivot, and role.
@@ -113,16 +113,13 @@ ${rows}
 5. Use the frame via \`ATLAS_KEY\` + frame id (see \`selectPlayerAnimFrame\`,
    \`heliFrameForLook\`).
 6. Add / update unit tests in \`src/art/*.test.ts\` if sizes, pivots, or
-   final-vs-placeholder acceptance are critical.
+   Flash-original acceptance are critical.
 
 ## Pipeline commands
 
 \`\`\`bash
-# Regenerate final player redraws (Pillow)
-npm run art:player
-
-# Regenerate final world redraws (Pillow) — helis, weapons, VFX, tiles, bg
-npm run art:world
+# Import temporary original Flash sprites (Pillow; needs reference/ha2-source/gfx)
+npm run art:import-original
 
 # Pack atlas (requires ImageMagick)
 npm run art:pack
@@ -130,8 +127,8 @@ npm run art:pack
 
 Outputs (committed):
 
-- \`${ART_PLAYER_FINAL_DIR}/player_*.png\` (final player sources)
-- \`${ART_WORLD_FINAL_DIR}/*.png\` (final world sources + bg plate)
+- \`${ART_PLAYER_FINAL_DIR}/player_*.png\` (player sources — temp Flash #95)
+- \`${ART_WORLD_FINAL_DIR}/*.png\` (world sources + bg plate — temp Flash #95)
 - \`public/atlas/game-atlas.png\`
 - \`public/atlas/game-atlas.json\`
 - \`public/${BG_IMAGE_PATH}\`
