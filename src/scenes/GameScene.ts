@@ -3,18 +3,13 @@ import { PLAYER, SIM_HZ, WORLD } from '../config/constants';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/game';
 import { SCENE_KEYS } from '../config/scenes';
 import { SimSession } from '../core/simSession';
+import { DebugOverlay } from '../tooling/debugOverlay';
 import { DEBUG_BOX_SIZE } from '../world/debugBox';
 import {
   LEVEL1_HEIGHT_PX,
   LEVEL1_WIDTH_PX,
   isLevelSolid,
 } from '../world/level1';
-
-const HUD_STYLE: Phaser.Types.GameObjects.Text.TextStyle = {
-  fontFamily: 'monospace',
-  fontSize: '22px',
-  color: '#e8e8e8',
-};
 
 const TILE_COLOR = 0x3d5a80;
 const BOX_COLOR = 0xe09f3e;
@@ -27,18 +22,18 @@ const PLAYER_STROKE = 0xd8f3dc;
  * original level layout (placeholder tiles), hosts a controllable player
  * (←/→ walk), and a draggable debug box. Game logic lives in plain modules
  * under src/.
+ *
+ * The debug overlay (#8) is a DOM panel outside Phaser so it can host real
+ * `<input>` controls for live physics tuning and toggle off for clean demos.
  */
 export class GameScene extends Phaser.Scene {
   private readonly session = new SimSession();
 
-  private rateText!: Phaser.GameObjects.Text;
-  private timeStepText!: Phaser.GameObjects.Text;
-  private playerText!: Phaser.GameObjects.Text;
-  private boxText!: Phaser.GameObjects.Text;
   private boxRect!: Phaser.GameObjects.Rectangle;
   private playerRect!: Phaser.GameObjects.Rectangle;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private boostKey!: Phaser.Input.Keyboard.Key;
+  private overlay: DebugOverlay | null = null;
   private arenaOriginX = 0;
   private arenaOriginY = 0;
 
@@ -49,6 +44,11 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     // Phaser reuses this instance across scene.start — only create() re-runs.
     this.session.reset();
+    this.overlay?.destroy();
+    this.overlay = new DebugOverlay({
+      search:
+        typeof window !== 'undefined' ? window.location.search : undefined,
+    });
 
     this.cameras.main.setBackgroundColor('#0d1b2a');
 
@@ -72,16 +72,15 @@ export class GameScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    this.rateText = this.add.text(40, 70, '', HUD_STYLE);
-    this.timeStepText = this.add.text(40, 98, '', HUD_STYLE);
-    this.playerText = this.add.text(40, 126, '', HUD_STYLE);
-    this.boxText = this.add.text(40, 154, '', HUD_STYLE);
-
     this.add.text(
       40,
       GAME_HEIGHT - 60,
-      '←/→ walk · ↑ jump · Ctrl boost · ↓ duck · drag box · 1/2 = timeStep · Esc → Boot',
-      { ...HUD_STYLE, fontSize: '20px', color: '#9ab' },
+      '←/→ walk · ↑ jump · Ctrl boost · ↓ duck · drag box · ` debug · 1/2 timeStep · Esc → Boot',
+      {
+        fontFamily: 'monospace',
+        fontSize: '20px',
+        color: '#9ab',
+      },
     );
 
     this.input.keyboard?.on('keydown-ONE', () => {
@@ -92,6 +91,15 @@ export class GameScene extends Phaser.Scene {
     });
     this.input.keyboard?.on('keydown-ESC', () => {
       this.scene.start(SCENE_KEYS.Boot);
+    });
+    // Backtick / tilde key — toggle overlay for clean demos (issue #8).
+    this.input.keyboard?.on('keydown-BACKTICK', () => {
+      this.overlay?.toggle();
+    });
+
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.overlay?.destroy();
+      this.overlay = null;
     });
   }
 
@@ -106,27 +114,25 @@ export class GameScene extends Phaser.Scene {
 
     this.session.update(delta);
 
-    this.rateText.setText(
-      `Sim rate: ${this.session.displayedSimRate.toFixed(1)} /s  (target ${SIM_HZ})`,
-    );
-    this.timeStepText.setText(
-      `timeStep: ${this.session.timeScale.timeStep.toFixed(2)}`,
-    );
     const p = this.session.player.body;
     const pl = this.session.player;
-    this.playerText.setText(
-      `player vx=${p.vx.toFixed(0)}  vy=${p.vy.toFixed(1)}  ` +
-        `(${p.x.toFixed(0)}, ${p.y.toFixed(0)})  ` +
-        `${p.onGround ? 'grounded' : 'air'}` +
-        `${pl.ducking ? ' duck' : ''}  ` +
-        `j${pl.jumpState.jump ? 1 : 0}${pl.jumpState.jump2 ? 2 : ''}  ` +
-        `up=${pl.jumpState.up}  ` +
-        `boost=${pl.boostState.charge}/${PLAYER.boostChargeFrames}`,
-    );
-    const b = this.session.debugBox.body;
-    this.boxText.setText(
-      `box (${b.x.toFixed(0)}, ${b.y.toFixed(0)})  vy=${b.vy.toFixed(1)}  ${b.onGround ? 'grounded' : 'air'}`,
-    );
+    this.overlay?.update({
+      simRate: this.session.displayedSimRate,
+      simHzTarget: SIM_HZ,
+      timeStep: this.session.timeScale.timeStep,
+      vx: p.vx,
+      vy: p.vy,
+      x: p.x,
+      y: p.y,
+      onGround: p.onGround,
+      ducking: pl.ducking,
+      jump: pl.jumpState.jump,
+      jump2: pl.jumpState.jump2,
+      jumpUp: pl.jumpState.up,
+      boostCharge: pl.boostState.charge,
+      boostChargeMax: PLAYER.boostChargeFrames,
+      hjump: pl.boostState.hjump,
+    });
 
     this.syncPlayerVisual();
     this.syncBoxVisual();
