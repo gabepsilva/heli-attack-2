@@ -14,6 +14,7 @@ import {
 import { AudioHud } from '../audio/audioHud';
 import { getGameAudio } from '../audio/gameAudio';
 import { GameSfx } from '../audio/gameSfx';
+import { GameParticles } from '../fx/gameParticles';
 import { ATLAS_KEY, BG_IMAGE_KEY } from '../config/art';
 import { isPlayerHurtFlashing } from '../combat/playerHealth';
 import { playerPowerupAlpha } from '../combat/powerupEffects';
@@ -117,6 +118,9 @@ const TILE_FRAME = 'tile_floor';
  * and drains sim SFX events (weapon / hurt / hyper-jump / heliboom / powerups).
  * DOM HUD owns master volume + mute. Pooling / gain math lives in AudioManager.
  *
+ * Particles (#35): pooled Phaser emitters for explosions, impacts, smoke,
+ * debris, muzzle flashes, and blood — drained from sim FX events each frame.
+ *
  * The debug overlay (#8) is a DOM panel outside Phaser so it can host real
  * `<input>` controls for live physics tuning and toggle off for clean demos.
  */
@@ -170,6 +174,7 @@ export class GameScene extends Phaser.Scene {
   private duckKey!: Phaser.Input.Keyboard.Key;
   private audioHud: AudioHud | null = null;
   private gameSfx: GameSfx | null = null;
+  private gameParticles: GameParticles | null = null;
   private boostKey!: Phaser.Input.Keyboard.Key;
   private bulletTimeKey!: Phaser.Input.Keyboard.Key;
   private pauseKey!: Phaser.Input.Keyboard.Key;
@@ -192,6 +197,8 @@ export class GameScene extends Phaser.Scene {
     startPlaying(this.flow);
     // Drop any weapon-switch presses queued while the scene was shut down.
     drainIntentActions(this.intentActions);
+    this.gameParticles?.destroy();
+    this.gameParticles = null;
     this.gameSfx?.destroy();
     this.gameSfx = null;
     this.audioHud?.destroy();
@@ -218,6 +225,11 @@ export class GameScene extends Phaser.Scene {
     this.createBulletVisuals();
     this.createHeliVisual();
     this.createPowerupVisuals();
+    this.gameParticles = new GameParticles({
+      scene: this,
+      originX: this.arenaOriginX,
+      originY: this.arenaOriginY,
+    });
     this.gameHud = new GameHud(this);
     this.createDebugBoxVisual();
     this.setupGameAudio();
@@ -316,6 +328,8 @@ export class GameScene extends Phaser.Scene {
         gamepadPlugin.off('connected', this.onGamepadConnected);
         gamepadPlugin.off('disconnected', this.onGamepadDisconnected);
       }
+      this.gameParticles?.destroy();
+      this.gameParticles = null;
       this.gameSfx?.destroy();
       this.gameSfx = null;
       this.audioHud?.destroy();
@@ -480,6 +494,7 @@ export class GameScene extends Phaser.Scene {
     this.gameSfx?.drainAndPlay(this.session.drainAudioEvents(), {
       simTicks: simSteps,
     });
+    this.gameParticles?.drainAndExplode(this.session.drainParticleFx());
 
     if (!this.session.playerHealth.alive) {
       if (this.flow.phase === 'playing') {

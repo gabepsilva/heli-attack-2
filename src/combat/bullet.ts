@@ -49,6 +49,11 @@ export type Bullet = {
    * beams do not inflate `runHits` past projectiles spawned.
    */
   hasHit: boolean;
+  /**
+   * Smoke trail cadence in sim frames (0 = none). Rockets / seekers (#35)
+   * leave puffs every N frames matching Flash `!(r%N)`.
+   */
+  smokeTrailInterval: number;
 };
 
 /** Axis-aligned cull region in arena/world space. */
@@ -80,6 +85,7 @@ export function createInactiveBullet(index: number): Bullet {
     grappleAttached: false,
     grappleAttachedAge: 0,
     hasHit: false,
+    smokeTrailInterval: 0,
   };
 }
 
@@ -134,6 +140,7 @@ export function activateBullet(
   damage: number = BULLET.defaultDamage,
   maxLifetime: number = BULLET.maxLifetimeFrames,
   behavior: BulletBehavior = 'ballistic',
+  smokeTrailInterval: number = 0,
 ): void {
   const { vx, vy } = velocityFromRotation(speed, rotationDeg);
   bullet.active = true;
@@ -153,6 +160,7 @@ export function activateBullet(
   bullet.grappleAttached = false;
   bullet.grappleAttachedAge = 0;
   bullet.hasHit = false;
+  bullet.smokeTrailInterval = smokeTrailInterval;
 }
 
 /**
@@ -241,6 +249,7 @@ export class BulletPool {
     damage: number = BULLET.defaultDamage,
     maxLifetime: number = BULLET.maxLifetimeFrames,
     behavior: BulletBehavior = 'ballistic',
+    smokeTrailInterval: number = 0,
   ): Bullet | null {
     if (this.freeTop <= 0) {
       return null;
@@ -257,6 +266,7 @@ export class BulletPool {
       damage,
       maxLifetime,
       behavior,
+      smokeTrailInterval,
     );
     this._activeCount += 1;
     this._acquireCount += 1;

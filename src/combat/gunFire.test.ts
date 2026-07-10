@@ -205,6 +205,7 @@ describe('projectile weapons / ballistic set (issue #15)', () => {
         speed: 7,
         damage: 100,
         behavior: 'ballistic',
+        smokeTrailInterval: 2,
       },
     ]);
     expect(projectileCountForWeapon(6)).toBe(1);

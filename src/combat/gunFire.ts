@@ -21,6 +21,7 @@
 
 import { SPECIAL_PROJECTILE } from '../config/constants';
 import { getWeaponDef, type WeaponDef } from '../config/weapons';
+import { smokeTrailIntervalForWeapon } from '../fx/particleEvents';
 import { velocityFromRotation } from './bullet';
 import { behaviorForWeapon, type BulletBehavior } from './specialProjectile';
 
@@ -33,6 +34,8 @@ export type ProjectileSpawn = Readonly<{
   damage: number;
   behavior: BulletBehavior;
   maxLifetime?: number;
+  /** Smoke trail cadence in sim frames (0 / omit = none). Issue #35. */
+  smokeTrailInterval?: number;
 }>;
 
 /** Flash `random(n)` — integer in `[0, n)`. */
@@ -82,6 +85,7 @@ export function planWeaponFire(
 ): ProjectileSpawn[] {
   const { speed, damage } = def;
   const behavior = behaviorForWeapon(weaponIndex);
+  const smokeTrailInterval = smokeTrailIntervalForWeapon(weaponIndex);
 
   switch (weaponIndex) {
     case 1:
@@ -103,6 +107,7 @@ export function planWeaponFire(
         speed,
         damage,
         behavior: 'ballistic' as const,
+        smokeTrailInterval,
       }));
     case 8:
       return planFlameFire(x, y, rotationDeg, speed, damage, randomInt);
@@ -124,6 +129,7 @@ export function planWeaponFire(
             weaponIndex === 11 || weaponIndex === 13
               ? SPECIAL_PROJECTILE.railLingerFrames
               : undefined,
+          smokeTrailInterval,
         },
       ];
     case 0:
@@ -132,7 +138,17 @@ export function planWeaponFire(
     case 6:
     default:
       // Single aimed projectile (MG / grenade / RPG / rocket / later guns).
-      return [{ x, y, rotationDeg, speed, damage, behavior }];
+      return [
+        {
+          x,
+          y,
+          rotationDeg,
+          speed,
+          damage,
+          behavior,
+          smokeTrailInterval,
+        },
+      ];
   }
 }
 

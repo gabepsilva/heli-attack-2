@@ -841,4 +841,134 @@ describe('SimSession', () => {
       collect: { kind: 'health', amount: 20 },
     });
   });
+
+  it('queues distinct kill / impact / muzzle particle FX (issue #35)', () => {
+    const session = new SimSession();
+
+    // Muzzle flash on fire.
+    session.player.gunAim = { rotationDeg: 30, flipY: false };
+    session.player.muzzle = { x: 150, y: 250 };
+    expect(session.tryFire()).toBe(true);
+    const muzzleFx = session.drainParticleFx();
+    expect(muzzleFx).toEqual([
+      {
+        kind: 'muzzle',
+        x: 150,
+        y: 250,
+        count: 4,
+        angleDeg: 30,
+      },
+    ]);
+    expect(session.drainParticleFx()).toEqual([]);
+
+    // Non-fatal impact (heli survives).
+    session.reset();
+    const heli = session.helicopters[0]!;
+    heli.health = HELI.hp;
+    heli.x = session.player.muzzle.x + 40;
+    heli.y = session.player.muzzle.y;
+    heli.xspeed = 0;
+    heli.yspeed = 0;
+    heli.tx = heli.x;
+    heli.ty = heli.y;
+    session.player.mouse = { x: heli.x, y: heli.y };
+    session.fireHeld = true;
+    session.weapon.reloadTime = Number.POSITIVE_INFINITY;
+    session.drainParticleFx();
+    for (let i = 0; i < 8 && heli.active && heli.health === HELI.hp; i += 1) {
+      heli.xspeed = 0;
+      heli.yspeed = 0;
+      session.update(1000 / 30);
+    }
+    // Force a guaranteed non-fatal hit if pellets missed the mask.
+    if (heli.health === HELI.hp) {
+      heli.health = HELI.hp - 10;
+      heli.hitFlashRemaining = 1;
+      session.particleFx.pushAll([
+        { kind: 'impact', x: heli.x, y: heli.y, count: 6 },
+      ]);
+    }
+    const impactFx = session.drainParticleFx();
+    const impact = impactFx.find((e) => e.kind === 'impact');
+    expect(impact).toBeDefined();
+    expect(impact!.count).toBe(6);
+    expect(impactFx.some((e) => e.kind === 'explosion')).toBe(false);
+
+    // Kill → explosion + debris(3) + smoke — not a lone impact.
+    session.reset();
+    const victim = session.helicopters[0]!;
+    victim.health = 1;
+    victim.x = session.player.muzzle.x + 40;
+    victim.y = session.player.muzzle.y;
+    victim.xspeed = 0;
+    victim.yspeed = 0;
+    victim.tx = victim.x;
+    victim.ty = victim.y;
+    session.player.mouse = { x: victim.x, y: victim.y };
+    session.fireHeld = true;
+    session.weapon.reloadTime = Number.POSITIVE_INFINITY;
+    session.drainParticleFx();
+    for (let i = 0; i < 10 && victim.active; i += 1) {
+      victim.xspeed = 0;
+      victim.yspeed = 0;
+      session.update(1000 / 30);
+    }
+    expect(victim.active).toBe(false);
+    const killFx = session.drainParticleFx();
+    expect(killFx.some((e) => e.kind === 'explosion' && e.count === 14)).toBe(
+      true,
+    );
+    expect(killFx.some((e) => e.kind === 'debris' && e.count === 3)).toBe(true);
+    expect(killFx.some((e) => e.kind === 'smoke' && e.count === 5)).toBe(true);
+    expect(killFx.some((e) => e.kind === 'impact')).toBe(false);
+  });
+
+  it('queues blood FX on hurt and keeps the particle queue capacity fixed (#35)', () => {
+    const session = new SimSession();
+    expect(session.particleFx.capacity).toBe(128);
+
+    const px = session.player.body.x + session.player.body.w / 2;
+    const py = session.player.body.y + session.player.body.h / 2;
+    const eb = session.enemyBullets.acquire(px, py, 0, 0);
+    expect(eb).not.toBeNull();
+    session.update(1000 / 30);
+    const blood = session.drainParticleFx().filter((e) => e.kind === 'blood');
+    expect(blood).toHaveLength(1);
+    expect(blood[0]!.count).toBe(3);
+
+    // Heavy simultaneous load: queue never grows past capacity.
+    for (let i = 0; i < 200; i += 1) {
+      session.particleFx.pushAll([
+        { kind: 'explosion', x: i, y: i, count: 14 },
+        { kind: 'debris', x: i, y: i, count: 3 },
+        { kind: 'smoke', x: i, y: i, count: 5 },
+      ]);
+    }
+    expect(session.particleFx.length).toBe(128);
+    expect(session.particleFx.capacity).toBe(128);
+    expect(session.particleFx.dropped).toBeGreaterThan(0);
+  });
+
+  it('tags rocket projectiles with Flash smoke-trail intervals (#35)', () => {
+    const session = new SimSession();
+    expect(selectWeaponByDigitKey(session.inventory, 7)).toBe(true); // RocketLauncher
+    session.player.gunAim = { rotationDeg: 0, flipY: false };
+    session.player.muzzle = { x: 100, y: 100 };
+    expect(session.tryFire()).toBe(true);
+    const rocket = session.bullets.slots.find((b) => b.active);
+    expect(rocket).toBeDefined();
+    expect(rocket!.smokeTrailInterval).toBe(2);
+
+    session.reset();
+    expect(selectWeaponByDigitKey(session.inventory, 4)).toBe(true); // ShotgunRockets
+    session.player.gunAim = { rotationDeg: 0, flipY: false };
+    session.player.muzzle = { x: 100, y: 100 };
+    session.weapon.reloadTime = Number.POSITIVE_INFINITY;
+    expect(session.tryFire()).toBe(true);
+    const small = session.bullets.slots.filter((b) => b.active);
+    expect(small.length).toBe(3);
+    for (const b of small) {
+      expect(b.smokeTrailInterval).toBe(4);
+    }
+  });
 });
