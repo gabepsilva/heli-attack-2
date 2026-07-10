@@ -1,0 +1,3084 @@
+// Heli Attack 2 -- original ActionScript source, extracted from heli2.fla
+// Source: https://github.com/iopred/heliattack/blob/main/ha2/heli2.fla
+// (binary Flash MX project; text recovered via `strings`, curated to remove
+// binary noise between script chunks)
+//
+// Caveat: single `}` at column 0 (top-level function closers) were below the
+// strings length threshold and are missing; function bodies are otherwise
+// verbatim, delimited by the next `function` declaration.
+
+
+// ==================================================================
+// MISC CLIP SCRIPTS
+// ==================================================================
+
+onClipEvent(load){
+	stop();
+// (the above trivial script appears on ~10 reveal-line clips)
+
+onClipEvent(keyDown){
+	if(Key.isDown(Key.ENTER)){
+		_parent.sendHighScore();
+	}
+
+on(release){
+	//getHighScores();
+	sendHighScore();
+
+// ==================================================================
+// MINICLIP HIGHSCORE COMPONENT
+// ==================================================================
+
+function getHighScores(){
+	if(saveScore){
+		this.score = localScore;
+		this.username = txtUsername;
+	}
+		
+	this.gamename = gamename;
+	this.low = 0;
+	this.high = 10;	
+	this.formaction = "gethighscores";
+	this.dwm = 1;
+	var preventCaching = getTimer() + random(100);
+	loadVariables ("http://www.miniclip.com/Flash/proxy.php?preventCashing="+preventCaching, this, "GET");
+	play();
+function sendHighScore(){
+	if(txtUsername <> "" && txtUsername <> undefined){
+		getHighScores();
+	}
+if(gameName == undefined){
+	trace("MINICLIP.COM HIGHSCORE COMPONENT WARNING");
+	trace("========================================");
+	trace("The 'gameName' parameter has not been set. This parameter");
+	trace("needs to be set for the highscore component to function.");
+	error = true;
+if(eval(scoreLocation) == undefined && saveScore){
+	trace("MINICLIP.COM HIGHSCORE COMPONENT WARNING");
+	trace("========================================");
+	trace("The 'scoreLocation' parameter does not contain any data.");
+	trace("This parameter needs to be pointing to the game score variable");
+	trace("set for the highscore component to function.");
+	error = true;	
+if(error == true){
+	_parent.stop();
+	stop();
+}else{
+	if(saveScore && eval(scoreLocation) > 0){
+		gotoAndPlay("save");
+	}else{
+		gotoAndPlay("load");		
+		getHighScores();
+	}	
+DSelection.setFocus("txtUsername");
+txtUsername = username;
+stop();
+
+// ==================================================================
+// PRELOADER
+// ==================================================================
+
+if(this._url.indexOf("file://") != 0){
+	Stage.showMenu = "false";
+_quality = "low";
+if (l == undefined) {
+	lb._xscale = 0;
+l = Math.floor((getBytesLoaded()/getBytesTotal())*100)
+lb._xscale = l;
+l = "Loading " + l + "%...";
+if(getBytesLoaded() < getBytesTotal()){
+	gotoAndPlay(_currentframe - 1);	
+} else {
+	delete l;
+	gotoAndStop("intro");	
+
+// ==================================================================
+// MAIN GAME SCRIPT
+// ==================================================================
+
+function copyArray(arr, w, h) {
+	var tmp = new Array();
+	for (var y = 0; y<height; y++) {
+		tmp[y] = new Array();
+		for (var x = 0; x<width; x++) {
+			tmp[y][x] = new Array();
+			tmp[y][x][0] = arr[y][x][0];
+			tmp[y][x][1] = arr[y][x][1];
+		}
+	}
+	return tmp;
+function drawMap(arr, clipname, depth, tileset, realmap) {
+	if (realmap) {
+		width = arr[0].length;
+		height = arr.length;
+		map = copyArray(arr, width, height);
+	}
+	var startx;
+	var starty;
+	var holder = createEmptyMovieClip(clipname, depth);
+	for (var y = 0; y<sth+1; y++) {
+		for (var x = 0; x<stw+1; x++) {
+			var temp = holder.attachMovie(tileset, "tile_"+y+"_"+x, y*width+x);
+			temp._y = y*tileHeight-1;
+			temp._x = x*tileWidth-1;
+			temp.gotoAndStop(arr[y][x][1]+1);
+		}
+	}
+	if (realmap) {
+		holder.entityDepth = width*height*2;
+		temp = holder.attachMovie("hero", "hero", holder.entityDepth++);
+		temp.action = heroStart//Action;
+		temp.setup = heroSetup;
+		temp.setup();
+		player = temp;
+		assignents();
+		
+		
+		
+	}
+	return holder;
+function assignents() {
+	for (var y = 0; y<height; y++) {
+		for (var x = 0; x<width; x++) {
+			if (map[y][x][0] == 32) {
+				map[y][x][0] = 0;
+				player._x = x*tileWidth+tileWidth/2;
+				//player._y = y*tileHeight+tileHeight/2;
+			}
+		}
+	}
+	player._y = -50//y*tileHeight+tileHeight/2;
+function getWorldPos(clip, pos, xscroll, yscroll) {
+	if (xscroll) {
+		pos[0] = Math.floor(-(clip._x)/tileWidth);
+	}
+	if (yscroll) {
+		pos[1] = Math.floor(-(clip._y)/tileHeight);
+	}
+function scrollMap(clip, arr, pos, bounds, xscroll, yscroll, hold) {
+	if (hold) {
+		if (clip._x<-(arr[0].length-stw)*tileWidth) {
+			clip._x = -(arr[0].length-stw)*tileWidth;
+		}
+		if (clip._x>0) {
+			clip._x = 0;
+		}
+		if (clip._y<-(arr.length-sth)*tileHeight) {
+			clip._y = -(arr.length-sth)*tileHeight;
+		}
+		if (clip._y>0) {
+			clip._y = 0;
+		}
+	}
+	var oldpos = new Array(pos[0], pos[1]);
+	getWorldPos(clip, pos, xscroll, yscroll);
+	if (xscroll) {
+		if (oldpos[0] != pos[0]) {
+			if (oldpos[0]<pos[0]) {
+				while (oldpos[0] != pos[0]) {
+					var dy = bounds[1];
+					var ty = oldpos[1];
+					var ly = 0;
+					while (ly<sth+1) {
+						clip["tile_"+(dy)+"_"+bounds[0]]._x += (stw+1)*tileWidth;
+						clip["tile_"+(dy)+"_"+bounds[0]].gotoAndStop(arr[ty][oldpos[0]+stw+1][1]+1);
+						dy++;
+						if (dy>sth) {
+							dy = 0;
+						}
+						ty++;
+						ly++;
+					}
+					oldpos[0]++;
+					bounds[0]++;
+					if (bounds[0]>stw) {
+						bounds[0] = 0;
+					}
+				}
+			} else {
+				while (oldpos[0] != pos[0]) {
+					var dl = bounds[0]-1;
+					if (dl<0) {
+						dl = stw;
+					}
+					var dy = bounds[1];
+					var ty = oldpos[1];
+					var ly = 0;
+					while (ly<sth+1) {
+						clip["tile_"+(dy)+"_"+(dl)]._x -= (stw+1)*tileWidth;
+						clip["tile_"+(dy)+"_"+(dl)].gotoAndStop(arr[ty][oldpos[0]-1][1]+1);
+						dy++;
+						if (dy>sth) {
+							dy = 0;
+						}
+						ty++;
+						ly++;
+					}
+					oldpos[0]--;
+					bounds[0]--;
+					if (bounds[0]<0) {
+						bounds[0] = stw;
+					}
+				}
+			}
+		}
+	}
+	if (yscroll) {
+		if (oldpos[1] != pos[1]) {
+			if (oldpos[1]<pos[1]) {
+				while (oldpos[1] != pos[1]) {
+					var dx = bounds[0];
+					var tx = oldpos[0];
+					var lx = 0;
+					while (lx<stw+1) {
+						clip["tile_"+(bounds[1])+"_"+dx]._y += (sth+1)*tileWidth;
+						clip["tile_"+(bounds[1])+"_"+dx].gotoAndStop(arr[oldpos[1]+sth+1][tx][1]+1);
+						dx++;
+						if (dx>stw) {
+							dx = 0;
+						}
+						tx++;
+						lx++;
+					}
+					oldpos[1]++;
+					bounds[1]++;
+					if (bounds[1]>sth) {
+						bounds[1] = 0;
+					}
+				}
+			} else {
+				while (oldpos[1] != pos[1]) {
+					var dl = bounds[1]-1;
+					if (dl<0) {
+						dl = sth;
+					}
+					var dx = bounds[0];
+					var tx = oldpos[0];
+					var lx = 0;
+					while (lx<stw+1) {
+						clip["tile_"+(dl)+"_"+dx]._y -= (sth+1)*tileWidth;
+						clip["tile_"+(dl)+"_"+dx].gotoAndStop(arr[oldpos[1]-1][tx][1]+1);
+						dx++;
+						if (dx>stw) {
+							dx = 0;
+						}
+						tx++;
+						lx++;
+					}
+					oldpos[1]--;
+					bounds[1]--;
+					if (bounds[1]<0) {
+						bounds[1] = sth;
+					}
+				}
+			}
+		}
+	}
+hitCheck = function (mapa, cy, cx, cy2, cx2, type, equal, hold) {
+	if (type == undefined) {
+		var type = 1;
+	}
+	if (equal == undefined) {
+		var equal = 0;
+	}
+	if (hold == undefined) {
+		var hold = 0;
+	}
+	var count = 0;
+	for (var y = cy; y<=cy2; y++) {
+		for (var x = cx; x<=cx2; x++) {
+			if (mapa[y][x][0]>=0 && mapa[y][x][0]<100) {
+				if (equal) {
+					if (mapa[y][x][0] == type) {
+						count++;
+						if (!hold) {
+							return 1;
+						}
+					}
+				} else {
+					if (mapa[y][x][0] != type) {
+						count++;
+						if (!hold) {
+							return 1;
+						}
+					}
+				}
+			}
+		}
+	}
+	return count;
+};
+function bulletFrame(timeStep) {
+	this._x += this.xspeed*timeStep;
+	this._y += this.yspeed*timeStep;
+	var y = Math.floor(this._y/tileHeight);
+	var x = Math.floor(this._x/tileWidth);
+	var hit = 0;
+	for (var i = 0; i<enemyArray.length; i++) {
+		if (enemyArray[i].hit.hitTest(this._x+world._x, this._y+world._y, 1)) {
+			enemyArray[i].health -= this.damage;
+			score += this.damage;
+			hit = 1;
+			hits++;
+			
+			if((shit++)%2 && sounds){
+				var r = random(4);
+				_root["shit"+r].start(0,0);
+			}
+			
+			break;
+		}
+	}
+	if (hit || map[y][x][0] != 0 || x<worldpos[0]-1 || x>worldpos[0]+stw+1 || y<worldpos[1]-1 || y>worldpos[1]+sth+1) {
+		for (var i = 0; i<entityArray.length; i++) {
+			if (entityArray[i] == this) {
+				entityArray.splice(i, 1);
+				break;
+			}
+		}
+		rem = 1;
+		this.removeMovieClip();
+	}
+function animationFrame(timeStep) {
+	this.stepc += timeStep;
+	if (this.stepc>1) {
+		if(this.pause-- <= 0){
+			this.nextFrame();
+			if (this._currentframe == this._totalframes) {
+				for (var i = 0; i<entityArray.length; i++) {
+					if (entityArray[i] == this) {
+						entityArray.splice(i, 1);
+						break;
+					}
+				}
+				rem = 1;
+				this.removeMovieClip();
+			}
+			this.stepc -= 1;
+		}
+	}
+function distance(x1, y1, x2, y2) {
+	x = x1-x2;
+	y = y1-y2;
+	return Math.sqrt(x*x+y*y);
+function popupFrame(timeStep){
+	this.stepc+=timeStep;
+	if(this.stepc >= 1){
+		this._y--;
+		this.frame++;
+		if(this.frame > 32){
+			this._alpha-=10;
+			if(this._alpha <= 0){
+				for (var i = 0; i<entityArray.length; i++) {
+					if (entityArray[i] == this) {
+						entityArray.splice(i, 1);
+						break;
+					}
+				}
+				rem = 1;
+				this.removeMovieClip();	
+			}
+			this.stepc--;	
+	}
+function powerupFrame(timeStep) {
+	this.stepc += timeStep;
+	if (this.stepc>1) {
+		this.r++;
+		if(this.fall){
+			this.yspeed++;	
+		} else {
+			this.yspeed = 2;	
+		}
+		this.stepc -= 1;
+		if(this.randomed){
+			if(this.power._currentframe < this.power._totalframes){
+				this.power.nextFrame();	
+			} else {
+				this.power.gotoAndStop(2);	
+			}
+		}
+	}
+	var y = Math.floor((this._y+this.power._height/2)/tileHeight);
+	var x = Math.floor(this._x/tileWidth);
+	if(!this.stopped){
+		this._y += this.yspeed*timeStep;
+		
+		if(this.fall){
+			this.chute._xscale -= 10*timeStep
+			if(this.chute._xscale < 0){
+				this.chute._xscale = 0;
+				this.chute._visible = 0;
+			}
+			if(map[y][x][0] != 0){
+				
+				if(this.yspeed < 4){
+					this._y = y*tileHeight - this.power._height/2+2
+					this.stopped = 1;		
+//					this._y += 2;
+				} else {
+					this._y = y*tileHeight - this.power._height/2-2
+					this.yspeed*= -0.25
+					this._y += this.yspeed*timeStep
+				}
+				
+			}
+		} else {
+			this.chute._xscale += 10*timeStep
+			if(this.chute._xscale > 100){
+				this.chute._xscale = 100;
+			}
+			if(map[Math.floor((this._y+150)/tileWidth)][x][0] != 0){
+				this.fall = 1;	
+			}
+		}	
+	} else {
+		this.time++;
+	}
+	if (x<worldpos[0]-1 || x>worldpos[0]+stw+1 || y<worldpos[1]-1 || y>worldpos[1]+sth+1) {
+		this._visible = 0;
+	} else {
+		this._visible = 1;	
+	}
+	if(player.hitTest(this.power)){
+		this.remove = 1;
+		
+					var temp = world.attachMovie("popup", "popup_"+world.entityDepth, world.entityDepth++);
+			temp._x = Math.floor(player._x + player.width/2 - temp._width/2);
+			temp._y = Math.floor(player._y - temp._height*2);
+			temp.action = popupFrame;
+			entityArray.push(temp);
+		
+		if(this.power._currentframe == 1){
+			player.health = Math.min(100,player.health += 20);	
+			temp.text = "Health";
+			if(sounds){sphealth.start(0,0);}
+			
+		} else {
+			
+			
+			var gun = this.power._currentframe - 1;
+			var bullets = 0;
+			if(gun == 1){
+				//temp.text = "AkimboUzi's";
+				if(sounds){spmac10.start(0,0);}
+				bullets = 50;
+			} else if(gun == 2){
+				if(sounds){spshotgun.start(0,0)}
+				//temp.text = "Shotgun";
+				bullets = 14;
+			} else if(gun == 3){
+				if(sounds){spshotgunrockets.start(0,0);}
+				//temp.text = "ShotgunRockets";
+				bullets = 8;	
+			} else if(gun == 4){
+				//temp.text = "GrenadeLauncher";
+				if(sounds){spgrenadelauncher.start(0,0);}
+				bullets = 12;	
+			} else if(gun == 5){
+				//temp.text = "RPG";
+				if(sounds){sprpg.start(0,0);}
+				bullets = 10;	
+			} else if(gun == 6){
+				//temp.text = "RocketLauncher";
+				if(sounds){sprocketlauncher.start(0,0);}
+				bullets = 8;
+			} else if(gun == 7){
+				//temp.text = "SeekerLauncher";
+				if(sounds){spseekerlauncher.start(0,0);}
+				bullets = 6;
+			} else if(gun == 8){
+				//temp.text = "FlameThrower";
+				if(sounds){spflamethrower.start(0,0);}
+				bullets = 150;
+			}else if(gun == 9){
+			//	temp.text = "FireMines";
+				if(sounds){spfiremines.start(0,0);}
+				bullets = 3;
+			}else if(gun == 10){
+			//	temp.text = "A-BombLauncher";
+				if(sounds){spabomb.start(0,0);}
+				bullets = 2;
+			}else if(gun == 11){
+			//RailGun
+				if(sounds){sprailgun.start(0,0);}
+				bullets = 3;
+			}else if(gun == 12){
+			//Grapple
+				if(sounds){spgrapplecannon.start(0,0);}
+				bullets = 2;
+			}else if(gun == 13){
+				var p = 1+random(5);
+				
+				player.powerupOn = p;
+				player.powerupTime = powerupTime;
+				
+				if(p == 1){
+					temp.text = "TriDamage";	
+					HUD.powerup.text = "TriDamage"
+					if(sounds){sptridamage.start(0,0);}
+				}else if(p == 2){
+					temp.text = "Invulnerability";	
+					HUD.powerup.text = "Invulnerability"
+					if(sounds){spinvulnerability.start(0,0);}
+				}else if(p == 3){
+					temp.text = "PredatorMode";	
+					HUD.powerup.text = "PredatorMode"
+					player.guns[player.guns.length-1].reloadtime = Number.POSITIVE_INFINITY
+					if(sounds){sppredatormode.start(0,0);}
+				}else if(p == 4){
+					temp.text = "TimeRift";	
+					HUD.powerup.text = "TimeRift"
+					if(sounds){sptimerift.start(0,0);}
+				}else if(p == 5){
+					temp.text = "Jetpack";	
+					HUD.powerup.text = "Jetpack"
+					if(sounds){spjetpack.start(0,0);}
+				}
+				
+			}
+			if(gun < 13){
+				temp.text = guns[gun].name//"RailGun";			
+				player.guns[gun].bullets+= bullets;
+				//player.guns[gun].reloadtime = Number.POSITIVE_INFINITY
+			}
+		}
+		
+	}
+	if(this.time > 450){
+		this._alpha -= 2;	
+	}
+	if(this.remove || this.time >= 500){
+		for (var i = 0; i<entityArray.length; i++) {
+			if (entityArray[i] == this) {
+				entityArray.splice(i, 1);
+				break;
+			}
+		}
+		rem = 1;
+		this.removeMovieClip();	
+	}
+function seekerFrame(timeStep) {
+	this.stepc += timeStep;
+	var move = 0;
+	if (this.stepc>1) {
+		this.r++;
+		if (!(this.r%2)) {
+			var temp = world.attachMovie("smoke", "smoke_"+world.entityDepth, world.entityDepth++);
+			temp._x = this._x;
+			temp._y = this._y;
+			temp.stop();
+			temp.action = animationFrame;
+			entityArray.push(temp);
+		}
+		this.stepc -= 1;
+		move = 1;
+	}
+	if(this.target = null){
+		this._x += this.xspeed*timeStep;
+		this._y += this.yspeed*timeStep;
+	} else {
+			var rotd = 360-Math.atan2(this._x-this.targets._x, this._y-this.targets._y)*180/Math.PI-90;
+			var rotn = this._rotation;
+			
+			
+			rotd = (rotd+360)%360;
+			rotn = (rotn+360)%360;
+			var dif = rotd-rotn;
+			dif = dif>179 ? -360+dif : dif;
+			dif = dif<-179 ? 360+dif : dif;
+			this._rotation += dif/15*timeStep;
+			this.xspeed = this.sped*Math.cos(this._rotation*Math.PI/180);
+			this.yspeed = this.sped*Math.sin(this._rotation*Math.PI/180);
+			this._x += this.xspeed*timeStep;
+			this._y += this.yspeed*timeStep;
+		
+	}
+	var y = Math.floor(this._y/tileHeight);
+	var x = Math.floor(this._x/tileWidth);	
+	var hit = 0;
+	var closest = Number.POSITIVE_INFINITY
+	this.targets =null// enemyArray[0]//null;
+	for (var i = 0; i<enemyArray.length; i++) {
+		if (enemyArray[i].hit.hitTest(this._x+world._x, this._y+world._y, 1)) {
+			enemyArray[i].health -= this.damage;
+			score += this.damage;
+			hit = 1;
+			hits++;
+			break;
+		}
+		var d = distance(this._x,this._y,enemyArray[i]._x,enemyArray[i]._y);
+		if(d < closest){
+			closest = d;
+			this.targets = enemyArray[i];
+		}
+	}
+	if (hit || map[y][x][0] != 0 || x<worldpos[0]-1 || x>worldpos[0]+stw+1 || y<worldpos[1]-1 || y>worldpos[1]+sth+1) {
+		if (hit || map[y][x][0] != 0) {
+			var temp = world.attachMovie("boom", "boom_"+world.entityDepth, world.entityDepth++);
+			temp._x = this._x;
+			temp._y = this._y;
+			temp.stop();
+			temp.action = animationFrame;
+			entityArray.push(temp);
+			var dist = distance(this._x, this._y, player._x+player.width/2, player._y+player.height);
+			if (dist<100) {
+				var ang = 360-Math.atan2((player._x+player.width/2)-this._x, (player._y+player.height)-this._y)*180/Math.PI+90;
+				var mult = 1-(dist/100);
+				player.xspeed += int((mult*12)*Math.cos(ang*Math.PI/180));
+				player.yspeed += (mult*32)*Math.sin(ang*Math.PI/180);
+				player.hjump = 1;
+			}
+			if(sounds){
+				sboom.start(0,0);
+			}
+		}
+		for (var i = 0; i<entityArray.length; i++) {
+			if (entityArray[i] == this) {
+				entityArray.splice(i, 1);
+				break;
+			}
+		}
+		rem = 1;
+		this.removeMovieClip();
+	}
+function aBombFrame(timeStep) {
+	this.stepc += timeStep;
+	if (this.stepc>1) {
+		this.r++;
+		if (!(this.r%4)) {
+			var temp = world.attachMovie("flame", "flame_"+world.entityDepth, world.entityDepth++);
+			temp._x = this._x;
+			temp._y = this._y;
+			temp.stop();
+			temp.action = animationFrame;
+			entityArray.push(temp);
+		}
+		this.stepc -= 1;
+	}
+	this._x += this.xspeed*timeStep;
+	this._y += this.yspeed*timeStep;
+	var y = Math.floor(this._y/tileHeight);
+	var x = Math.floor(this._x/tileWidth);
+	var hit = 0;
+	for (var i = 0; i<enemyArray.length; i++) {
+		if (enemyArray[i].hit.hitTest(this._x+world._x, this._y+world._y, 1)) {
+			enemyArray[i].health -= this.damage;
+			score += this.damage;
+			hit = 1;
+			hits++;
+			break;
+		}
+	}
+	if (hit || map[y][x][0] != 0 || x<worldpos[0]-1 || x>worldpos[0]+stw+1 || y<worldpos[1]-1 || y>worldpos[1]+sth+1) {
+		if (hit || map[y][x][0] != 0) {
+			var temp = world.attachMovie("boom", "boom_"+world.entityDepth, world.entityDepth++);
+			temp._x = this._x;
+			temp._y = this._y;
+			temp._xscale = temp._yscale = 800;
+			temp.stop();
+			temp.action = animationFrame;
+			entityArray.push(temp);
+			var dist = distance(this._x, this._y, player._x+player.width/2, player._y+player.height);
+			if (dist<300) {
+				var ang = 360-Math.atan2((player._x+player.width/2)-this._x, (player._y+player.height)-this._y)*180/Math.PI+90;
+				var mult = 1-(dist/300);
+				player.xspeed += int((mult*24)*Math.cos(ang*Math.PI/180));
+				player.yspeed += (mult*64)*Math.sin(ang*Math.PI/180);
+				player.hjump = 1;
+			}
+			if(sounds){
+				sbigboom.start(0,0);
+			}
+		}
+		for (var i = 0; i<entityArray.length; i++) {
+			if (entityArray[i] == this) {
+				entityArray.splice(i, 1);
+				break;
+			}
+		}
+		rem = 1;
+		this.removeMovieClip();
+	}
+function smallrocketFrame(timeStep) {
+	this.stepc += timeStep;
+	if (this.stepc>1) {
+		this.r++;
+		if (!(this.r%4)) {
+			var temp = world.attachMovie("smoke", "smoke_"+world.entityDepth, world.entityDepth++);
+			temp._x = this._x;
+			temp._y = this._y;
+			temp.stop();
+			temp.action = animationFrame;
+			entityArray.push(temp);
+		}
+		this.stepc -= 1;
+	}
+	this._x += this.xspeed*timeStep;
+	this._y += this.yspeed*timeStep;
+	var y = Math.floor(this._y/tileHeight);
+	var x = Math.floor(this._x/tileWidth);
+	var hit = 0;
+	for (var i = 0; i<enemyArray.length; i++) {
+		if (enemyArray[i].hit.hitTest(this._x+world._x, this._y+world._y, 1)) {
+			enemyArray[i].health -= this.damage;
+			score += this.damage;
+			hit = 1;
+			hits++;
+			break;
+		}
+	}
+	if (hit || map[y][x][0] != 0 || x<worldpos[0]-1 || x>worldpos[0]+stw+1 || y<worldpos[1]-1 || y>worldpos[1]+sth+1) {
+		if (hit || map[y][x][0] != 0) {
+			var temp = world.attachMovie("boom", "boom_"+world.entityDepth, world.entityDepth++);
+			temp._x = this._x;
+			temp._y = this._y;
+			temp._xscale = temp._yscale = 50;
+			temp.stop();
+			temp.action = animationFrame;
+			entityArray.push(temp);
+			var dist = distance(this._x, this._y, player._x+player.width/2, player._y+player.height);
+			if (dist<50) {
+				var ang = 360-Math.atan2((player._x+player.width/2)-this._x, (player._y+player.height)-this._y)*180/Math.PI+90;
+				var mult = 1-(dist/50);
+				player.xspeed += int((mult*6)*Math.cos(ang*Math.PI/180));
+				player.yspeed += (mult*12)*Math.sin(ang*Math.PI/180);
+				player.hjump = 1;
+			}
+			if(sounds){
+				ssmallboom.start(0,0);
+			}
+		}
+		for (var i = 0; i<entityArray.length; i++) {
+			if (entityArray[i] == this) {
+				entityArray.splice(i, 1);
+				break;
+			}
+		}
+		rem = 1;
+		this.removeMovieClip();
+	}
+function rpgFrame(timeStep) {
+	this.stepc += timeStep;
+	if (this.stepc>1) {
+		
+		this.activate++;
+		
+		if(this.activate == 3){
+			if(sounds){
+				srocket.start(0,0);	
+			}
+		}
+		
+		if(this.activate > 3 && this.activate < 7){
+			this.xspeed *= 2;
+			this.yspeed *= 2;
+		}
+		
+		if(this.activate > 2){
+		
+			this.r++;
+			if (!(this.r%1)) {
+				var temp = world.attachMovie("smoke", "smoke_"+world.entityDepth, world.entityDepth++);
+				temp._x = this._x;
+				temp._y = this._y;
+				temp.stop();
+				temp.action = animationFrame;
+				entityArray.push(temp);
+			}
+		}
+		this.stepc -= 1;
+	}
+	this._rotation += this.xspeed*timeStep*4
+	this._x += this.xspeed*timeStep;
+	this._y += this.yspeed*timeStep;
+	var y = Math.floor(this._y/tileHeight);
+	var x = Math.floor(this._x/tileWidth);
+	var hit = 0;
+	for (var i = 0; i<enemyArray.length; i++) {
+		if (enemyArray[i].hit.hitTest(this._x+world._x, this._y+world._y, 1)) {
+			enemyArray[i].health -= this.damage;
+			score += this.damage;
+			hit = 1;
+			hits++;
+			break;
+		}
+	}
+	if (hit || map[y][x][0] != 0 || x<worldpos[0]-1 || x>worldpos[0]+stw+1 || y<worldpos[1]-1 || y>worldpos[1]+sth+1) {
+		if (hit || map[y][x][0] != 0) {
+			var temp = world.attachMovie("boom", "boom_"+world.entityDepth, world.entityDepth++);
+			temp._x = this._x;
+			temp._y = this._y;
+			temp.stop();
+			temp.action = animationFrame;
+			entityArray.push(temp);
+			var dist = distance(this._x, this._y, player._x+player.width/2, player._y+player.height);
+			if (dist<100) {
+				var ang = 360-Math.atan2((player._x+player.width/2)-this._x, (player._y+player.height)-this._y)*180/Math.PI+90;
+				var mult = 1-(dist/100);
+				player.xspeed += int((mult*9)*Math.cos(ang*Math.PI/180));
+				player.yspeed += (mult*24)*Math.sin(ang*Math.PI/180);
+				player.hjump = 1;
+			}
+			if(sounds){
+				sboom.start(0,0);
+			}
+		}
+		for (var i = 0; i<entityArray.length; i++) {
+			if (entityArray[i] == this) {
+				entityArray.splice(i, 1);
+				break;
+			}
+		}
+		rem = 1;
+		this.removeMovieClip();
+	}
+function rocketFrame(timeStep) {
+	this.stepc += timeStep;
+	if (this.stepc>1) {
+		this.r++;
+		if (!(this.r%2)) {
+			var temp = world.attachMovie("smoke", "smoke_"+world.entityDepth, world.entityDepth++);
+			temp._x = this._x;
+			temp._y = this._y;
+			temp.stop();
+			temp.action = animationFrame;
+			entityArray.push(temp);
+		}
+		this.stepc -= 1;
+	}
+	this._x += this.xspeed*timeStep;
+	this._y += this.yspeed*timeStep;
+	var y = Math.floor(this._y/tileHeight);
+	var x = Math.floor(this._x/tileWidth);
+	var hit = 0;
+	for (var i = 0; i<enemyArray.length; i++) {
+		if (enemyArray[i].hit.hitTest(this._x+world._x, this._y+world._y, 1)) {
+			enemyArray[i].health -= this.damage;
+			score += this.damage;
+			hit = 1;
+			hits++;
+			break;
+		}
+	}
+	if (hit || map[y][x][0] != 0 || x<worldpos[0]-1 || x>worldpos[0]+stw+1 || y<worldpos[1]-1 || y>worldpos[1]+sth+1) {
+		if (hit || map[y][x][0] != 0) {
+			var temp = world.attachMovie("boom", "boom_"+world.entityDepth, world.entityDepth++);
+			temp._x = this._x;
+			temp._y = this._y;
+			temp.stop();
+			temp.action = animationFrame;
+			entityArray.push(temp);
+			var dist = distance(this._x, this._y, player._x+player.width/2, player._y+player.height);
+			if (dist<100) {
+				var ang = 360-Math.atan2((player._x+player.width/2)-this._x, (player._y+player.height)-this._y)*180/Math.PI+90;
+				var mult = 1-(dist/100);
+				player.xspeed += int((mult*12)*Math.cos(ang*Math.PI/180));
+				player.yspeed += (mult*32)*Math.sin(ang*Math.PI/180);
+				player.hjump = 1;
+			}
+			if(sounds){
+				sboom.start(0,0);
+			}
+		}
+		for (var i = 0; i<entityArray.length; i++) {
+			if (entityArray[i] == this) {
+				entityArray.splice(i, 1);
+				break;
+			}
+		}
+		rem = 1;
+		this.removeMovieClip();
+	}
+function grappleAttached(timeStep) {
+	if(this.attached._x == undefined) {
+		for (var i = 0; i<entityArray.length; i++) {
+			if (entityArray[i] == this) {
+				entityArray.splice(i, 1);
+				break;
+			}
+		}
+		rem = 1;
+		this.removeMovieClip();
+	}
+	this._x = this.attached._x + this.offsetx
+	this._y = this.attached._y + this.offsety
+	this.clear();
+	this.lineStyle(2,0x000000,100)
+	this.lineTo(player._x+player.width/2-this._x,player._y+player.height/2-this._y);
+function grappleFrame(timeStep) {
+	this.stepc += timeStep;
+	if (this.stepc>1) {
+		this.r++;
+		this.stepc -= 1;
+	}
+	if(this._rotation != 0){
+		this.gfx._rotation = this._rotation
+		this._rotation = 0;
+	}
+	this._x += this.xspeed*timeStep;
+	this._y += this.yspeed*timeStep;
+	var y = Math.floor(this._y/tileHeight);
+	var x = Math.floor(this._x/tileWidth);
+	var hit = 0;
+	for (var i = 0; i<enemyArray.length; i++) {
+		if (enemyArray[i].hit.hitTest(this._x+world._x, this._y+world._y, 1)) {
+			enemyArray[i].action = heliFall;//.health -= this.damage;
+			
+			this.attached = enemyArray[i];
+			this.offsetx = this._x - enemyArray[i]._x ;
+			this.offsety = this._y - enemyArray[i]._y ;
+			this.action = grappleAttached
+			
+			entityArray.push(enemyArray[i]);
+			enemyArray.splice(i, 1);
+			
+			
+			
+			
+			helis++;
+			rthelis++;
+		
+		
+			if(helis == 3){
+				//if(player.powerupon != 3 || rthelis >= nextHealth){
+					var temp = world.attachMovie("powerup", "powerup_"+world.entityDepth, world.entityDepth++);
+					temp._x = this._x;
+					temp._y = this._y;
+					temp.chute._xscale = 0;
+					if(rthelis >= nextHealth){
+						nextHealth*=2;
+						temp.power.gotoAndStop(1);
+					} else {
+						if(random(100)%32 == 0){
+							temp.randomed =1;	
+						}
+						temp.power.gotoAndStop(random(temp.power._totalframes-1)+2);
+					}
+					temp.action = powerupFrame;
+		//			temp.health = 1;
+					entityArray.push(temp);
+				//}
+				
+				helis = 0;	
+			}
+		
+		
+			for (var i = 0; i<2; i++) {
+				var temp = world.attachMovie("Shard", "Shard_"+world.entityDepth, world.entityDepth++);
+				temp._x = this._x;
+				temp._y = this._y;
+				temp._rotation = random(360);
+				temp.xspeed = -10+random(20);
+				temp.yspeed = -10+random(20);
+				temp.gotoAndStop(random(temp._totalframes)+1);
+				temp.action = shardFrame;
+				entityArray.push(temp);
+			}
+			
+			
+			
+			
+			
+			addEnemy(300);
+			
+			score += this.damage;
+			hit = 1;
+			hits++;
+			break;
+		}
+	}
+	if (map[y][x][0] != 0 || x<worldpos[0]-1 || x>worldpos[0]+stw+1 || y<worldpos[1]-1 || y>worldpos[1]+sth+1) {
+		for (var i = 0; i<entityArray.length; i++) {
+			if (entityArray[i] == this) {
+				entityArray.splice(i, 1);
+				break;
+			}
+		}
+		rem = 1;
+		this.removeMovieClip();
+	}
+	this.clear();
+	this.lineStyle(2,0x000000,100)
+	this.lineTo(player._x+player.width/2-this._x,player._y+player.height/2-this._y);
+function grenadeFrame(timeStep) {
+	this.stepc += timeStep;
+	if (this.stepc>1) {
+		this.r++;			
+		this.yspeed += 0.75;
+		this.stepc -= 1;
+	}
+	this.gfx._rotation += this.xspeed*timeStep*4;
+	this._x += this.xspeed*timeStep;
+	var y = Math.floor(this._y/tileHeight);
+	var x = Math.floor(this._x/tileWidth);
+	if (map[y][x][0] != 0) {
+		this._x -= this.xspeed*timeStep;
+		this.xspeed *= -0.5;
+		var x = Math.floor(this._x/tileWidth);
+		
+		if(sounds){
+			var r = random(4);
+			_root["smetal"+r].start(0,0);
+		}
+		
+	}
+	this._y += this.yspeed*timeStep;
+	var y = Math.floor(this._y/tileHeight);
+	if (map[y][x][0] != 0) {
+		this._y -= this.yspeed*timeStep;
+		this.yspeed *= -0.5;
+		var y = Math.floor(this._y/tileHeight);
+		this.bounces++;
+		
+		if(sounds){
+			var r = random(4);
+			_root["smetal"+r].start(0,0);
+		}
+	}
+	var hit = 0;
+	for (var i = 0; i<enemyArray.length; i++) {
+		if (enemyArray[i].hit.hitTest(this._x+world._x, this._y+world._y, 1)) {
+			enemyArray[i].health -= this.damage;
+			score += this.damage;
+			hit = 1;
+			hits++;
+			break;
+		}
+	}
+	if (hit || this.bounces>=3 || x<worldpos[0]-1 || x>worldpos[0]+stw+1 || y<worldpos[1]-1 || y>worldpos[1]+sth+1) {
+		if (hit || this.bounces>=3) {
+			var temp = world.attachMovie("boom", "boom_"+world.entityDepth, world.entityDepth++);
+			temp._x = this._x;
+			temp._y = this._y;
+			temp.stop();
+			temp.action = animationFrame;
+			entityArray.push(temp);
+			var dist = distance(this._x, this._y, player._x+player.width/2, player._y+player.height);
+			if (dist<100) {
+				var ang = 360-Math.atan2((player._x+player.width/2)-this._x, (player._y+player.height)-this._y)*180/Math.PI+90;
+				var mult = 1-(dist/100);
+				player.xspeed += int((mult*9)*Math.cos(ang*Math.PI/180));
+				player.yspeed += (mult*24)*Math.sin(ang*Math.PI/180);
+				player.hjump = 1;
+			}
+					if(sounds){
+			sboom.start(0,0);
+		}
+		}
+		for (var i = 0; i<entityArray.length; i++) {
+			if (entityArray[i] == this) {
+				entityArray.splice(i, 1);
+				break;
+			}
+		}
+		rem = 1;
+		this.removeMovieClip();
+	}
+function fireMinesFrame(timeStep) {
+	this.stepc += timeStep;
+	var move = 0;
+	if (this.stepc>1) {
+		this.r++;
+		if(!this.active){
+			this.yspeed += 1;
+		}
+		this.stepc -= 1;
+		move = 1;
+	}
+	this._rotation = 0//this.xspeed*timeStep*4;
+	this._x += this.xspeed*timeStep;
+	var y = Math.floor(this._y/tileHeight);
+	var x = Math.floor(this._x/tileWidth);
+	if (map[y][x][0] != 0) {
+		this._x -= this.xspeed*timeStep;
+		this.xspeed *= -0.5;
+		var x = Math.floor(this._x/tileWidth);
+	}
+	this._y += this.yspeed*timeStep;
+	var y = Math.floor(this._y/tileHeight);
+	if (map[y][x][0] != 0) {
+		this._y = y*tileHeight - this.power._height/2-1//-2
+		this.yspeed = 0;
+		this.xspeed = 0;
+		this.active++;
+	}
+	if(this.active == 1){
+		var temp = this.attachMovie("flamePillar", "FlamePillar", 0);
+		//temp._yscale = (height*tileHeight)/sph*100
+		temp._alpha = 0;
+		temp._xscale = 0;
+		//temp._x = this._x;
+		//temp._y = this._y;
+	//	temp.stop();
+//		temp.action = animationFrame;
+//		entityArray.push(temp);			
+	}
+	if(this.active){
+		sflame.setVolume(255)
+		if(move){
+			this.active++;
+		}
+		for (var i = 0; i<enemyArray.length; i++) {
+			if (enemyArray[i].hitTest(this)) {
+				enemyArray[i].health -= this.damage*timeStep;
+				score += this.damage*timeStep;
+				if(this.nohit++ == 1){
+					hits++;
+				}
+				break;
+			}
+		}
+	}
+	if(this.active <= 20){
+		this.flamePillar._alpha += 25*timeStep//Math.min(100,this._alpha+7*timeStep);
+		if(this.flamePillar._alpha > 100){
+			this.flamePillar._alpha = 100	
+		}
+		this.flamePillar._xscale += 25*timeStep//Math.min(100,this._xscale+7*timeStep);
+		if(this.flamePillar._xscale > 100){
+			this.flamePillar._xscale = 100	
+		}
+	}
+	if(this.active > 30){
+		this.flamePillar._alpha -= 7*timeStep;
+		this.flamePillar._xscale -= 7*timeStep;
+		if(this.flamePillar._alpha <= 0){
+			for (var i = 0; i<entityArray.length; i++) {
+				if (entityArray[i] == this) {
+					entityArray.splice(i, 1);
+					break;
+				}
+			}
+			rem = 1;
+			this.removeMovieClip();
+		}
+	}
+function railFrame(timeStep){
+	this.stepc+=timeStep;
+	if(this.anim > 1){
+			this._alpha -= 10*timeStep;
+	}
+	if(this.stepc>= 1){
+		
+		this.anim++;
+		
+		if(this.anim == 1){
+			var hit = 0;
+			var x = this._x;
+			var y = this._y;
+			var left = (worldpos[0]-1) * tileWidth
+			var right = (worldpos[0]+stw+1) * tileWidth
+			var up = (worldpos[1]-1) * tileHeight
+			var down = (worldpos[1]+sth+1) * tileHeight
+			
+			for(var i = 0;i < enemyArray.length;i++){
+				var tx = x;
+				var ty = y;
+				
+				while(tx > left && tx < right && ty > up && ty < down){
+					tx += this.xspeed;
+					ty += this.yspeed;
+					if (enemyArray[i].hit.hitTest(tx+world._x, ty+world._y, 1)) {
+						enemyArray[i].health -= this.damage;
+						score += this.damage;
+						if(hit == 0){
+							hits++;
+							hit = 1
+						}
+						break;;
+					}
+				}
+			}
+			
+			
+			//hurt stuff	
+		}
+		
+		if(this.anim > 2){
+			//this._alpha -= 10;
+			
+			if(this._alpha <= 0){
+				for (var i = 0; i<entityArray.length; i++) {
+					if (entityArray[i] == this) {
+						entityArray.splice(i, 1);
+						break;
+					}
+				}
+				rem = 1;
+				this.removeMovieClip();
+			}
+		}
+	}
+function shotgunRocket(x, y, rot, speed,damage) {
+	shots+=3;
+//	if (map[Math.floor(y/TileHeight)][Math.floor(x/TileWidth)][0] == 0) {
+	addBullet(x, y, rot-10, speed, smallRocketFrame, 7, damage);
+	addBullet(x, y, rot, speed, smallRocketFrame, 7, damage);
+	addBullet(x, y, rot+10, speed, smallRocketFrame, 7, damage);
+	//}
+function shotgun(x, y, rot, speed,damage) {
+	shots+=5;
+	if (map[Math.floor(y/TileHeight)][Math.floor(x/TileWidth)][0] == 0) {
+//		var speed = guns[type].speed;
+		addBullet(x, y, rot-10, speed, bulletFrame, 1, damage);
+		addBullet(x, y, rot-5, speed, bulletFrame, 1, damage);
+		addBullet(x, y, rot, speed, bulletFrame, 1, damage);
+		addBullet(x, y, rot+5, speed, bulletFrame, 1, damage);
+		addBullet(x, y, rot+10, speed, bulletFrame, 1, damage);
+	}
+function rocketLauncher(x, y, rot, speed,damage) {
+	shots++;
+	addBullet(x, y, rot, speed, rocketFrame, 2, damage);
+function grapple(x, y, rot, speed,damage) {
+	shots++;
+	addBullet(x, y, rot, speed, grappleFrame, 12, damage);
+function shoulderCannon(x, y,rot, speed,damage) {
+	shots++;
+	addBullet(x, y, rot, speed, railFrame, 11, damage);
+function railGun(x, y,rot, speed,damage) {
+	shots++;
+	addBullet(x, y, rot, speed, railFrame, 9, damage);
+function rpg(x, y, rot, speed,damage) {
+	shots++;
+	addBullet(x, y, rot, speed, rpgFrame, 8, damage);
+function aBombLauncher(x, y, rot, speed,damage) {
+	shots++;
+	addBullet(x, y, rot, speed, abombFrame, 6, damage);
+function seekerLauncher(x, y, rot, speed,damage) {
+	shots++;
+	addBullet(x, y, rot, speed, seekerFrame, 5, damage);
+function machineGun(x, y, rot, speed,damage) {
+	shots++;
+	if (map[Math.floor(y/TileHeight)][Math.floor(x/TileWidth)][0] == 0) {
+		addBullet(x, y, rot-2+random(4), speed, bulletFrame, 1, damage);
+	}
+function uzi(x, y, rot, speed,damage) {
+	shots+=2;
+	if (map[Math.floor(y/TileHeight)][Math.floor(x/TileWidth)][0] == 0) {
+		//var speed = guns[type].speed;
+		var xs = speed*Math.cos(rot*Math.PI/180);
+		var ys = speed*Math.sin(rot*Math.PI/180);
+		addBullet(x, y, rot-8+random(16), speed, bulletFrame, 1, damage);
+		addBullet(x+xs, y+ys, rot-8+random(16), speed, bulletFrame, 1, damage);
+	}
+function flameFrame(timeStep) {
+	this.stepc += timeStep;
+	this._x += this.xspeed*timeStep;
+	this._y += this.yspeed*timeStep;
+	var y = Math.floor(this._y/tileHeight);
+	var x = Math.floor(this._x/tileWidth);
+	for (var i = 0; i<enemyArray.length; i++) {
+		if (enemyArray[i].hitTest(this)) {
+			enemyArray[i].health -= this.damage*(1-(this.gfx._currentframe/this.gfx._totalframes))*timeStep;
+			score += this.damage*(1-(this.gfx._currentframe/this.gfx._totalframes))*timeStep;
+			if(this.hitser++ == 1){
+				hits++;	
+			}
+		}
+	}
+	if (this.stepc>=1) {
+		if (map[y][x][0] != 0 && this.gfx._currentframe<this.gfx._totalframes-3) {
+			this.gfx.gotoAndStop(this.gfx._totalframes-3);
+		}
+		this.gfx.nextFrame();
+		if (this.gfx._currentframe == this.gfx._totalframes) {
+			for (var i = 0; i<entityArray.length; i++) {
+				if (entityArray[i] == this) {
+					entityArray.splice(i, 1);
+					break;
+				}
+			}
+			rem = 1;
+			this.removeMovieClip();
+		}
+		this.stepc -= 1;
+	}
+function flameThrower(x, y, rot, speed,damage) {
+	shots++;
+	addBullet(x, y, rot-10+random(20), speed, flameFrame, 3, damage);
+function grenadeLauncher(x, y, rot, speed,damage) {
+	shots++;
+	addBullet(x, y, rot, speed, grenadeFrame, 4, damage);
+function fireMines(x, y, rot, speed,damage) {
+	shots++;
+	addBullet(x, y, rot, speed, fireMinesFrame, 10, damage);
+function addBullet(x, y, rot, speed, func, frame, damage) {
+	var temp = world.attachMovie("bullet", "bullet_"+world.entityDepth, world.entityDepth++);
+	temp._x = x;
+	temp._y = y;
+	temp.sped = speed;
+	temp.xspeed = speed*Math.cos(rot*Math.PI/180);
+	temp.yspeed = speed*Math.sin(rot*Math.PI/180);
+	temp.gotoAndStop(frame);
+	temp._rotation = rot;
+	temp.action = func;
+	temp.damage = damage;
+	entityArray.push(temp);
+function enemyBulletFrame(timeStep) {
+	this._x += this.xspeed*timeStep;
+	this._y += this.yspeed*timeStep;
+	var y = Math.floor(this._y/tileHeight);
+	var x = Math.floor(this._x/tileWidth);
+	var hit = 0;
+	if (player.gfx.hit.hitTest(this._x+world._x, this._y+world._y, 1)) {
+		hit = 1;
+		if(player.powerupon != 2){
+			player.health -= 10;
+			
+			for(var i = 0;i < 3;i++){
+				var temp = world.attachMovie("blood", "blood_"+world.entityDepth, world.entityDepth++);
+				temp._x = player._x + player.width/2;
+				temp._y = player._y + player.height/2;
+				temp._rotation = random(360);
+				temp.action = animationFrame;
+				temp.stop();
+				temp.pause = i*2;
+				entityArray.push(temp);
+			}
+		}
+		
+	}
+	if (hit || map[y][x][0] != 0 || x<worldpos[0]-1 || x>worldpos[0]+stw+1 || y<worldpos[1]-1 || y>worldpos[1]+sth+1) {
+		for (var i = 0; i<entityArray.length; i++) {
+			if (entityArray[i] == this) {
+				entityArray.splice(i, 1);
+				break;
+			}
+		}
+		rem = 1;
+		this.removeMovieClip();
+	}
+function addEnemyBullet(x, y, rot, speed, parent) {
+	var temp = world.attachMovie("enemybullet", "ebullet_"+world.entityDepth, world.entityDepth++);
+	temp._x = x;
+	temp._y = y;
+	temp.xspeed = speed*Math.cos(rot*Math.PI/180);
+	temp.yspeed = speed*Math.sin(rot*Math.PI/180);
+	temp.gotoAndStop(frame);
+	temp._rotation = rot;
+	temp.action = enemyBulletFrame;
+	entityArray.push(temp);
+function heroSetup() {
+	this.stepc = 0;
+	this.width = 48;
+	this.height = 48;
+	this.defplayerwidth = 10;
+	this.defplayerheight = 42;
+	this.xspeed = 0;
+	this.yspeed = 0;
+	this.xchange = 0;
+	this.ychange = 0;
+	this.jump = 0;
+	this.jump2 = 0;
+	this.duck = 0;
+	this.guns = [];
+	this.guns.push({type:0, reloadtime:Number.POSITIVE_INFINITY, bullets:Number.POSITIVE_INFINITY,shots:0});
+	for(var i = 1; i < guns.length-1;i++){	
+		this.guns.push({type:i,reloadtime:Number.POSITIVE_INFINITY,bullets:0,shots:0});
+	}
+	this.guns.push({type:guns.length-1,reloadtime:Number.POSITIVE_INFINITY,bullets:Number.POSITIVE_INFINITY,shots:0});
+	this.cgun = 0;
+	this.bullettime = maxbullettime;
+	this.hyperjump = 150;
+	this.health = this.lastHealth = 100;
+	this.powerupon = 0;
+	this.cgun = 0;
+function heroStart(timeStep){
+	this.gfx.gotoAndStop(6);
+	this.stepc += timeStep;
+	if (this.stepc>1) {
+		
+		this.yspeed = 2;	
+		
+		this.stepc -= 1;
+	}
+	var y = Math.floor((this._y+this.height)/tileHeight);
+	var x = Math.floor((this._x+this.width/2)/tileWidth);
+	this._y += this.yspeed*timeStep;
+	this._y += 5;	
+	if(this.fall){
+		this.gfx.chute._xscale -= 10*timeStep
+		if(this.gfx.chute._xscale < 0){
+			this.gfx.chute._xscale = 0;
+			this.gfx.chute._visible = 0;
+			this.action = heroAction;
+			gamestarted = 1;
+			addEnemy(300);
+		}
+	} else {
+		this.gfx.chute._xscale += 10*timeStep
+		if(this.gfx.chute._xscale > 100){
+			this.gfx.chute._xscale = 100;
+		}
+		if(y > 0 && map[y+5][x][0] != 0){
+			this.fall = 1;	
+		}
+	}	
+	/*
+	if ((this.xchange>0 && (this._x+this.width)-(-world._x)>sw/2+this.width)) {
+		world._x = -(this._x+this.width)+sw/2+this.width;
+		ret++;
+	}
+	if ((this.xchange<0 && (this._x)-(-world._x)<sw/2-this.width)) {
+		world._x = -(this._x)+sw/2-this.width;
+		ret++;
+	}*/
+	if ((this._y+this.height)-(-world._y)>sh-sh/4) {
+		world._y = -(this._y+this.height)+sh-sh/4;
+		ret++;
+	}
+	return ret
+function heroAction(timestep) {
+	var move = 0;
+	this.stepc += timestep;
+	this.gfx._alpha = 100;
+	if (this.stepc>=1) {
+		move = 1;
+	}
+	var color0 = new Color(world);
+	var color1 = new Color(bg);
+	var color2 = new Color(bglayer1);
+	var color3 = new Color(HUD);
+	if(this.lasthealth > this.health){
+		color0.setTransform(hitColor);	
+		color1.setTransform(hitColor);	
+		color2.setTransform(hitColor);	
+		color3.setTransform(hitColor);
+		if(sounds){
+			shurt.start(0,0)
+		}
+	} else {
+		color0.setTransform(normalColor);	
+		color1.setTransform(normalColor);	
+		color2.setTransform(normalColor);
+		color3.setTransform(normalColor);
+	}
+	var thiscolor = new Color(this);
+	var thiscolort = normalColor;
+	if(this.powerupOn != 0){
+		HUD.powerup._visible = 1
+		
+		if(this.powerupOn == 1){
+			thiscolort = doubleDamageColor;
+		}
+		if(this.powerupOn == 2){
+			thiscolort = invunerableColor;
+		}
+		this.gfx._alpha = 100;
+		if(this.powerupOn == 3){
+			this.cgun = guns.length-1;
+			
+			this.gfx._alpha = 0;
+			color0.setTransform(invColor);	
+			color1.setTransform(invColor);	
+			color2.setTransform(invColor);
+			color3.setTransform(invColor);
+			
+			if((this.pred++%10) == 4){
+				this.gfx._alpha = 10;	
+			}
+			if((this.pred++%10) == 8){
+				this.gfx._alpha = 4;	
+			}
+			
+			
+		} else {
+			if(this.cgun == guns.length-1){
+				this.cgun = 0;
+//				this._visible = 1;
+				this.gfx._alpha = 100;
+			}
+		}
+		if(this.powerupOn == 4){
+			thiscolort = warpColor;
+			move = 1;
+			timeStep = 1;
+		}
+		if(this.powerUpTime <= 0){
+			if(this.powerupOn == 3){
+				this.cgun = 0;
+				this._visible = 1;
+			}
+			this.powerupOn = 0;	
+		}
+		HUD.powerup.powerup.mask._yscale = this.powerupTime/powerupTime * 100
+		if(move){
+			
+			if(this.powerupOn == 5 && this.jump){
+					if((this.smok++%5) == 0){
+						var temp = world.attachMovie("smoke", "smoke_"+world.entityDepth, world.entityDepth++);
+									temp._x = this._x + this.width/2;
+									temp._y = this._y + this.height/2 + this.playerheight/2;
+									temp.stop();
+									temp.action = animationFrame;
+									entityArray.push(temp);
+					}
+			}
+			
+			this.powerupTime--;
+		}
+	} else {
+		HUD.powerup._visible = 0	
+	}
+	thiscolor.setTransform(thiscolort);
+	this.lasthealth = this.health
+	this.xchange = 0;
+	if (move && Key.isDown(duckKey)) {
+		this.playerWidth = 2*this.defPlayerWidth/3;
+		this.playerHeight = 2*this.defPlayerHeight/3;
+		this.duck = 1;
+	} else if (move) {
+		if (this.duck) {
+			this._y -= 2*this.defPlayerWidth/3;
+		}	
+		this.playerWidth = this.defPlayerWidth;
+		this.playerHeight = this.defPlayerHeight;
+		this.duck = 0;
+	}
+	if (move && !this.duck) {
+		if (Key.isDown(leftkey)) {
+			if (this.xspeed>-5) {
+				this.xspeed--;
+			}
+		}
+		if (Key.isDown(rightkey)) {
+			if (this.xspeed<5) {
+				this.xspeed++;
+			}
+		}
+	}
+	if (this.yspeed>0 || this.yspeed<0) {
+		if (!this.jump) {
+			this.jump = 1;
+		}
+	}
+	if(move && this.hyperjump < 150){
+	this.hyperjump++;
+	}
+	if (this.hyperjump >= 150 && move && Key.isDown(boostKey) && (!this.jump || !this.jump2) && !this.hjump) {
+		if (!this.boostK) {
+			shjump.start(0,0);
+			this.yspeed = -32;
+			if (this.jump) {
+				this.jump2 = 1;
+			}
+			this.jump = 1;
+			this.hjump = 1;
+			this.hyperjump = 0;
+			hjumps++;
+		}
+		this.boostK = 1;
+	} else {
+		this.boostK = 0;
+	}
+	HUD.hyperjump.mask._xscale = this.hyperjump/150 * 100
+	if (move && Key.isDown(jumpkey)) {
+		if(this.powerupon == 5){
+			this.jump = this.jump2 = this.hjump = 1;
+			this.yspeed = Math.max(this.yspeed-2, -32);
+		} else {
+			if (this.up>0) {
+				this.yspeed = Math.min(this.yspeed, -8);
+				if (!this.upk) {
+					if (!this.jump) {
+						this.jump = 1;
+					} else if (!this.jump2) {
+						this.jump2 = 1;
+					}
+				}
+				this.up--;
+			}
+			this.upk = 1;
+		}
+	} else if (move) {
+		if (!this.jump || (!this.jump2 && !this.duck)) {
+			this.up = 6;
+		} else {
+			this.up = 0;
+		}
+		this.upk = 0;
+	}
+	if (this.jump && !this.duck) {
+		this.gfx.gotoAndStop(3);
+	}
+	if (move && (Key.isDown(leftkey) && Key.isDown(rightkey)) || (!Key.isDown(leftkey) && !Key.isDown(rightkey)) || (this.duck && !this.jump)) {
+		if (this.xspeed>0) {
+			this.xspeed--;
+		} else if (this.xspeed<0) {
+			this.xspeed++;
+		}
+	}
+	if (move && this.xspeed>6) {
+		this.xspeed--;
+	}
+	if (move && this.xspeed<-6) {
+		this.xspeed++;
+	}
+	if (move && this.yspeed>tileHeight) {
+		this.yspeed = tileHeight;
+	}
+	if (move && this.yspeed<-tileHeight) {
+		this.yspeed = -tileHeight;
+	}
+	if (move) {
+		this.yspeed++;
+	}
+	/*
+	if (Key.isDown(speedkey)) {
+		this.xchange = this.xspeed*1.5;
+	} else {
+		this.xchange = this.xspeed;
+	}*/
+	this.xchange = this.xspeed;
+	this.ychange = this.yspeed;
+	this.tilex = Math.floor((this._x+this.xchange+this.width/2-this.playerwidth/2)/tileWidth);
+	this.tile2x = Math.floor((this._x+this.xchange+this.width/2+this.playerwidth/2)/tileWidth);
+	this.tiley = Math.floor((this._y+1+this.height/2-this.playerheight/2)/tileHeight);
+	this.tile2y = Math.floor((this._y+this.height/2+this.playerheight/2)/tileHeight);
+	if (this.xchange != 0) {
+		if (this.xchange>0) {
+			if (this.tile2x>=width) {
+				this.hits = 1;
+			} else {
+				this.hits = hitCheck(map, this.tiley, this.tile2x, this.tile2y, this.tile2x, 1, 1, 1);
+			}
+			if (!this.hits) {
+				this._x += this.xchange*timeStep;
+			} else {
+				this._x = this.tile2x*tileWidth-this.width+(this.width-this.playerWidth)/2-1;
+				this.xspeed = 0;
+			}
+		} else {
+			if (this.tilex<0) {
+				this.hits = 1;
+			} else {
+				this.hits = hitCheck(map, this.tiley, this.tilex, this.tile2y, this.tilex, 1, 1, 1);
+			}
+			if (!this.hits) {
+				this._x += this.xchange*timeStep;
+			} else {
+				this._x = (this.tilex+1)*tileWidth-(this.width-this.playerWidth)/2-1;
+				this.xspeed = 0;
+			}
+		}
+	}
+	this.tilex = Math.floor((this._x+1+this.width/2-this.playerwidth/2)/tileWidth);
+	this.tile2x = Math.floor((this._x+this.width/2+this.playerwidth/2)/tileWidth);
+	this.tiley = Math.floor((this._y+this.ychange+this.height/2-this.playerheight/2)/tileHeight);
+	this.tile2y = Math.floor((this._y+this.ychange+this.height/2+this.playerheight/2)/tileHeight);
+	if (this.ychange != 0) {
+		if (this.ychange>0) {
+			if (!hitCheck(map, this.tile2y, this.tilex, this.tile2y, this.tile2x, 0)) {
+				this._y += this.ychange*timeStep;
+			} else {
+				this._y = this.tile2y*tileHeight-this.height+(this.height-this.playerHeight)/2-1;
+				this.yspeed = 0;
+				this.jump = 0;
+				this.jump2 = 0;
+				this.hjump = 0;
+				this.grab = 0;
+			}
+		} else {
+			if (!hitCheck(map, this.tiley, this.tilex, this.tiley, this.tile2x, 0)) {
+				this._y += this.ychange*timeStep;
+			} else {
+				this._y = (this.tiley+1)*tileHeight-(this.height-this.playerHeight)/2-1;
+				this.yspeed = 0;
+				this.jump = 1;
+				this.jump2 = 1;
+				this.up = 0;
+			}
+		}
+	}
+	if (this.duck) {
+		this.gfx.gotoAndStop(2);
+	} else {
+		if (this.jump) {
+			if (this.jump2) {
+				this.gfx.gotoAndStop(5);
+			} else {
+				this.gfx.gotoAndStop(3);
+			}
+		} else if (this.xchange != 0) {
+			this.gfx.gotoAndStop(4);
+			if (move) {
+				if (this.gfx.gfx._currentframe<this.gfx.gfx._totalframes) {
+					this.gfx.gfx.nextFrame();
+				} else {
+					this.gfx.gfx.gotoAndStop(1);
+				}
+			}
+		} else {
+			this.gfx.gotoAndStop(1);
+		}
+	}
+	if (powerupon != 3 && Key.isDown(switchKey)) {
+		if (!this.switchK) {
+			do{
+				this.cgun++;
+				if (this.cgun>=this.guns.length-1) {
+					this.cgun = 0;
+				}
+			}while(this.guns[this.cgun].bullets <= 0);
+		}
+		this.switchK = 1;
+	} else {
+		this.switchK = 0;
+	}
+	this.gun.gotoAndStop(this.guns[this.cgun].type+1);
+	this.gunrotation = 360-Math.atan2(world._x+this._x+this.gun._x-_root._xmouse, world._y+this._y+this.gun._y-_root._ymouse)*180/Math.PI-90;
+	var rotd = this.gunrotation;
+	var rotn = this.gun._rotation;
+	rotd = (rotd+360)%360;
+	rotn = (rotn+360)%360;
+	var dif = rotd-rotn;
+	dif = dif>179 ? -360+dif : dif;
+	dif = dif<-179 ? 360+dif : dif;
+	this.gun._rotation += dif/2*timeStep;
+	if (this.gun._rotation>90 || this.gun._rotation<-90) {
+		this.gun._yscale = -100;
+	} else {
+		this.gun._yscale = 100;
+	}
+	if (move) {
+		this.guns[this.cgun].reloadtime++;
+	}
+	if (this.guns[this.cgun].reloadtime < guns[this.guns[this.cgun].type].reloadtime) {
+		HUD.reload.yellow._visible = 0;		
+		HUD.reload.mask._xscale = this.guns[this.cgun].reloadtime/guns[this.guns[this.cgun].type].reloadtime * 100
+	} else {
+		if(this.guns[this.cgun].bullets > 0){
+			HUD.reload.yellow._visible = 1;			
+		}
+	}
+	if ( mouseD) {
+		if(move){
+			if (this.guns[this.cgun].bullets>0) {
+				if (this.guns[this.cgun].reloadtime>=guns[this.guns[this.cgun].type].reloadtime) {
+					this.guns[this.cgun].shots++;
+					this.guns[this.cgun].reloadtime = 0;
+					this.guns[this.cgun].bullets--;
+					point = {x:0, y:0};
+					this.gun.barrell.localToGlobal(point);
+					
+					var type = this.guns[this.cgun].type
+					//guns[type].damage
+					if(this.powerupOn == 1){
+						guns[type].gun(point.x-world._x, point.y-world._y, this.gun._rotation, guns[type].speed,guns[type].damage*3);		
+					} else {
+						//if(this.powerupOn == 3){
+							guns[type].gun(point.x-world._x, point.y-world._y, this.gun._rotation, guns[type].speed,guns[type].damage);
+						//} else {
+						//	gunShoulderCannon.gun(point.x-world._x, point.y-world._y, this.gun._rotation, gunShoulderCannon.speed,gunShoulderCannon.damage);
+						//}
+					}
+					if(sounds){
+						if(guns[type].soundhold){
+							guns[type].sound.setVolume(100)
+						} else {
+							guns[type].sound.start(0,0);
+						}
+					}
+				}
+				if(this.guns[this.cgun].bullets <= 0){
+					this.guns[this.cgun].reloadtime = Number.POSITIVE_INFINITY
+					this.cgun = 0;
+				}
+			}
+		}
+	}
+	HUD.weapon.gotoAndStop(this.cgun+1)
+	if(this.guns[this.cgun].bullets == Number.POSITIVE_INFINITY){
+		HUD.ammo = "Infinite x ";
+	} else {
+		HUD.ammo = this.guns[this.cgun].bullets + " x ";		
+	}
+	if (this.stepc > 1) {
+		this.stepc -= 1;
+	}
+	if(this.powerupOn == 2){
+		this.health = this.ihealth
+		
+	}
+	this.ihealth = this.health
+	var ret = 0;
+	if ((this.xchange>0 && (this._x+this.width)-(-world._x)>sw/2+this.width)) {
+		world._x = -(this._x+this.width)+sw/2+this.width;
+		ret++;
+	}
+	if ((this.xchange<0 && (this._x)-(-world._x)<sw/2-this.width)) {
+		world._x = -(this._x)+sw/2-this.width;
+		ret++;
+	}
+	if ((this.ychange>0 && (this._y+this.height)-(-world._y)>sh-sh/4)) {
+		world._y = -(this._y+this.height)+sh-sh/4;
+		ret++;
+	}
+	if ((this.ychange<0 && (this._y)-(-world._y)<sh/4)) {
+		world._y = -(this._y)+sh/4;
+		ret++;
+	}
+	return ret;
+function heroDie(timeStep) {
+	HUD.ammo = "0 x ";
+	HUD.reload.mask._xscale = 0;
+	HUD.reload.yellow._visible = 0;
+	HUD.bullettime.mask._xscale = 0;
+	HUD.hyperjump.mask._xscale = 0;
+	HUD.powerup._visible = 0;
+	this.stepc += timeStep;
+	if (this.stepc>=1) {
+		this.yspeed++;
+		this.stepc -= 1;
+	}
+	if(this.rot == undefined){
+		this.rot = 10;	
+	}
+	this._rotation += Math.abs(this.xspeed+this.yspeed)*timeStep
+	this._x += this.xspeed*timeStep;
+	var y = Math.floor(this._y/tileHeight);
+	var x = Math.floor(this._x/tileWidth);
+	if (map[y][x][0] != 0) {
+		this._x -= this.xspeed*timeStep;
+		this.xspeed *= -0.5;
+		var x = Math.floor(this._x/tileWidth);
+	}
+	this._y += this.yspeed*timeStep;
+	var y = Math.floor(this._y/tileHeight);
+	if (map[y][x][0] != 0) {
+			this._y = y*tileHeight - this.power._height/2-2
+			this._y -= this.yspeed*timeStep
+			if(this.yspeed < 4){
+				this.action = null	
+			}
+			this.yspeed *= -0.5;
+			this.rot = 0;
+	}
+	world._x = -(this._x)+sw/2;
+	world._y = -(this._y)+sh/2;
+	return 1;	
+function guyFall(timeStep) {
+	this.stepc += timeStep;
+	if (this.stepc>=1) {
+		this.yspeed++;
+		this.stepc -= 1;
+	}
+	if(this.rot == undefined){
+		this.rot = 10;	
+	}
+	this._rotation += Math.abs(this.xspeed+this.yspeed)*timeStep
+	this._x += this.xspeed*timeStep;
+	var y = Math.floor(this._y/tileHeight);
+	var x = Math.floor(this._x/tileWidth);
+	if (map[y][x][0] != 0) {
+		this._x -= this.xspeed*timeStep;
+		this.xspeed *= -0.5;
+		var x = Math.floor(this._x/tileWidth);
+	}
+	this._y += this.yspeed*timeStep;
+	var y = Math.floor(this._y/tileHeight);
+	if (map[y][x][0] != 0) {
+		if(this.yspeed < 4){
+				for (var i = 0; i<entityArray.length; i++) {
+				if (entityArray[i] == this) {
+					entityArray.splice(i, 1);
+					break;
+				}
+			}
+			rem = 1;
+			//if(this != player){
+				this.removeMovieClip();		
+			//}
+		} else {
+			this._y -= this.yspeed*timeStep
+			this.yspeed *= -0.2;
+			this.rot = 0;
+		}
+	}
+	//return 1;	
+function heliFall(timeStep) {
+	this.stepc += timeStep;
+	if (this.stepc>=1) {
+		this.yspeed++;
+		this.stepc -= 1;
+	}
+	if(this.xspeed > 0){
+		this._rotation += this.yspeed*timeStep/4;
+	} else {
+		this._rotation -= this.yspeed*timeStep/4;		
+	}
+	this._x += this.xspeed*timeStep;
+	this._y += this.yspeed*timeStep;
+	if (map[Math.floor(this._y/tileHeight)][Math.floor(this._x/tileWidth)][0] != 0) {
+		for (var i = 0; i<3; i++) {
+			var temp = world.attachMovie("Shard", "Shard_"+world.entityDepth, world.entityDepth++);
+			temp._x = this._x;
+			temp._y = this._y-tileWidth/2;
+			temp._rotation = random(360);
+			temp.gotoAndStop(random(temp._totalframes)+1);
+			temp.xspeed = -10+random(20);
+			temp.yspeed = -10+random(20);
+			temp.action = shardFrame;
+			entityArray.push(temp);
+		}
+		if(sounds){
+			sboom.start(0,0);	
+		}
+		
+		var temp = world.attachMovie("boom", "boom_"+world.entityDepth, world.entityDepth++);
+		temp._x = this._x;
+		temp._y = this._y;
+		temp._xscale = temp._yscale=200;
+		temp.action = animationFrame;
+		entityArray.push(temp);
+		for (var i = 0; i<entityArray.length; i++) {
+			if (entityArray[i] == this) {
+				entityArray.splice(i, 1);
+				break;
+			}
+		}
+		rem = 1;
+		this.removeMovieClip();
+	}
+function shardFrame(timeStep) {
+	this.stepc += timeStep;
+	if (this.stepc>1) {
+		this.r++;
+		this.yspeed += 1;
+		this.stepc -= 1;
+	}
+	this._rotation += this.xspeed*timeStep*4;
+	this._x += this.xspeed*timeStep;
+	var y = Math.floor(this._y/tileHeight);
+	var x = Math.floor(this._x/tileWidth);
+	if (map[y][x][0] != 0) {
+		this._x -= this.xspeed*timeStep;
+		this.xspeed *= -0.5;
+		var x = Math.floor(this._x/tileWidth);
+		
+		if(!((sbounce++)%3) && sounds){
+			var r = random(4);
+			_root["smetal"+r].start(0,0);
+		}
+	}
+	this._y += this.yspeed*timeStep;
+	var y = Math.floor(this._y/tileHeight);
+	if (map[y][x][0] != 0) {
+		this._y -= this.yspeed*timeStep;
+		this.yspeed *= -0.5;
+		var y = Math.floor(this._y/tileHeight);
+		this.bounces++;
+		
+		if(!((sbounce++)%3) && sounds){
+			var r = random(4);
+			_root["smetal"+r].start(0,0);
+		}
+		
+	}
+	if (this.bounces>=3 || x<worldpos[0]-1 || x>worldpos[0]+stw+1 || y<worldpos[1]-1 || y>worldpos[1]+sth+1) {
+		for (var i = 0; i<entityArray.length; i++) {
+			if (entityArray[i] == this) {
+				entityArray.splice(i, 1);
+				break;
+			}
+		}
+		rem = 1;
+		this.removeMovieClip();
+	}
+function heliFrame(timeStep) {
+//	trace(distance(this._x,this._x,player._x+player.width/2,player._y))
+	if(sounds){
+		var vol = distance(this._x,this._y,player._x+player.width/2,player._y)/800;
+		vol = Math.min(vol,1);
+		vol = Math.max(vol,0);
+		
+		sheli.setVolume(75 * (1-vol));
+	}
+	if (this.health<=0) {
+		for (var i = 0; i<enemyArray.length; i++) {
+			if (enemyArray[i] == this) {
+				enemyArray.splice(i, 1);
+				break;
+			}
+		}
+		rem = 1;
+		
+		if(!gameover){
+			if(player._y < this._y){
+			
+			var temp = world.attachMovie("popup", "popup_"+world.entityDepth, world.entityDepth++);
+			temp._x = Math.floor(player._x + player.width/2 - temp._width/2);
+			temp._y = Math.floor(player._y - temp._height*2);
+			temp.action = popupFrame;
+			entityArray.push(temp);
+			temp.text = "Random Weapon";
+			//var gun = player.cgun;
+			var gun = random(7)+1;
+			var bullets = 0;
+			if(gun == 1){
+				
+				bullets = 10;
+			} else if(gun == 2){
+				bullets = 3;
+			} else if(gun == 3){
+				bullets = 2;	
+			} else if(gun == 4){
+				bullets = 2;	
+			} else if(gun == 5){
+				bullets = 2;
+			} else if(gun == 6){
+				bullets = 2;
+			} else if(gun == 7){
+				bullets = 1;
+			} else if(gun == 8){
+				bullets = 30;
+			} else if(gun == 9){
+				bullets = 1;
+			}
+			player.guns[gun].bullets += bullets;
+		
+			}
+			helis++;
+			rthelis++;
+		
+		
+			if(helis == 3){
+				//if(player.powerupon != 3 || rthelis >= nextHealth){
+					var temp = world.attachMovie("powerup", "powerup_"+world.entityDepth, world.entityDepth++);
+					temp._x = this._x;
+					temp._y = this._y;
+					temp.chute._xscale = 0;
+					if(rthelis >= nextHealth){
+						nextHealth*=2;
+						temp.power.gotoAndStop(1);
+					} else {
+						if(random(100)%32 == 0){
+							temp.randomed =1;	
+						}
+						temp.power.gotoAndStop(random(temp.power._totalframes-1)+2);
+					}
+					temp.action = powerupFrame;
+		//			temp.health = 1;
+					entityArray.push(temp);
+				//}
+				
+				helis = 0;	
+			}
+		
+		}
+		for (var i = 0; i<3; i++) {
+			var temp = world.attachMovie("Shard", "Shard_"+world.entityDepth, world.entityDepth++);
+			temp._x = this._x;
+			temp._y = this._y;
+			temp._rotation = random(360);
+			temp.xspeed = -10+random(20);
+			temp.yspeed = -10+random(20);
+			temp.gotoAndStop(random(temp._totalframes)+1);
+			temp.action = shardFrame;
+			entityArray.push(temp);
+		}
+		
+		var temp = world.attachMovie("GuyBurned", "GuyBurned_"+world.entityDepth, world.entityDepth++);
+		temp._x = this._x;
+		temp._y = this._y;
+		temp._rotation = this._rotation;
+		temp.action = guyFall;
+		temp.xspeed = -10 + random(20);
+		temp.yspeed = -10 + random(15);
+		entityArray.push(temp);
+		
+		var temp = world.attachMovie("HeliDestroyed", "HeliDestroyed_"+world.entityDepth, world.entityDepth++);
+		temp._x = this._x;
+		temp._y = this._y;
+		temp._rotation = this._rotation;
+		temp.xspeed = this.xspeed;
+		temp.yseed = this.yspeed
+		temp.action = heliFall;
+		temp.gotoAndStop(this._currentframe);
+		entityArray.push(temp);
+		var temp = world.attachMovie("boom", "boom_"+world.entityDepth, world.entityDepth++);
+		temp._x = this._x;
+		temp._y = this._y;
+		temp._xscale = temp._yscale=200;
+		temp.action = animationFrame;
+		entityArray.push(temp);
+		
+		player.bullettime = Math.min(maxbullettime,player.bullettime + maxbullettime/3)
+		if(!gameover){
+			addEnemy(300);
+		}
+		if(sounds){
+			sheliboom.start(0,0);
+		}
+		this.removeMovieClip();
+		return;
+	}
+	if(this.lasthealth != this.health){	
+		var color0 = new Color(this);
+		color0.setTransform(whiteColor);	
+	} else {
+		var color0 = new Color(this);
+		color0.setTransform(normalColor);
+	}
+	this.lasthealth = this.health
+	var move = 0;
+	this.stepc += timestep;
+	if (this.stepc>=1) {
+		move = 1;
+		this.stepc -= 1;
+	}
+	if (this.onScreen<=0) {
+		if (this.goto == undefined) {
+			this.goto = random(10);
+		}
+		if (this.goto<4) {
+			this.tx = worldpos[0]*tileWidth-spw*2;
+		} else if (this.goto<8) {
+			this.tx = worldpos[0]*tileWidth+spw*2;
+		} else {
+			this.ty = worldpos[1]*tileHeight-sph;
+		}
+		if (this._y<worldpos[1]*tileHeight-this._height || this._x<worldpos[0]*tileWidth-this._width || this._x>worldpos[0]*tileWidth+spw+this._width) {
+			for (var i = 0; i<enemyArray.length; i++) {
+				if (enemyArray[i] == this) {
+					enemyArray.splice(i, 1);
+					break;
+				}
+			}
+			addEnemy(this.health);
+			this.removeMovieClip("");
+		}
+	} else {
+		if (move) {
+			if ((this.xt++%75) == 1) {
+				this.xdif = -spw/2+random(spw-this._width/2)+this._width/2;
+			}
+		}
+		this.tx = player._x+this.xdif;
+		if (this.tx<this._width/2) {
+			this.tx = this._width/2;
+		}
+		if (this.tx>width*tileWidth-this.Width/2) {
+			this.tx = width*tileWidth-this.Width/2;
+		}
+		if (player.hjump) {
+			this.ty = Math.min(height*tileHeight-sph/2-100, player._y+50+random(50));
+		} else if (move) {
+			if ((this.yt++%40) == 1) {
+				this.ty = player._y-sph/2-(-2+random(4))*10;
+			}
+		}
+	}
+	if (this.onScreen<0 || this._y<worldpos[1]*tileHeight || this._x<worldpos[0]*tileWidth || this._x>worldpos[0]*tileWidth+spw) {
+		var dx = (this.tx-this._x);
+		var dy = (this.ty-this._y);
+		this.xspeed += dx/100;
+		this.yspeed += dy/20;		
+	} else {
+		var dx = (this.tx-this._x);
+		var dy = (this.ty-this._y);
+		this.xspeed += dx/200;
+		this.yspeed += dy/100;
+	}
+	if (move) {
+		var r = Math.floor((this.xspeed)/20*15);
+		if (Math.abs(r)>2) {
+			this._rotation = r;
+		} else {
+			this._rotation = 0;
+		}
+	}
+	this._x += this.xspeed*timeStep;
+	this._y += this.yspeed*timeStep;
+	if (move) {
+		this.xspeed *= 0.9*timeStep;
+		this.yspeed *= 0.9*timeSetp;
+	}
+	this.gun.barrell.localToGlobal(point);
+	if(player.powerupon != 3){
+		this.gunrotation = 360-Math.atan2(this._x+this.gun._x-player._x-player.width/2, this._y+this.gun._y-player._y)*180/Math.PI-90-this._rotation;
+	} else {
+		this.gunrotation = 360-Math.atan2(this._x+this.gun._x-player._x-player.width/2 - spw/2 + random(spw), this._y+this.gun._y-player._y)*180/Math.PI-90-this._rotation;
+	}
+	var rotd = this.gunrotation;
+	var rotn = this.gun._rotation;
+	rotd = (rotd+360)%360;
+	rotn = (rotn+360)%360;
+	var dif = rotd-rotn;
+	dif = dif>179 ? -360+dif : dif;
+	dif = dif<-179 ? 360+dif : dif;
+	this.gun._rotation += dif/Math.max(1,10-level)*timeStep;
+	if (this.gun._rotation>90 || this.gun._rotation<-90) {
+		this.gun._yscale = -100;
+	} else {
+		this.gun._yscale = 100;
+	}
+	if (move) {
+		if ((this.shoot++%Math.max(10,16-level)) == 1) {
+			if(player.powerupon == 3){
+				this.gun._rotation = this.gunrotation;
+			}
+			point = {x:0, y:0};
+			this.gun.barrell.localToGlobal(point);
+			addEnemyBullet(point.x-world._x, point.y-world._y, this.gun._rotation-5+random(10), 7);
+		}
+	}
+	var y = Math.floor((this._y-this._height/2)/tileHeight);
+	var x = Math.floor((this._x-this._width/2)/tileWidth);
+	var y2 = Math.floor((this._y+this._height/2)/tileHeight);
+	var x2 = Math.floor((this._x+this._width/2)/tileWidth);
+	if (x2<worldpos[0]-1 || x>worldpos[0]+stw+1 || y2<worldpos[1]-1 || y>worldpos[1]+sth+1) {
+		this._visible = 0;
+	} else {
+		if(move){
+			this.onscreen--;
+		}
+		this._visible = 1;
+	}
+function addEnemy(health) {
+	var temp = world.attachMovie("Heli", "Heli_"+world.entityDepth, world.entityDepth++);
+	if (random(3)) {
+		if (random(2)) {
+			temp._x = -world._x-temp._width;
+		} else {
+			temp._x = -world._x+spw+temp._width;
+		}
+		temp._y = maxheight;
+	} else {
+		temp._x = -world._x+spw/2;
+		temp._y = worldpos[1]*tileHeight-this._height/2;
+	}
+	temp.action = heliFrame;
+	temp.health = health;
+	temp.gotoAndStop(random(2)+1);
+	temp.onscreen = 150+random(100);
+	temp._visible = 0;
+	enemyArray.push(temp);
+function game(first) {
+	if(Key.isDown(soundKey)){
+		if(soundK){
+			sounds = so.data.sounds = !sounds;
+			if(!sounds){
+				SoundBoard.stopAll();	
+			} else {
+				smusic.start(0,9999999);	
+			}
+		}
+		soundK = 0;
+	} else {
+		soundK = 1;	
+	}
+	stepc+=sendGameSpeed;
+	if(stepc > 1){
+		stepc--;
+		sflame.setVolume(0)
+	}
+	var scroll = 0;
+	if (Key.isDown(suicideKey) || player.health<=0 || gameover) {
+		if(Key.isDown(suicideKey)){
+			s = 1;	
+		}
+		gameover++;
+		sheli.setVolume(0);
+		if(gameover == 1){
+			mouseD = 0;
+			
+			var color0 = new Color(world);
+			var color1 = new Color(bg);
+			var color2 = new Color(bglayer1);
+			var color3 = new Color(HUD);
+			color0.setTransform(normalColor);	
+			color1.setTransform(normalColor);	
+			color2.setTransform(normalColor);
+			color3.setTransform(normalColor);
+			
+			var x = player._x + player.width/2;
+			var y = player._y + player.height/2;
+			var d = player.getDepth();
+			
+			ttweapon = new Array();
+			for(var i = 0;i < player.guns.length;i++){
+				ttweapon[i] = player.guns[i].shots;
+			}
+		
+			player.removeMovieClip("");		
+			player = world.attachMovie("guyBurned","player",d);
+			player._x = x;
+			player._y = y;
+			player.action = heroDie
+			player.xspeed = -10+random(20);
+			player.yspeed = -random(10)
+			
+			var temp = world.attachMovie("boom", "boom_"+world.entityDepth, world.entityDepth++);
+			temp._x = x;
+			temp._y = y;
+			temp._xscale = temp._yscale = 800;
+			temp.stop();
+			temp.action = animationFrame;
+			entityArray.push(temp);
+			
+			var dist = distance(this._x, this._y, player._x+player.width/2, player._y+player.height);
+			if (dist<300) {
+				var ang = 360-Math.atan2((player._x+player.width/2)-this._x, (player._y+player.height)-this._y)*180/Math.PI+90;
+				var mult = 1-(dist/300);
+				player.xspeed += int((mult*24)*Math.cos(ang*Math.PI/180));
+				player.yspeed += (mult*64)*Math.sin(ang*Math.PI/180);
+				player.hjump = 1;
+			}
+			
+			if(sounds){
+				sbigboom.start(0,0);	
+			}
+			
+			
+			for(var i = 0; i < enemyArray.length;i++){
+				enemyArray[i].health -= Number.POSITIVE_INFINITY;	
+			}
+		}
+		
+		if(gameover > 200 || (enemyArray.length == 0 && entityArray.length == 0)){
+			onEnterFrame = null;
+			
+			
+			var temp = attachMovie("stats","stats",32);
+			temp._x = 81
+			temp._y = 80
+			
+			temp.score = Math.floor(score)*100;
+			temp.time = Math.floor(time/30) + " seconds";
+			temp.shots = shots
+			temp.hits = hits;
+			if(shots > 0){
+				temp.accuracy = Math.floor((hits/shots)*100) + "%"
+			} else {
+				temp.accuracy = "0%";
+			}
+			
+			var maxi = 0;
+			var maxs = Number.NEGATIVE_INFINITY
+			for(var i = 1;i < ttweapon.length;i++){
+				if(ttweapon[i] > maxs){
+					maxs = ttweapon[i]
+					maxi = i;
+				}
+			}
+			if(maxs <= 0){
+				maxi = 0;	
+			}
+			if(tweapon[maxi]!= 0){
+				temp.weapon = guns[maxi].name;
+			} else {
+				temp.weapon = "None";
+			}
+			
+			temp.helis = rthelis;
+			
+			
+			games = so.data.games+=1;
+			ts = so.data.totalscore += score;
+			tshots = so.data.totalshots += shots;
+			thits = so.data.totalhits += hits;
+			ttime = so.data.totaltime += time;
+			thelis = so.data.totalhelis += rthelis;
+			thjumps = so.data.totalhjumps += hjumps
+			tbtime = so.data.totalbtime += btime
+			so.data.highscore = hs;
+			if(time > besttime){
+				besttime = so.data.besttime = time;	
+			}
+			
+			if(time < worsttime && !s){
+				worsttime = so.data.worsttime = time;	
+			}
+			
+			if(rthelis > bhelis){
+				bhelis = so.data.besthelis = rthelis;	
+			}
+			
+			for(var i = 0;i < ttweapon.length;i++){
+				so.data.tweapon[i]+=ttweapon[i];
+			}
+			
+			so.flush();
+			
+			/*
+			if(!hssent){
+				temp.comment = "Submit your score from the high scores menu!";	
+			} else {
+				temp.comment = "";
+			}*/
+			temp.doRelease = function(){	
+					this.removeMovieClip("");
+					endGame();
+					gotoAndStop("menu");
+				}
+			if(!hssent && hs > 0){
+				//temp.label = "Click to submit score";
+			
+				temp.submit.onRelease = function(){	
+					this._parent.removeMovieClip("");
+					endGame();
+					gotoAndStop("highscoresend");
+				}
+				temp.submit.hitArea = temp.submit.hitState;
+				temp.submit.hitState._visible = 0;
+			} else {
+				//temp.label = "Click for main menu";
+				temp.submit._visible = 0;
+				
+			}
+		}
+		//return;
+	}
+	if (player.bullettime > 0 && Key.isDown(bulletTimeKey) && gamestarted || gameover || player.powerupOn == 4) {
+		
+		sendGameSpeed = Math.max(0.2, sendGameSpeed-0.1);
+		if(player.powerupOn != 4){
+			player.bullettime--;
+		}
+		if(!gameover){
+			btime++;
+		}
+	} else {
+		sendGameSpeed = Math.min(gameSpeed, sendGameSpeed+0.1);
+	}
+	HUD.bullettime.mask._xscale = player.bullettime/maxbullettime * 100
+	for (var i = 0; i<entityArray.length; i++) {
+		entityArray[i].action(sendGameSpeed);
+		if (rem) {
+			rem = 0;
+			i--;
+		}
+	}
+	for (var i = 0; i<enemyArray.length; i++) {
+		enemyArray[i].action(sendGameSpeed);
+		if (rem) {
+			rem = 0;
+			i--;
+		}
+	}
+	sx = world._x;
+	sy = world._y;
+	if (player.action(sendGameSpeed) || first) {
+		scrollMap(world, map, worldpos, worldbounds, 1, 1, 1);
+		sdx = sx-world._x;
+		sdy = sy-world._y;
+		bglayer1._x -= sdx/2;
+		if (bglayer1._x<-bglayer1width/2) {
+			bglayer1._x = 0+bglayer1._x+bglayer1width/2;
+		}
+		if (bglayer1._x>0) {
+			bglayer1._x = (-bglayer1width/2)+bglayer1._x;
+		}
+		var yhpos = (-world._y)/maxheight;
+		bglayer1._y = -(bglayer1height-sh)+Math.max(0, ((1-yhpos)/2)*(bglayer1height-sph));
+		//-maxheight-(bglayer1height-sh)//+(bglayer1height/tileHeight)// + (1-yhpos)*bglayer1height//-sh;
+		scrollMap(bglayer1, bglayer1map, bglayer1pos, bglayer1bounds, 1, 1, 0);
+	}
+	if(!gameover && gamestarted){
+		time += 1 *sendGameSpeed
+	}
+	if (Math.floor(score)>hs) {
+		hs = Math.floor(score);
+		//hssent = so.data.hssent = 0;
+		if(hssent != 0){
+			hssent = so.data.highscoresent = 0;
+		}
+	}
+	HUD.highscore = "High Score: "+(hs*100);
+	HUD.score = "Score: " +(Math.floor(score)*100);
+	HUD.health.mask._yscale = player.health/100 * 100;
+	HUD.time = "Time: "+ Math.floor(time/30)+" seconds     Helis: " + rthelis;
+	if(score > nextLevel){
+		nextLevel*=2;
+		level++;
+		
+		var temp = world.attachMovie("popup", "popup_"+world.entityDepth, world.entityDepth++);
+		temp._x = Math.floor(player._x + player.width/2 - temp._width/2);
+		temp._y = Math.floor(player._y - temp._height*2);
+		temp.action = popupFrame;
+		temp.text = "Level Up";
+		entityArray.push(temp);		
+	}
+map1 = [[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]], 
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]], 
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]], 
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]], 
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]], 
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]], 
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]], 
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]], 
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]], 
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]], 
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]], 
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [1, 3]], 
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [1, 3], [1, 1], [1, 4], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [1, 3], [1, 1], [1, 8], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [1, 3], [1, 5]], 
+[[32, 0], [0, 0], [0, 0], [0, 0], [0, 0], [1, 3], [1, 1], [1, 4], [0, 0], [0, 0],[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [1, 3], [1, 5], [1, 2], [1, 6], [1, 4], [0, 0], [0, 0], [0, 0], [1, 3], [1, 5], [1, 10], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [1, 3], [1, 5], [1, 2]], 
+[[1, 1], [1, 1], [1, 1], [1, 1], [1, 1], [1, 5], [1, 2], [1, 6], [1, 1], [1, 1],[1, 1], [1, 1], [1, 1], [1, 1], [1, 1], [1, 5], [1, 2], [1, 2], [1, 2], [1, 6], [1, 1], [1, 1], [1, 1], [1, 5], [1, 2], [1, 6], [1, 1], [1, 1], [1, 1], [1, 1], [1, 1], [1, 1], [1, 5], [1, 2], [1, 2]]];
+/*
+map1 = [[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [32, 0], [0, 0]],
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [1, 3], [1, 1], [1, 1]],
+[[1, 1], [1, 1], [1, 1], [1, 1], [1, 1], [1, 1], [1, 5], [1, 2], [1, 2]]];
+*/
+bglayer1_1 = [[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0],[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0],[0, 0]], 
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0],[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0],[0, 0]], 
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0],[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0],[0, 0]], 
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0],[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0],[0, 0]], 
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0],[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0],[0, 0]], 
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0],[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0],[0, 0]], 
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0],[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0],[0, 0]], 
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0],[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0],[0, 0]], 
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0],[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0],[0, 0]], 
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0],[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0],[0, 0]], 
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0],[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0],[0, 0]], 
+[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0],[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0],[0, 0]], 
+[[0, 1], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0],[0, 0], [0, 1], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0],[0, 0],[0, 0]], 
+[[0, 2], [0, 0], [0, 0], [0, 1], [0, 1], [0, 0], [0, 0], [0, 0],[0, 0],[0, 1], [0, 2], [0, 0], [0, 0], [0, 1], [0, 1], [0, 0], [0, 0], [0, 0],[0, 0],[0, 1]],
+[[0, 2], [0, 1], [0, 1], [0, 2], [0, 2], [0, 1], [0, 0], [0, 0],[0, 1],[0, 2], [0, 2], [0, 1], [0, 1], [0, 2], [0, 2], [0, 1], [0, 0], [0, 0],[0, 1],[0, 2]]];
+sw = 450;
+sh = 320;
+tileWidth = tileHeight=50;
+//32;
+stw = Math.ceil(sw/tileWidth);
+sth = Math.ceil(sh/tileHeight);
+spw = stw*tileWidth;
+sph = sth*tileHeight;
+guns = new Array();
+guns[0] = {name:"MachineGun",gun:machineGun, reloadtime:5, speed:8, damage:10,sound:sgun};
+guns[1] = {name:"AkimboMac10's",gun:uzi, reloadtime:4, speed:8, damage:9,sound:sgun};
+guns[2] = {name:"Shotgun",gun:shotgun, reloadtime:25, speed:8, damage:15,sound:sshotgun};
+guns[3] = {name:"ShotgunRockets",gun:shotgunRocket, reloadtime:40, speed:7, damage:40,sound:srocket};
+guns[4] = {name:"GrenadeLauncher",gun:grenadeLauncher, reloadtime:30, speed:15, damage:75,sound:sgrenade};
+guns[5] = {name:"RPG",gun:rpg, reloadtime:40, speed:4, damage:75,sound:sgrenade};
+guns[6] = {name:"RocketLauncher",gun:rocketLauncher, reloadtime:50, speed:7, damage:100,sound:srocket};
+guns[7] = {name:"SeekerLauncher",gun:seekerLauncher, reloadtime:55, speed:7, damage:100,sound:srocket};
+guns[8] = {name:"FlameThrower",gun:flameThrower, reloadtime:1, speed:8, damage:2,sound:sflame,soundhold:1};
+guns[9] = {name:"FireMines",gun:fireMines, reloadtime:100, speed:3, damage:5,sound:null};
+guns[10] = {name:"A-BombLauncher",gun:aBombLauncher, reloadtime:150, speed:3, damage:300,sound:srocket};
+guns[11] = {name:"RailGun",gun:railGun, reloadtime:75, speed:20, damage:150,sound:srailgun};
+guns[12] = {name:"GrappleCannon",gun:grapple, reloadtime:250, speed:20, damage:300,sound:sgrapple};
+guns[13] = {name:"ShoulderCannon",gun:shoulderCannon, reloadtime:100, speed:20, damage:300,sound:srailgun};
+maxbullettime = 250;
+function startGame() {
+//	_quality = "low";
+	s = 0;
+	level = 0;
+	//world = drawMap(this["map"+level], "world", 1, "tiles", 1);
+	world = drawMap(map1, "world", 1, "tiles", 1);
+	worldpos = new Array(0, 0);
+	worldbounds = new Array(0, 0);
+	//bglayer1map = this["bglayer1_"+level];
+	bglayer1map = bglayer1_1;
+	bglayer1 = drawMap(bglayer1map, "bglayer1", 0, "bg", 0);
+	bglayer1pos = new Array(0, 0);
+	bglayer1bounds = new Array(0, 0);
+	bglayer1width = bglayer1map[0].length*tileWidth;
+	bglayer1height = bglayer1map.length*tileHeight;
+	HUD = attachMovie("HUD","HUD",2);
+	HUD.weapon.gotoAndStop(1)
+	maxheight = (height*tileHeight-sh);
+	entityArray = new Array();
+	enemyArray = new Array();
+	//addEnemy(300);
+	gameSpeed = 1;
+	sendGameSpeed = gameSpeed;
+	rem = 0;
+	score = 0;
+	gameover = 0;
+	time = 0;
+	shots = 0;
+	hits = 0;
+	hjumps = 0;
+	btime = 0;
+	helis = 0;
+	rthelis = 0;
+	nextHealth = 15;
+	nextLevel = 10000;
+	powerupTime = 500;
+	gamestarted = 0;
+	Key.addListener(this);
+	onKeyDown = function () {
+		if (Key.isDown(pauseKey)) {
+			if (onEnterFrame == null) {
+				onEnterFrame = game;
+			} else {
+				onEnterFrame = null;
+			}
+		}
+	};
+	mouseD = 0;
+	onMouseDown = function () {
+		mouseD = 1;
+	};
+	onMouseUp = function () {
+		mouseD = 0;
+	};
+	game(1);
+	onEnterFrame = game;
+	sflame.start(0,9999999);
+	sflame.setVolume(0);
+	sheli.start(0,9999999);
+	sheli.setVolume(0);
+	smusic.setVolume(50);
+	if(sounds){
+		sbigboom.start(0,0);
+	}
+function endGame() {
+	SoundBoard.stopAll();
+	if(sounds){
+		smusic.start(0,9999999);
+	}
+	world.removeMovieClip("");
+	bglayer1.removeMovieClip("");
+	HUD.removeMovieClip("");
+	onMouseDown = onMouseUp=onEnterFrame=null;
+whiteColor = { ra: '100', rb: '25', ga: '100', gb: '25', ba: '100', bb: '25', aa: '100', ab: '0'};
+normalColor = { ra: '100', rb: '0', ga: '100', gb: '0', ba: '100', bb: '0', aa: '100', ab: '0'};
+hitColor = { ra: '100', rb: '150', ga: '100', gb: '0', ba: '100', bb: '0', aa: '100', ab: '0'};
+//doubleDamageColor = { ra: '50', rb: '0', ga: '50', gb: '0', ba: '255', bb: '0', aa: '100', ab: '0'};
+doubleDamageColor = { ra: '50', rb: '0', ga: '50', gb: '0', ba: '255', bb: '0', aa: '100', ab: '0'};
+invunerableColor = { ra: '100', rb: '0', ga: '0', gb: '0', ba: '0', bb: '0', aa: '100', ab: '0'};
+warpColor = { ra: '0', rb: '0', ga: '100', gb: '0', ba: '0', bb: '0', aa: '100', ab: '0'};
+invColor = { ra: '-100', rb: '255', ga: '-100', gb: '255', ba: '-100', bb: '255', aa: '100', ab: '0'};
+highscore = "High Score: "+(hs*100);
+CPicBitmap
++2
+O//_quality = "low";
+//so.data.highscore = hs;
+stop();
+smusic.setVolume(100);
+on(release){
+	sounds = so.data.sounds = !sounds;
+	if(sounds){
+		sdisplay = "On";	
+		smusic.start(0,9999999);
+		
+	} else {
+		sdisplay = "Off";		
+		
+		SoundBoard.stopAll();
+	}
+G	
+G	
+on(release){
+	rightKeyM.gotoAndStop(200);
+	Key.addListener(this);
+	onKeyDown = function(){
+		rightKey = Key.getCode();
+		so.data.rightKey = rightKey;
+		rightKeyM.gotoAndStop(rightKey);
+		onKeyDown = null;
+	}
+on(release){
+	jumpKeyM.gotoAndStop(200);
+	Key.addListener(this);
+	onKeyDown = function(){
+		jumpKey = Key.getCode();
+		so.data.jumpKey = jumpKey;
+		jumpKeyM.gotoAndStop(jumpKey);
+		onKeyDown = null;
+	}
+on(release){
+	duckKeyM.gotoAndStop(200);
+	Key.addListener(this);
+	onKeyDown = function(){
+		duckKey = Key.getCode();
+		so.data.duckKey = duckKey;
+		duckKeyM.gotoAndStop(duckKey);
+		onKeyDown = null;
+	}
+/Q
+on(release){
+	switchKeyM.gotoAndStop(200);
+	Key.addListener(this);
+	onKeyDown = function(){
+		switchKey = Key.getCode();
+		so.data.switchKey = switchKey;
+		switchKeyM.gotoAndStop(switchKey);
+		onKeyDown = null;
+	}
+sF
+on(release){
+	boostKeyM.gotoAndStop(200);
+	Key.addListener(this);
+	onKeyDown = function(){
+		boostKey = Key.getCode();
+		so.data.boostKey = boostKey;
+		boostKeyM.gotoAndStop(boostKey);
+		onKeyDown = null;
+	}
+on(release){
+	bullettimeKeyM.gotoAndStop(200);
+	Key.addListener(this);
+	onKeyDown = function(){
+		bullettimeKey = Key.getCode();
+		so.data.bullettimeKey = bullettimeKey;
+		bullettimeKeyM.gotoAndStop(bullettimeKey);
+		onKeyDown = null;
+	}
+Q;
+on(release){
+	pauseKeyM.gotoAndStop(200);
+	Key.addListener(this);
+	onKeyDown = function(){
+		pauseKey = Key.getCode();
+		so.data.pauseKey = pauseKey;
+		pauseKeyM.gotoAndStop(pauseKey);
+		onKeyDown = null;
+	}
+o	
+o	
+$on(release){
+	gotoAndStop("menu");
+standard 07_63
+Mouse Pointer
+Mouse Click
+standard 07_63
+Mouse Pointer
+Mouse Click
+sdisplay
+standard 07_63
+Mouse Pointer
+sdisplay
+standard 07_63
+Mouse Pointer
+standard 07_63
+Options
+Sound:
+Controls (Click to change):
+Left:
+Right:
+Jump:
+Duck:
+Change Weapon:
+HyperJump:
+TimeDistort:
+Pause:
+Suicide:
+SoundToggle:
+Aim:
+Fire:
+Click here for main menu
+standard 07_63
+Options
+Sound:
+Controls (Click to change):
+Left:
+Right:
+Jump:
+Duck:
+Change Weapon:
+HyperJump:
+TimeDistort:
+Pause:
+Suicide:
+SoundToggle:
+Aim:
+Fire:
+Click here for main menu
+}&
+on(release){
+	leftKeyM.gotoAndStop(200);
+	Key.addListener(this);
+	onKeyDown = function(){
+		leftKey = Key.getCode();
+		so.data.leftKey = leftKey;
+		leftKeyM.gotoAndStop(leftKey);
+		onKeyDown = null;
+	}
+standard 07_63
+Reset Statistics
+standard 07_63
+Reset Statistics
+submit
+if(hssent != 1 && hs > 0){
+	submit._visible = 1;
+	submit.onRelease = function(){
+		highScores.removeMovieClip("");
+		gotoAndStop("highscoresend");
+	}
+	submit.hitArea = submit.hitState;
+	submit.hitState._visible = 0;
+} else {
+	submit._visible = 0;
+qon(release){
+	if(name != undefined && name != ""){
+		so.data.name = name;
+		sendScore(thisgamename,name,hs);
+	}
+name
+standard 07_63
+hsd
+standard 07_63
+1212
+standard 07_63
+Input your name
+Name:
+Score:
+standard 07_63
+Click here to send score
+sendscore = hs*100;
+standard 07_63
+Click here for main menu
+standard 07_63
+Click here for main menu
+.,
+#on(release){
+gotoAndStop("menu");
+standard 07_63
+Instructions
+You are an elite soldier, your jet fighter was destroyed in an intense
+air battle and you eject right into the middle of enemy territory.
+How long can you survive the waves of helicopter's sent to kill you?
+The aim of the game is to get the highest score possible by destroying
+wave upon wave of helicopters, do this by avoiding the enemies fire,
+while shooting him yourself.
+Move using the left or right key (default) and use the mouse to aim,
+click the mouse button to shoot your weapon.
+Your s=
+standard 07_63
+oldier can jump with the up key (default), and you are able to
+jump once more again in the air. Use hyperJump to get above the
+helicopter and take him down to get a random weapon.
+Use timeDistort to slow down time and give yourself longer to react. 
+Collect weapons and powerups to help you along the way. 
+Good Luck.
+standard 07_63
+Instructions
+You are an elite soldier, your jet fighter was destroyed in an intense
+air battle and you eject right into the middle of enemy territory.
+How long can you survive the waves of helicopter's sent to kill you?
+The aim of the game is to get the highest score possible by destroying
+wave upon wave of helicopters, do this by avoiding the enemies fire,
+while shooting him yourself.
+Move using the left or right key (default) and 
+standard 07_63
+use the mouse to aim
+standard 07_63
+standard 07_63
+click the mouse button to shoot your weaponE
+standard 07_63
+Your soldier can jump with the up key (default), and you are able to
+jump once more again in the air. Use hyperJump to get above the
+helicopter and take him down to get a random weapon.
+Use timeDistort to slow down time and give yourself longer to react. 
+Collect weapons and powerups to help you along the way. 
+Good Luck.
+/a
+P-
+k:
+Layer 4
+standard 07_63
+Loading 100%...
+C+
+)T
+(p
+location = "http://www.squarecircleco.com/heli2/heli2.swf";
+if(this._url != location && this._url.indexOf("file://") != 0){
+	gotoAndPlay(_currentframe - 1);	
+soundBoard = new Object();
+soundBoard.soundNum = 0;
+soundBoard.soundBoardClip = createEmptyMovieClip("soundBoardClip", 1024);
+soundBoard.sounds = new Array();
+soundBoard.newSound = function(name) {
+	/*
+	for (var i = 0; i<this.sounds.length; i++) {
+		if (this.sounds[i].name == name) {
+			return this.sounds[i].tsound;
+		}
+	}*/
+	var soundHolder = this.soundBoardClip.createEmptyMovieClip("SoundClip_"+this.soundNum, this.soundNum);
+	var tsound;
+	tsound = this.soundBoardClip["Sound_"+this.soundNum]=new Sound(soundHolder);
+	tsound.attachSound(name);
+	this.soundNum++;
+	this.sounds.push({name:name, tsound:tsound});
+	return tsound;
+};
+soundBoard.stopAll = function(){
+	for (var i = 0; i<this.sounds.length; i++) {
+		this.sounds[i].tsound.stop();
+	}
+spabomb = SoundBoard.newSound("spabomb");
+spfiremines = SoundBoard.newSound("spfiremines");
+spflamethrower = SoundBoard.newSound("spflamethrower");
+spgrapplecannon = SoundBoard.newSound("spgrapplecannon");
+spgrenadelauncher = SoundBoard.newSound("spgrenadelauncher");
+sphealth = SoundBoard.newSound("sphealth");
+spinvulnerability = SoundBoard.newSound("spinvulnerablilty");
+spjetpack = SoundBoard.newSound("spjetpack");
+spmac10 = SoundBoard.newSound("spmac10");
+sppredatormode = SoundBoard.newSound("sppredatormode");
+sprailgun = SoundBoard.newSound("sprailgun");
+sprocketlauncher = SoundBoard.newSound("sprocketlauncher");
+sprpg = SoundBoard.newSound("sprpg");
+spseekerlauncher = SoundBoard.newSound("spseekerlauncher");
+spshotgun = SoundBoard.newSound("spshotgun");
+spshotgunrockets = SoundBoard.newSound("spshotgunrockets");
+sptimerift = SoundBoard.newSound("sptimerift");
+sptridamage = SoundBoard.newSound("sptridamage");
+sboom = SoundBoard.newSound("sboom");
+ssmallboom = SoundBoard.newSound("sboom");
+ssmallboom.setVolume(50);
+sheliboom = SoundBoard.newSound("sheliboom");
+sbigboom = SoundBoard.newSound("sbigboom");
+sflame= SoundBoard.newSound("sflame");
+sgrapple= SoundBoard.newSound("sgrapple");
+sgrenade= SoundBoard.newSound("sgrenade");
+shurt = SoundBoard.newSound("shurt");
+sgun= SoundBoard.newSound("sgun");
+srailgun= SoundBoard.newSound("srailgun");
+srocket= SoundBoard.newSound("srocket");
+sshotgun= SoundBoard.newSound("sshotgun");
+shjump= SoundBoard.newSound("shjump");
+smetal0= SoundBoard.newSound("smetal0");
+smetal1= SoundBoard.newSound("smetal1");
+smetal2= SoundBoard.newSound("smetal2");
+smetal3= SoundBoard.newSound("smetal3");
+shit0= SoundBoard.newSound("smetal0");
+shit0.setVolume(75);
+shit1= SoundBoard.newSound("smetal1");
+shit1.setVolume(75);
+shit2= SoundBoard.newSound("smetal2");
+shit2.setVolume(75);
+shit3= SoundBoard.newSound("smetal3");
+shit3.setVolume(75);
+sheli = SoundBoard.newSound("sheli");
+smusic = SoundBoard.newSound("smusic");
+leftkeym
+$	
+$	
+	rightKeyM
+H>
+jumpKeyM
+duckKeyM
+lH
+switchKeyM
+	boostKeyM
+bullettimeKeyM
+	pauseKeyM
+on(release){
+	suicideKeyM.gotoAndStop(200);
+	Key.addListener(this);
+	onKeyDown = function(){
+		suicideKey = Key.getCode();
+		so.data.suicideKey = suicideKey;
+		suicideKeyM.gotoAndStop(suicideKey);
+		onKeyDown = null;
+	}
+suicideKeyM
+on(release){
+	soundKeyM.gotoAndStop(200);
+	Key.addListener(this);
+	onKeyDown = function(){
+		soundKey = Key.getCode();
+		so.data.soundKey = soundKey;
+		soundKeyM.gotoAndStop(soundKey);
+		onKeyDown = null;
+	}
+	soundKeyM
+G!
+jumpkeym.gotoAndStop(jumpKey);
+leftkeym.gotoAndStop(leftKey);
+rightkeym.gotoAndStop(rightKey);
+//speedkeym.gotoAndStop(speedKey);
+duckkeym.gotoAndStop(duckKey);
+boostkeym.gotoAndStop(boostKey);
+bullettimekeym.gotoAndStop(bullettimeKey);
+switchkeym.gotoAndStop(switchKey);
+pauseKeyM.gotoAndStop(pauseKey);
+suicideKeyM.gotoAndStop(suicideKey);
+soundKeyM.gotoAndStop(soundKey);
+if(sounds){
+sdisplay = "On";	
+} else {
+sdisplay = "Off";		
+on(release){
+	counter = so.data.counter = 1;
+	games = so.data.games = 0
+	hs = so.data.highscore = 0
+	ts = so.data.totalscore = 0;
+	hssent = so.data.highscoresent = 0
+	tshots = so.data.totalshots = 0;
+	thits = so.data.totalhits = 0;
+	ttime = so.data.totaltime = 0;
+	thelis = so.data.totalhelis = 0;
+	bhelis = so.data.besthelis = 0;
+	so.data.tweapon = new Array();
+	besttime = so.data.besttime = 0;
+	worsttime = so.data.worsttime = Number.POSITIVE_INFINITY;
+	thjumps = so.data.totalhjumps = 0;
+	tbtime = so.data.totalbtime = 0;
+	//on(release){
+			var temp = attachMovie("stats","stats",32);
+			temp.gotoAndStop(2)
+			temp._x = 65	
+			temp._y = 24
+			
+			temp.highscore = Math.floor(hs)*100;
+			temp.counter = counter
+			temp.games = games;
+			temp.score = Math.floor(ts)*100;
+			temp.time = Math.floor(ttime/30) + " seconds";
+			
+						temp.bhelis = bhelis;
+			
+			if(besttime == 0){
+				temp.besttime = "None";
+			} else {
+				temp.besttime = Math.floor(besttime/30) + " seconds";
+			}
+			if(worsttime == Number.POSITIVE_INFINITY){
+				temp.worsttime = "None";
+			} else {
+				temp.worsttime = Math.floor(worsttime/30) + " seconds";
+			}
+			temp.shots = tshots
+			temp.hits = thits;
+			if(tshots > 0){
+				temp.accuracy = Math.floor((thits/tshots)*100) + "%"
+			} else {
+				temp.accuracy = "0%";
+			}
+				
+			var maxi = 0;
+			var maxs = Number.NEGATIVE_INFINITY
+			for(var i = 1;i < so.data.tweapon.length;i++){
+				if(so.data.tweapon[i] > maxs){
+					maxs = so.data.tweapon[i]
+					maxi = i;
+				}
+			}
+			
+			if(maxs <= 0){
+				maxi = 0;	
+			}
+			if(so.data.tweapon[maxi] != 0 && so.data.tweapon[maxi] != undefined){
+				temp.weapon = guns[maxi].name;
+			} else {
+				temp.weapon = "None";
+			}
+				
+				
+			temp.helis = thelis;
+			
+			temp.hjumps = thjumps;
+			temp.btime = Math.floor(tbtime/30)+ " seconds";
+			
+			temp.label = "Click for main menu";
+			
+			temp.onRelease = function(){
+				this.removeMovieClip("");
+				gotoAndStop("menu");
+			}
