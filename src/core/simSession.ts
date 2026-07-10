@@ -47,6 +47,12 @@ import {
   type PowerupPickup,
 } from '../combat/powerupDrop';
 import {
+  playerTimeStepForPowerup,
+  stepPlayerPowerup,
+  syncPredatorWeapon,
+  weaponDamageMultiplier,
+} from '../combat/powerupEffects';
+import {
   addDamageScore,
   createScoreState,
   type ScoreState,
@@ -78,7 +84,8 @@ export const DEBUG_BOX_SPAWN = { x: 200, y: 200 } as const;
  * counters, original level map, player, bullet pool, weapon inventory (#14),
  * helicopter combat (#12/#13), enemy return fire + player health (#18),
  * replacement spawn treadmill + difficulty ramp (#19), parachuting powerup
- * drops (#21), manual bullet-time meter (#42), and the debug box.
+ * drops (#21), timed state powerup effects (#22), manual bullet-time meter
+ * (#42), and the debug box.
  * Lives outside Phaser so scene restarts and the update loop are
  * unit-testable (Phaser reuses the scene instance; only create() re-runs).
  *
@@ -150,8 +157,13 @@ export class SimSession {
   /** Active parachuting crates (#21). */
   powerups: PowerupPickup[] = [];
 
-  /** Timed state powerup slot — effects wired in #22. */
+  /** Timed state powerup slot — effects (#22). */
   playerPowerup: PlayerPowerupState = createPlayerPowerupState();
+
+  /**
+   * PredatorMode flicker counter (Flash `pred++`). Scene reads it for alpha.
+   */
+  predatorFlicker = 0;
 
   /**
    * Held-fire intent (Flash `mouseD`): scene sets from pointer.isDown each
@@ -214,6 +226,7 @@ export class SimSession {
     this.powerupDrop = createPowerupDropState();
     this.powerups = [];
     this.playerPowerup = createPlayerPowerupState();
+    this.predatorFlicker = 0;
     this.debugBox.dragging = false;
     this.debugBox.placeAt(DEBUG_BOX_SPAWN.x, DEBUG_BOX_SPAWN.y);
   }
@@ -253,6 +266,7 @@ export class SimSession {
     const { muzzle, gunAim } = this.player;
     const weapon = this.weapon;
     const def = getActiveWeaponDef(this.inventory);
+    const damageMult = weaponDamageMultiplier(this.playerPowerup.powerupOn);
     const spawns = planWeaponFire(
       weapon.type,
       muzzle.x,
@@ -270,7 +284,7 @@ export class SimSession {
         spawn.y,
         spawn.rotationDeg,
         spawn.speed,
-        spawn.damage,
+        spawn.damage * damageMult,
         spawn.maxLifetime ?? BULLET.maxLifetimeFrames,
         spawn.behavior,
       );
@@ -293,10 +307,23 @@ export class SimSession {
     });
     this.timeScale.setTimeStep(nextStep);
 
+    // PredatorMode weapon lock while active (#22). Expiry restore runs after
+    // the timer tick at the end of this frame.
+    const powerupAtStart = this.playerPowerup.powerupOn;
+    syncPredatorWeapon(this.inventory, powerupAtStart);
+    if (powerupAtStart === POWERUP.PredatorMode) {
+      this.predatorFlicker += 1;
+    }
+
     // Dead players stop moving / firing; helis still update so the scene reads.
+    // TimeRift: player steps at full speed while the world stays slowed (#22).
     // Manual bullet-time slows the player with the world (no TimeRift override).
     if (this.playerHealth.alive) {
-      this.player.step(this.map, this.timeScale.timeStep);
+      const playerStep = playerTimeStepForPowerup(
+        this.timeScale.timeStep,
+        this.playerPowerup.powerupOn,
+      );
+      this.player.step(this.map, playerStep, this.playerPowerup.powerupOn);
       const def = getActiveWeaponDef(this.inventory);
       if (stepWeaponFire(this.weapon, this.fireHeld, def)) {
         this.tryFire();
@@ -309,6 +336,7 @@ export class SimSession {
     const playerBody = this.player.body;
     const playerCenterX = playerBody.x + playerBody.w / 2;
     const playerCenterY = playerBody.y + playerBody.h / 2;
+    const predatorMode = this.playerPowerup.powerupOn === POWERUP.PredatorMode;
 
     for (let i = 0; i < this.helicopters.length; i += 1) {
       const heli = this.helicopters[i]!;
@@ -331,6 +359,7 @@ export class SimSession {
           this.spawnRng,
           moved,
           this.heliSpawn.level,
+          predatorMode,
         );
       }
     }
@@ -384,6 +413,8 @@ export class SimSession {
       this.enemyBulletCullBounds,
       this.timeScale.timeStep,
       this.map,
+      undefined,
+      this.playerPowerup.powerupOn,
     );
     syncPlayerLastHealth(this.playerHealth);
 
@@ -397,6 +428,20 @@ export class SimSession {
         this.playerPowerup,
         this.spawnRng,
       );
+    }
+
+    // Flash `powerupTime--` at end of heroAction move frame; clear on 0 (#22).
+    // Skip the tick on the collection frame so a fresh pickup gets a full
+    // POWERUP_FRAMES of effect.
+    if (powerupAtStart !== 0) {
+      const powerupTick = stepPlayerPowerup(this.playerPowerup);
+      if (powerupTick.expired !== 0) {
+        syncPredatorWeapon(
+          this.inventory,
+          this.playerPowerup.powerupOn,
+          powerupTick.expired,
+        );
+      }
     }
 
     for (let i = this.explosions.length - 1; i >= 0; i -= 1) {

@@ -13,6 +13,7 @@ import {
   getWeaponDef,
   type WeaponDef,
 } from '../config/weapons';
+import { canSwitchWeapons } from './powerupEffects';
 import { createMachineGunState, hasAmmo, type WeaponState } from './weapon';
 
 /** Player arsenal — Flash `this.guns` + `this.cgun`. */
@@ -95,8 +96,16 @@ export function isWeaponOwned(
 /**
  * Instant select by arsenal index. Succeeds only when the slot has ammo.
  * Does not modify any slot's reloadTime / bullets / shots.
+ * Blocked during PredatorMode (#22 — Flash `powerupon != 3`).
  */
-export function selectWeapon(inv: WeaponInventory, index: number): boolean {
+export function selectWeapon(
+  inv: WeaponInventory,
+  index: number,
+  powerupOn: number = 0,
+): boolean {
+  if (!canSwitchWeapons(powerupOn)) {
+    return false;
+  }
   if (index < 0 || index >= WEAPON_COUNT) {
     return false;
   }
@@ -126,33 +135,48 @@ export function weaponIndexFromDigitKey(digit: number): number | null {
   return digit - 1;
 }
 
-/** Select via digit key 0–9. Instant; no-op when unowned. */
+/** Select via digit key 0–9. Instant; no-op when unowned / PredatorMode. */
 export function selectWeaponByDigitKey(
   inv: WeaponInventory,
   digit: number,
+  powerupOn: number = 0,
 ): boolean {
   const index = weaponIndexFromDigitKey(digit);
   if (index === null) {
     return false;
   }
-  return selectWeapon(inv, index);
+  return selectWeapon(inv, index, powerupOn);
 }
 
 /**
  * Cycle to the next owned weapon (Flash switchKey forward).
  * Visits indices `0 .. PREDATOR_WEAPON_INDEX-1` only; skips empty slots.
  * Instant — preserves each slot's reload counter.
+ * Blocked during PredatorMode (#22).
  */
-export function nextWeapon(inv: WeaponInventory): boolean {
-  return cycleWeapon(inv, 1);
+export function nextWeapon(
+  inv: WeaponInventory,
+  powerupOn: number = 0,
+): boolean {
+  return cycleWeapon(inv, 1, powerupOn);
 }
 
 /** Cycle to the previous owned weapon (reverse of Flash switch). */
-export function prevWeapon(inv: WeaponInventory): boolean {
-  return cycleWeapon(inv, -1);
+export function prevWeapon(
+  inv: WeaponInventory,
+  powerupOn: number = 0,
+): boolean {
+  return cycleWeapon(inv, -1, powerupOn);
 }
 
-function cycleWeapon(inv: WeaponInventory, direction: 1 | -1): boolean {
+function cycleWeapon(
+  inv: WeaponInventory,
+  direction: 1 | -1,
+  powerupOn: number = 0,
+): boolean {
+  if (!canSwitchWeapons(powerupOn)) {
+    return false;
+  }
   // Flash: cgun++ then wrap at guns.length-1 → 0 (predator never selected).
   const selectable = PREDATOR_WEAPON_INDEX;
   const start = ((inv.activeIndex % selectable) + selectable) % selectable;

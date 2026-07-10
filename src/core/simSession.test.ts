@@ -670,5 +670,22 @@ describe('SimSession', () => {
     session.update(1000 / 30);
     expect(session.bulletTime.meter).toBe(meterBefore);
     expect(session.timeScale.timeStep).toBe(0.2);
+
+    // Player overrides back to timeStep 1 (#22) — full-speed walk in a slow world.
+    for (let i = 0; i < 40; i += 1) {
+      session.update(1000 / 30);
+    }
+    expect(session.player.body.onGround).toBe(true);
+    session.player.body.vx = PLAYER.walkCap;
+    session.player.input = {
+      left: false,
+      right: true,
+      jump: false,
+      duck: false,
+      boost: false,
+    };
+    const x0 = session.player.body.x;
+    session.update(1000 / 30);
+    expect(session.player.body.x - x0).toBeCloseTo(PLAYER.walkCap * 1, 10);
   });
 });

@@ -7,6 +7,7 @@ import { ATLAS_KEY } from '../config/art';
 import { AUDIO_TEST_SFX_ID } from '../config/audio';
 import { formatScoreHud } from '../combat/score';
 import { formatHealthHud } from '../combat/playerHealth';
+import { playerPowerupAlpha } from '../combat/powerupEffects';
 import {
   getActiveWeaponDef,
   nextWeapon,
@@ -19,6 +20,7 @@ import {
   GUN,
   HELI_LOOK_TINT,
   PLAYER,
+  POWERUP,
   POWERUP_DROP,
   SIM_HZ,
   WORLD,
@@ -185,14 +187,18 @@ export class GameScene extends Phaser.Scene {
     for (let digit = 0; digit <= 9; digit += 1) {
       const key = digitKeyNames[digit]!;
       this.input.keyboard?.on(`keydown-${key}`, () => {
-        selectWeaponByDigitKey(this.session.inventory, digit);
+        selectWeaponByDigitKey(
+          this.session.inventory,
+          digit,
+          this.session.playerPowerup.powerupOn,
+        );
       });
     }
     this.input.keyboard?.on('keydown-Q', () => {
-      prevWeapon(this.session.inventory);
+      prevWeapon(this.session.inventory, this.session.playerPowerup.powerupOn);
     });
     this.input.keyboard?.on('keydown-E', () => {
-      nextWeapon(this.session.inventory);
+      nextWeapon(this.session.inventory, this.session.playerPowerup.powerupOn);
     });
     this.input.keyboard?.on('keydown-ESC', () => {
       this.scene.start(SCENE_KEYS.Boot);
@@ -568,7 +574,15 @@ export class GameScene extends Phaser.Scene {
     this.deathText.setVisible(!health.alive);
 
     // Brief red tint on the player hitbox while hurt-flashing / i-framed.
-    if (health.iFramesRemaining > 0 && health.alive) {
+    // PredatorMode forces near-invisible alpha (#22).
+    const powerupAlpha = playerPowerupAlpha(
+      this.session.playerPowerup.powerupOn,
+      this.session.predatorFlicker,
+    );
+    if (this.session.playerPowerup.powerupOn === POWERUP.PredatorMode) {
+      this.playerHitbox.setStrokeStyle(1, PLAYER_HITBOX_STROKE, 0.15);
+      this.playerSprite.setAlpha(powerupAlpha);
+    } else if (health.iFramesRemaining > 0 && health.alive) {
       this.playerHitbox.setStrokeStyle(2, 0xe63946, 1);
       this.playerSprite.setAlpha(
         0.55 + 0.45 * Math.sin(health.iFramesRemaining),

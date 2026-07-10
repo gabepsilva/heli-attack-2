@@ -398,6 +398,10 @@ export function stepHelicopter(
  * Flash heli gun aim toward the player:
  * `gunrotation = aim(heli→player) - heli._rotation`, then ease with
  * `dif/Math.max(1,10-level)` (level 0 → divisor 10).
+ *
+ * PredatorMode (#22): aim at a random X across a screen-width window centered
+ * on the player (Flash `playerX - spw/2 + random(spw)`), so enemies cannot
+ * track. Returns the target gun angle (pre-ease) so fire can snap to it.
  */
 export function stepHeliGunAim(
   heli: Helicopter,
@@ -405,15 +409,23 @@ export function stepHeliGunAim(
   playerCenterY: number,
   timeStep: number,
   turnDivisor: number = HELI.gunTurnDivisor,
-): void {
+  predatorMode: boolean = false,
+  rng?: SpawnRng,
+  screenWidth: number = 1920,
+): number {
   if (!heli.active) {
-    return;
+    return heli.gunRotationDeg;
+  }
+  let aimX = playerCenterX;
+  if (predatorMode && rng) {
+    // Flash: player._x + width/2 - spw/2 + random(spw).
+    aimX = playerCenterX - screenWidth / 2 + randomInt(rng, screenWidth);
   }
   const target =
-    aimAngleDeg(heli.x, heli.y, playerCenterX, playerCenterY) -
-    heli.rotationDeg;
+    aimAngleDeg(heli.x, heli.y, aimX, playerCenterY) - heli.rotationDeg;
   const dif = shortestAngleDelta(heli.gunRotationDeg, target);
   heli.gunRotationDeg += (dif / turnDivisor) * timeStep;
+  return target;
 }
 
 /**
@@ -485,6 +497,7 @@ export function tryHeliFire(
  * true on discrete move frames (Flash `move` after `stepc`).
  * `level` drives Flash `Math.max(10,16-level)` fire cadence and
  * `Math.max(1,10-level)` gun turn (#19 difficulty ramp).
+ * `predatorMode` randomizes aim so enemies cannot track the invisible player.
  */
 export function stepHeliCombat(
   heli: Helicopter,
@@ -495,6 +508,7 @@ export function stepHeliCombat(
   rng: SpawnRng,
   movedThisTick = true,
   level = 0,
+  predatorMode = false,
 ): HeliFireShot | null {
   const turnDivisor = Math.max(
     HELI.gunTurnDivisorMin,
@@ -504,7 +518,23 @@ export function stepHeliCombat(
     HELI.fireIntervalMin,
     HELI.fireIntervalFrames - Math.max(0, level),
   );
-  stepHeliGunAim(heli, playerCenterX, playerCenterY, timeStep, turnDivisor);
+  const aimTarget = stepHeliGunAim(
+    heli,
+    playerCenterX,
+    playerCenterY,
+    timeStep,
+    turnDivisor,
+    predatorMode,
+    rng,
+  );
+  // Flash: under PredatorMode, snap gun._rotation = gunrotation before spawn.
+  const willFire =
+    heli.active &&
+    movedThisTick &&
+    (heli.shootCounter + 1) % fireInterval === 1;
+  if (predatorMode && willFire) {
+    heli.gunRotationDeg = aimTarget;
+  }
   const shot = tryHeliFire(heli, movedThisTick, rng, fireInterval);
   if (!shot) {
     return null;

@@ -4,6 +4,7 @@ import {
   type GunAimState,
   type Vec2,
 } from '../combat/gunAim';
+import { applyJetpackThrust, isJetpackActive } from '../combat/powerupEffects';
 import { GUN, PLAYER, WORLD } from '../config/constants';
 import { createAabbBody, type AabbBody } from '../world/aabbBody';
 import { resolveAabbAgainstTiles } from '../world/tileResolve';
@@ -113,10 +114,13 @@ export class Player {
 
   /**
    * One sim tick — order matches `heroAction`:
-   * duck hitbox → walk → airborne mark → boost → jump → gravity → AABB
+   * duck hitbox → walk → airborne mark → boost → jump/jetpack → gravity → AABB
    * resolve → land / ceiling jump flags → gun aim.
+   *
+   * {@link powerupOn} drives Jetpack (#22): hold jump replaces the normal
+   * variable-height jump with `yspeed = max(yspeed-2, -32)`.
    */
-  step(map: TileMap, timeStep: number): void {
+  step(map: TileMap, timeStep: number, powerupOn: number = 0): void {
     this.ducking = applyDuckHitbox(this.body, this.input.duck, this.ducking);
 
     this.body.vx = applyHorizontalWalk(this.body.vx, {
@@ -136,10 +140,18 @@ export class Player {
       { boost: this.input.boost },
     );
 
-    this.body.vy = applyJumpInput(this.body.vy, this.jumpState, {
-      jump: this.input.jump,
-      duck: this.input.duck,
-    });
+    if (isJetpackActive(powerupOn, this.input.jump)) {
+      // Flash: jump = jump2 = hjump = 1; yspeed = max(yspeed-2, -32).
+      this.jumpState.jump = true;
+      this.jumpState.jump2 = true;
+      this.boostState.hjump = true;
+      this.body.vy = applyJetpackThrust(this.body.vy);
+    } else {
+      this.body.vy = applyJumpInput(this.body.vy, this.jumpState, {
+        jump: this.input.jump,
+        duck: this.input.duck,
+      });
+    }
 
     // Gravity after jump (original: clamp → yspeed++). Terminal clamp lives
     // in the resolver so tunneling stays impossible.
