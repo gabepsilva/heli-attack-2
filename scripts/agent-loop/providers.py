@@ -48,6 +48,9 @@ class RunSpec:
 	format_stream: bool
 	claude_stream: bool
 	grok_stream: bool = False
+	# When set (e.g. grok `-p` / `--single`), the prompt is the flag's value,
+	# not a trailing positional — so resume flags can still be appended first.
+	prompt_flag: str | None = None
 
 
 class ConfigError(ValueError):
@@ -241,10 +244,10 @@ def claude_agent_cmd(*, model: str) -> list[str]:
 
 
 def grok_agent_cmd(*, model: str) -> list[str]:
+	# Prompt is attached later via RunSpec.prompt_flag ("-p" / --single <PROMPT>).
 	return [
 		"grok",
-		"-p",
-		"--yolo",
+		"--always-approve",
 		"--output-format",
 		"streaming-json",
 		"--cwd",
@@ -278,5 +281,6 @@ def build_run_spec(candidate: Candidate) -> RunSpec:
 			format_stream=False,
 			claude_stream=False,
 			grok_stream=True,
+			prompt_flag="-p",
 		)
 	raise ConfigError(f"no adapter for cli {candidate.cli!r}")

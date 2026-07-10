@@ -216,6 +216,7 @@ def run_agent(
 	str_prompt: str,
 	*,
 	prompt_via_stdin: bool = False,
+	prompt_flag: str | None = None,
 	format_stream: bool = False,
 	claude_stream: bool = False,
 	grok_stream: bool = False,
@@ -230,7 +231,12 @@ def run_agent(
 	print(str_prompt)
 	print("--------------------------------")
 	print("")
-	argv = cmd if prompt_via_stdin else [*cmd, str_prompt]
+	if prompt_via_stdin:
+		argv = cmd
+	elif prompt_flag:
+		argv = [*cmd, prompt_flag, str_prompt]
+	else:
+		argv = [*cmd, str_prompt]
 	session_id: str | None = None
 	try:
 		if claude_stream:
@@ -308,6 +314,7 @@ def run_dev_agent(*, full_prompt: str, resume_prompt: str | None = None) -> None
 		banner,
 		prompt,
 		prompt_via_stdin=spec.prompt_via_stdin,
+		prompt_flag=spec.prompt_flag,
 		format_stream=spec.format_stream,
 		claude_stream=spec.claude_stream,
 		grok_stream=spec.grok_stream,
@@ -348,6 +355,7 @@ def run_lead_agent(*, full_prompt: str, resume_prompt: str | None = None) -> Non
 		banner,
 		prompt,
 		prompt_via_stdin=spec.prompt_via_stdin,
+		prompt_flag=spec.prompt_flag,
 		format_stream=spec.format_stream,
 		claude_stream=spec.claude_stream,
 		grok_stream=spec.grok_stream,
