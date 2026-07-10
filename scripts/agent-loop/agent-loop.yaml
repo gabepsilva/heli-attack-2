@@ -1,0 +1,25 @@
+# Preference order for each role. First candidate whose gate passes wins.
+# Omit `gate` for an always-eligible fallback.
+
+lead:
+  - cli: claude
+    model: opus
+    gate: claude_usage
+    until_usage_pct: 90
+
+  - cli: cursor
+    model: claude-opus-4-8-thinking-high
+    gate: cursor_api_usage
+    until_api_usage_pct: 90
+
+  - cli: grok
+    model: grok-4.5
+    gate: grok_usage
+    until_usage_pct: 90
+
+  - cli: cursor
+    model: auto
+
+dev:
+  - cli: cursor
+    model: auto

@@ -1,16 +1,10 @@
-"""Per-issue agent session IDs for cursor-agent / claude resume."""
+"""Per-issue agent session IDs for cursor-agent / claude / grok resume."""
 
 from __future__ import annotations
 
-from enum import Enum
 from pathlib import Path
 
 import const as const
-
-
-class LeadBackend(str, Enum):
-	CURSOR = "cursor"
-	CLAUDE = "claude"
 
 
 def _read(path: Path) -> str | None:
@@ -40,31 +34,29 @@ def lead_session_id() -> str | None:
 	return _read(const.LEAD_SESSION_FILE)
 
 
-def lead_backend() -> LeadBackend | None:
-	raw = _read(const.LEAD_BACKEND_FILE)
-	if raw is None:
-		return None
-	try:
-		return LeadBackend(raw)
-	except ValueError:
-		return None
+def lead_profile() -> str | None:
+	"""Stored as ``cli:model`` (see providers.Candidate.profile_id)."""
+	return _read(const.LEAD_PROFILE_FILE)
 
 
-def set_lead_session(session_id: str, backend: LeadBackend) -> None:
+def set_lead_session(session_id: str, profile_id: str) -> None:
 	_write(const.LEAD_SESSION_FILE, session_id)
-	_write(const.LEAD_BACKEND_FILE, backend.value)
+	_write(const.LEAD_PROFILE_FILE, profile_id)
 
 
 def clear_lead_session() -> None:
 	_unlink(const.LEAD_SESSION_FILE)
-	_unlink(const.LEAD_BACKEND_FILE)
+	_unlink(const.LEAD_PROFILE_FILE)
+	# Legacy filename from before profile_id tracking.
+	_unlink(const.LOOP_CONTROLS / "lead_backend.txt")
 
 
 def clear_issue_sessions() -> None:
 	for path in (
 		const.DEV_SESSION_FILE,
 		const.LEAD_SESSION_FILE,
-		const.LEAD_BACKEND_FILE,
+		const.LEAD_PROFILE_FILE,
+		const.LOOP_CONTROLS / "lead_backend.txt",
 	):
 		_unlink(path)
 
@@ -74,4 +66,8 @@ def cursor_resume_args(session_id: str) -> list[str]:
 
 
 def claude_resume_args(session_id: str) -> list[str]:
+	return ["--resume", session_id]
+
+
+def grok_resume_args(session_id: str) -> list[str]:
 	return ["--resume", session_id]

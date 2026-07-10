@@ -1,4 +1,4 @@
-"""Pretty-print agent stream-json NDJSON to the console (cursor-agent, claude)."""
+"""Pretty-print agent stream-json NDJSON to the console (cursor-agent, claude, grok)."""
 
 from __future__ import annotations
 
@@ -46,7 +46,7 @@ class StreamRunResult:
 
 
 def _capture_session_id(state: _State, data: dict) -> None:
-	sid = data.get("session_id")
+	sid = data.get("session_id") or data.get("sessionId")
 	if sid:
 		state.session_id = sid
 
@@ -514,6 +514,117 @@ def _claude_tool_result_summary(block: dict, tool_use_result: object) -> str:
 	return ""
 
 
+class GrokStreamJsonFormatter:
+	"""Chat-style live view of grok -p --output-format streaming-json events."""
+
+	def __init__(
+		self,
+		output: TextIO | None = None,
+		*,
+		use_colors: bool | None = None,
+		resuming: bool = False,
+		resume_session_id: str | None = None,
+	):
+		self.out = output or sys.stdout
+		if use_colors is None:
+			use_colors = bool(getattr(self.out, "isatty", lambda: False)())
+		self.use_colors = use_colors
+		self.resuming = resuming
+		self.resume_session_id = resume_session_id
+		self.state = _State()
+		self._announced_session = False
+
+	def _paint(self, text: str, *codes: str) -> str:
+		if not self.use_colors or not codes:
+			return text
+		return f"{''.join(codes)}{text}{_C.RESET}"
+
+	def _write(self, text: str) -> None:
+		self.out.write(text)
+		self.out.flush()
+
+	def _ensure_nl(self) -> None:
+		if self.state.needs_newline:
+			self._write("\n")
+			self.state.needs_newline = False
+
+	def _switch(self, section: str) -> None:
+		if self.state.section == section:
+			return
+		self._ensure_nl()
+		if self.state.section is not None:
+			self._write("\n")
+		self.state.section = section
+
+	def _announce_session(self) -> None:
+		if self._announced_session:
+			return
+		self._announced_session = True
+		session_label = _session_init_suffix(
+			resuming=self.resuming,
+			resume_session_id=self.resume_session_id,
+			session_id=self.state.session_id if self.resuming else None,
+		)
+		# Avoid "new session ?…" — id arrives only on the final end event.
+		if not self.resuming and not self.state.session_id:
+			session_label = "new session…"
+		self._switch("system")
+		self._write(
+			self._paint("model grok-4.5", _C.DIM, _C.CYAN)
+			+ self._paint(f"  {session_label}", _C.DIM, _C.GRAY)
+			+ "\n"
+		)
+		self.state.section = None
+
+	def process_line(self, line: str) -> None:
+		line = _ANSI_RE.sub("", line).strip()
+		if not line:
+			return
+		try:
+			data = json.loads(line)
+		except json.JSONDecodeError:
+			self._ensure_nl()
+			self._write(line + "\n")
+			self.state.section = None
+			return
+
+		kind = data.get("type")
+		if kind == "thought":
+			text = data.get("data") or ""
+			if not text:
+				return
+			self._announce_session()
+			self._switch("thinking")
+			self._write(self._paint(text, _C.DIM, _C.GRAY))
+			self.state.needs_newline = True
+		elif kind == "text":
+			text = data.get("data") or ""
+			if not text:
+				return
+			self._announce_session()
+			self._switch("assistant")
+			self._write(text)
+			self.state.needs_newline = True
+		elif kind == "end":
+			_capture_session_id(self.state, data)
+			self._announce_session()
+			self._ensure_nl()
+			reason = data.get("stopReason") or "done"
+			self._write("\n" + self._paint(f"done ({reason})", _C.DIM, _C.GREEN) + "\n")
+			self.state.section = None
+		elif kind == "error":
+			msg = data.get("message") or json.dumps(data)
+			self._ensure_nl()
+			self._write(self._paint(f"error: {msg}", _C.BOLD, _C.YELLOW) + "\n")
+			self.state.section = None
+
+	def finalize(self) -> None:
+		self._ensure_nl()
+
+	def session_id(self) -> str | None:
+		return self.state.session_id
+
+
 def pipe_cursor_stream(proc_stdout: TextIO) -> None:
 	"""Consume NDJSON lines from cursor-agent stdout and print live."""
 	fmt = StreamJsonFormatter()
@@ -625,6 +736,54 @@ def run_claude_live(
 	proc.stdin.close()
 
 	fmt = ClaudeStreamJsonFormatter(
+		resuming=resuming,
+		resume_session_id=resume_session_id,
+	)
+	deadline = time.monotonic() + timeout
+	assert proc.stdout is not None
+
+	while True:
+		remaining = deadline - time.monotonic()
+		if remaining <= 0:
+			proc.kill()
+			proc.wait()
+			raise subprocess.TimeoutExpired(argv, timeout)
+
+		if proc.poll() is not None:
+			for line in proc.stdout:
+				fmt.process_line(line)
+			break
+
+		readable, _, _ = select.select([proc.stdout], [], [], min(0.5, remaining))
+		if proc.stdout in readable:
+			line = proc.stdout.readline()
+			if line:
+				fmt.process_line(line)
+
+	fmt.finalize()
+	return StreamRunResult(proc.wait(), fmt.session_id())
+
+
+def run_grok_live(
+	argv: list[str],
+	*,
+	cwd: str | Path,
+	timeout: float,
+	resuming: bool = False,
+	resume_session_id: str | None = None,
+) -> StreamRunResult:
+	"""Run grok -p with streaming-json on a pipe and print live."""
+	proc = subprocess.Popen(
+		argv,
+		stdin=subprocess.DEVNULL,
+		stdout=subprocess.PIPE,
+		stderr=None,
+		cwd=cwd,
+		text=True,
+		bufsize=1,
+	)
+
+	fmt = GrokStreamJsonFormatter(
 		resuming=resuming,
 		resume_session_id=resume_session_id,
 	)

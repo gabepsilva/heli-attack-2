@@ -10,8 +10,10 @@ import agent_sessions
 import claude_usage
 import const as const
 import cursor_usage
+import grok_usage
 import issue_timing
 import prompt_strings as prompts
+import providers
 import stream_format
 
 PAUSE = False
@@ -216,6 +218,7 @@ def run_agent(
 	prompt_via_stdin: bool = False,
 	format_stream: bool = False,
 	claude_stream: bool = False,
+	grok_stream: bool = False,
 	resuming: bool = False,
 	resume_session_id: str | None = None,
 ) -> str | None:
@@ -234,6 +237,17 @@ def run_agent(
 			result = stream_format.run_claude_live(
 				argv,
 				stdin_text=str_prompt,
+				cwd=const.REPO_ROOT,
+				timeout=const.AGENT_TIMEOUT,
+				resuming=resuming,
+				resume_session_id=resume_session_id,
+			)
+			session_id = result.session_id
+			if result.returncode != 0:
+				raise subprocess.CalledProcessError(result.returncode, argv)
+		elif grok_stream:
+			result = stream_format.run_grok_live(
+				argv,
 				cwd=const.REPO_ROOT,
 				timeout=const.AGENT_TIMEOUT,
 				resuming=resuming,
@@ -270,38 +284,33 @@ def run_agent(
 	return session_id
 
 
-def _cursor_agent_cmd(*, model: str) -> list[str]:
-	return [
-		"cursor-agent",
-		"-p",
-		"--yolo",
-		"--output-format",
-		"stream-json",
-		"--stream-partial-output",
-		"--workspace",
-		str(const.REPO_ROOT),
-		"--model",
-		model,
-	]
-
-
 def run_dev_agent(*, full_prompt: str, resume_prompt: str | None = None) -> None:
-	cmd = _cursor_agent_cmd(model="auto")
+	candidate = providers.select_candidate("dev")
+	spec = providers.build_run_spec(candidate)
+	cmd = list(spec.cmd)
 	sid = agent_sessions.dev_session_id()
 	resuming = sid is not None and resume_prompt is not None
 	if resuming:
-		cmd.extend(agent_sessions.cursor_resume_args(sid))
+		if candidate.cli == "cursor":
+			cmd.extend(agent_sessions.cursor_resume_args(sid))
+		elif candidate.cli == "claude":
+			cmd.extend(agent_sessions.claude_resume_args(sid))
+		elif candidate.cli == "grok":
+			cmd.extend(agent_sessions.grok_resume_args(sid))
 		prompt = resume_prompt
-		banner = "🖥️🖥️🖥️  dev agent (resume)"
+		banner = f"🖥️🖥️🖥️  dev agent ({candidate.label}, resume)"
 	else:
 		prompt = full_prompt
-		banner = "🖥️🖥️🖥️  dev agent (new session)"
+		banner = f"🖥️🖥️🖥️  dev agent ({candidate.label}, new session)"
 
 	session_id = run_agent(
 		cmd,
 		banner,
 		prompt,
-		format_stream=True,
+		prompt_via_stdin=spec.prompt_via_stdin,
+		format_stream=spec.format_stream,
+		claude_stream=spec.claude_stream,
+		grok_stream=spec.grok_stream,
 		resuming=resuming,
 		resume_session_id=sid if resuming else None,
 	)
@@ -310,69 +319,44 @@ def run_dev_agent(*, full_prompt: str, resume_prompt: str | None = None) -> None
 
 
 def run_lead_agent(*, full_prompt: str, resume_prompt: str | None = None) -> None:
-	use_cursor = claude_usage.should_fallback_to_cursor(const.CLAUDE_USAGE_FALLBACK_PCT)
-	backend = (
-		agent_sessions.LeadBackend.CURSOR
-		if use_cursor
-		else agent_sessions.LeadBackend.CLAUDE
-	)
+	candidate = providers.select_candidate("lead")
+	spec = providers.build_run_spec(candidate)
 
 	sid = agent_sessions.lead_session_id()
-	if sid and agent_sessions.lead_backend() != backend:
+	if sid and agent_sessions.lead_profile() != candidate.profile_id:
 		agent_sessions.clear_lead_session()
 		sid = None
 
 	resuming = sid is not None and resume_prompt is not None
 	prompt = resume_prompt if resuming else full_prompt
-
-	if use_cursor:
-		cmd = _cursor_agent_cmd(model=const.CURSOR_LEAD_MODEL)
-		if resuming:
+	cmd = list(spec.cmd)
+	if resuming:
+		if candidate.cli == "cursor":
 			cmd.extend(agent_sessions.cursor_resume_args(sid))
-		banner = (
-			"👨‍⚖️👨‍⚖️👨‍⚖️  lead agent (cursor opus, resume)"
-			if resuming
-			else "👨‍⚖️👨‍⚖️👨‍⚖️  lead agent (cursor opus, new session)"
-		)
-		session_id = run_agent(
-			cmd,
-			banner,
-			prompt,
-			format_stream=True,
-			resuming=resuming,
-			resume_session_id=sid if resuming else None,
-		)
-	else:
-		cmd = [
-			"claude",
-			"-p",
-			"--dangerously-skip-permissions",
-			"--model",
-			"opus",
-			"--output-format",
-			"stream-json",
-			"--include-partial-messages",
-			"--verbose",
-		]
-		if resuming:
+		elif candidate.cli == "claude":
 			cmd.extend(agent_sessions.claude_resume_args(sid))
-		banner = (
-			"👨‍⚖️👨‍⚖️👨‍⚖️  lead agent (resume)"
-			if resuming
-			else "👨‍⚖️👨‍⚖️👨‍⚖️  lead agent (new session)"
-		)
-		session_id = run_agent(
-			cmd,
-			banner,
-			prompt,
-			prompt_via_stdin=True,
-			claude_stream=True,
-			resuming=resuming,
-			resume_session_id=sid if resuming else None,
-		)
+		elif candidate.cli == "grok":
+			cmd.extend(agent_sessions.grok_resume_args(sid))
+
+	banner = (
+		f"👨‍⚖️👨‍⚖️👨‍⚖️  lead agent ({candidate.label}, resume)"
+		if resuming
+		else f"👨‍⚖️👨‍⚖️👨‍⚖️  lead agent ({candidate.label}, new session)"
+	)
+	session_id = run_agent(
+		cmd,
+		banner,
+		prompt,
+		prompt_via_stdin=spec.prompt_via_stdin,
+		format_stream=spec.format_stream,
+		claude_stream=spec.claude_stream,
+		grok_stream=spec.grok_stream,
+		resuming=resuming,
+		resume_session_id=sid if resuming else None,
+	)
 
 	if session_id:
-		agent_sessions.set_lead_session(session_id, backend)
+		agent_sessions.set_lead_session(session_id, candidate.profile_id)
 
 
 def merge_approved_pr(issue: str, pr: str) -> None:
@@ -524,6 +508,7 @@ def main() -> None:
 
 	claude_usage.print_claude_usage()
 	cursor_usage.print_cursor_usage()
+	grok_usage.print_grok_usage()
 	reset_loop_controls()
 	ensure_label()
 	if args.solve_issue is not None:

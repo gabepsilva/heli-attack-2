@@ -82,6 +82,27 @@ def _pct(value: float | int | None) -> str:
 	return f"{float(value):.1f}%"
 
 
+def _api_percent_used(data: dict) -> float | None:
+	plan = (data.get("individualUsage") or {}).get("plan") or {}
+	pct = plan.get("apiPercentUsed")
+	if pct is None:
+		return None
+	return float(pct)
+
+
+def api_usage_ok(threshold: float) -> bool:
+	"""True when Cursor API usage is below threshold (or unknown — stay eligible)."""
+	data = fetch_cursor_usage()
+	if data is None:
+		return True
+
+	pct = _api_percent_used(data)
+	if pct is not None and pct >= threshold:
+		print(f"Cursor API usage at {pct:g}% (>= {threshold:g}%) — not eligible")
+		return False
+	return True
+
+
 def print_cursor_usage() -> None:
 	data = fetch_cursor_usage()
 	if data is None:

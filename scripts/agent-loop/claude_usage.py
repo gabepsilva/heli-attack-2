@@ -52,18 +52,18 @@ def _window_utilization(data: dict, key: str) -> float | None:
 	return float(pct)
 
 
-def should_fallback_to_cursor(threshold: float) -> bool:
-	"""True when 5h session or 7d weekly utilization is at/above threshold."""
+def usage_ok(threshold: float) -> bool:
+	"""True when Claude usage is below threshold (or unknown — stay eligible)."""
 	data = fetch_claude_usage()
 	if data is None:
-		return False
+		return True
 
 	for key, label in (("five_hour", "5h session"), ("seven_day", "7d weekly")):
 		pct = _window_utilization(data, key)
 		if pct is not None and pct >= threshold:
-			print(f"Claude {label} at {pct:g}% (>= {threshold:g}%) — falling back to cursor-agent")
-			return True
-	return False
+			print(f"Claude {label} at {pct:g}% (>= {threshold:g}%) — not eligible")
+			return False
+	return True
 
 
 def print_claude_usage() -> None:
