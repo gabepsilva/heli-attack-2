@@ -8,8 +8,8 @@
  *   `random(100) % 32 == 0` ≈ 3–4% chance ({@link POWERUP_DROP}).
  *
  * Crates fall on parachutes and are collected on player AABB overlap.
- * Timed state *effects* are issue #22 — this module only rolls/stores
- * `powerupOn` / `powerupTime` on collect.
+ * Timed state *effects* live in {@link ./powerupEffects} (#22) — this module
+ * only rolls/stores `powerupOn` / `powerupTime` on collect.
  */
 
 import {
@@ -186,7 +186,7 @@ export function powerupOverlapsPlayer(
 
 /**
  * Apply Flash collection: health +20 cap 100, weapon ammo grant, or roll a
- * timed state id into {@link PlayerPowerupState} (effects → #22).
+ * timed state id into {@link PlayerPowerupState} (effects in #22).
  */
 export function applyPowerupCollect(
   pickup: PowerupPickup,

@@ -278,6 +278,21 @@ export const POWERUP = {
   Jetpack: 5,
 } as const;
 
+/**
+ * Timed state-powerup effect tunables (#22).
+ *
+ * Flash: TriDamage fires `guns[type].damage*3`; Jetpack hold-jump does
+ * `yspeed = Math.max(yspeed - 2, -32)`.
+ */
+export const POWERUP_EFFECTS = {
+  /** TriDamage weapon damage multiplier. */
+  triDamageMultiplier: 3,
+  /** Jetpack upward accel per discrete move frame (subtracted from yspeed). */
+  jetpackThrust: 2,
+  /** Jetpack upward speed floor (Flash −32, same as boost). */
+  jetpackMaxUpSpeed: -32,
+} as const;
+
 export const HEALTH_PICKUP = {
   amount: 20,
   cap: 100,

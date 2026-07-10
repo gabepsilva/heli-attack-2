@@ -13,6 +13,7 @@ import {
   PLAYER_DEFAULTS,
   POWERUP,
   POWERUP_DROP,
+  POWERUP_EFFECTS,
   POWERUP_FRAMES,
   SCORE,
   SIM_DT,
@@ -120,6 +121,11 @@ describe('config/constants (spec seed)', () => {
       PredatorMode: 3,
       TimeRift: 4,
       Jetpack: 5,
+    });
+    expect(POWERUP_EFFECTS).toEqual({
+      triDamageMultiplier: 3,
+      jetpackThrust: 2,
+      jetpackMaxUpSpeed: -32,
     });
     expect(HEALTH_PICKUP).toEqual({ amount: 20, cap: 100, firstThreshold: 15 });
     expect(POWERUP_DROP).toEqual({

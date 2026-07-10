@@ -15,6 +15,7 @@ import {
   isPlayerInvulnerable,
   type PlayerHealthState,
 } from './playerHealth';
+import { isPowerupInvulnerable } from './powerupEffects';
 import type { AabbBody } from '../world/aabbBody';
 import { getTile, TILE_EMPTY, type TileMap } from '../world/tileMap';
 
@@ -220,7 +221,8 @@ export function enemyBulletArenaCullBounds(
 
 /**
  * Advance enemy bullets, apply player damage on AABB hit, recycle on hit /
- * solid / cull. I-frames gate damage so stacked same-frame hits only apply once.
+ * solid / cull. I-frames and Invulnerability powerup (#22) gate damage so
+ * stacked same-frame hits / powerup frames only apply when vulnerable.
  */
 export function stepEnemyBulletsVsPlayer(
   pool: EnemyBulletPool,
@@ -230,6 +232,7 @@ export function stepEnemyBulletsVsPlayer(
   timeStep: number,
   map?: TileMap,
   onHit?: (event: EnemyBulletHitEvent) => void,
+  powerupOn: number = 0,
 ): void {
   for (let i = 0; i < pool.slots.length; i += 1) {
     const bullet = pool.slots[i]!;
@@ -256,7 +259,7 @@ export function stepEnemyBulletsVsPlayer(
     // powerup — here i-frames still consume the projectile).
     pool.release(bullet);
 
-    if (isPlayerInvulnerable(health)) {
+    if (isPlayerInvulnerable(health) || isPowerupInvulnerable(powerupOn)) {
       continue;
     }
 
