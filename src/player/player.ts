@@ -2,10 +2,11 @@ import { PLAYER, WORLD } from '../config/constants';
 import { createAabbBody, type AabbBody } from '../world/aabbBody';
 import { resolveAabbAgainstTiles } from '../world/tileResolve';
 import type { TileMap } from '../world/tileMap';
+import { LEVEL1_PLAYER_SPAWN } from '../world/level1';
 import { applyHorizontalWalk, type WalkInput } from './walkPhysics';
 
-/** Default spawn above the left floor shoulder of the test arena. */
-export const PLAYER_SPAWN = { x: 100, y: 200 } as const;
+/** Default spawn on the original level (see {@link LEVEL1_PLAYER_SPAWN}). */
+export const PLAYER_SPAWN = LEVEL1_PLAYER_SPAWN;
 
 /**
  * Controllable player: walk accel/cap/friction + gravity + AABB tile resolve.

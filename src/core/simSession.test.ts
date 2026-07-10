@@ -122,10 +122,12 @@ describe('SimSession', () => {
     );
   });
 
-  it('owns a 24×16 test arena of 50px tiles', () => {
+  it('owns the original 35×15 level of 50px tiles (not the test arena)', () => {
     const session = new SimSession();
     expect(session.map.tileSize).toBe(50);
-    expect(session.map.width).toBe(24);
-    expect(session.map.height).toBe(16);
+    expect(session.map.width).toBe(35);
+    expect(session.map.height).toBe(15);
+    // Continuous ground row from decompiled map1.
+    expect(session.map.cells[14]!.every((c) => c === 1)).toBe(true);
   });
 });
