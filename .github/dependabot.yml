@@ -7,6 +7,11 @@ updates:
     groups:
       dev-dependencies:
         dependency-type: development
+    # `typescript` is aliased to @typescript/typescript6 for eslint's compiler API.
+    # TypeScript 7 lives under @typescript/native — don't let Dependabot collapse that.
+    ignore:
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
   - package-ecosystem: github-actions
     directory: /
     schedule:

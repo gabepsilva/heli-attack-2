@@ -24,10 +24,12 @@ export default defineConfig({
     open: true,
   },
   build: {
-    rollupOptions: {
+    rolldownOptions: {
       output: {
-        manualChunks: {
-          phaser: ['phaser'],
+        codeSplitting: {
+          groups: [
+            { name: 'phaser', test: /[\\/]node_modules[\\/]phaser[\\/]/ },
+          ],
         },
       },
     },
