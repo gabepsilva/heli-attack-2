@@ -12,7 +12,9 @@ import {
   queueNextWeapon,
   queuePrevWeapon,
   queueWeaponDigit,
+  queueWeaponFromWheelDelta,
   sampleKeyboardMouseIntent,
+  shouldPreventGameWheelDefault,
   weaponDigitKeydownEvent,
   type KeyboardHeldSample,
   type PointerSample,
@@ -56,6 +58,8 @@ describe('keyboardMouse source (issue #29)', () => {
     expect(DEFAULT_KEY_BINDINGS.prevWeapon).toEqual({ code: 81, event: 'Q' });
     expect(DEFAULT_KEY_BINDINGS.nextWeapon).toEqual({ code: 69, event: 'E' });
     expect(DEFAULT_KEY_BINDINGS.fire).toBe('MousePrimary');
+    // #104: wheel down (positive deltaY) → next; wheel up → prev.
+    expect(DEFAULT_KEY_BINDINGS.wheelWeapon.nextDeltaYSign).toBe(1);
     expect([...DEFAULT_KEY_BINDINGS.weaponDigits]).toEqual([
       0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
     ]);
@@ -185,5 +189,73 @@ describe('keyboardMouse source (issue #29)', () => {
       queueWeaponDigit(buffer, digit);
       expect(drainIntentActions(buffer).selectWeaponDigit).toBe(digit);
     }
+  });
+});
+
+describe('mouse wheel weapon cycle (issue #104)', () => {
+  it('maps wheel down (positive deltaY) → nextWeapon and wheel up → prevWeapon', () => {
+    const down = createIntentActionBuffer();
+    queueWeaponFromWheelDelta(down, 120);
+    expect(drainIntentActions(down)).toEqual({
+      selectWeaponDigit: null,
+      prevWeapon: false,
+      nextWeapon: true,
+    });
+
+    const up = createIntentActionBuffer();
+    queueWeaponFromWheelDelta(up, -100);
+    expect(drainIntentActions(up)).toEqual({
+      selectWeaponDigit: null,
+      prevWeapon: true,
+      nextWeapon: false,
+    });
+  });
+
+  it('ignores zero deltaY so trackpad noise does not switch weapons', () => {
+    const buffer = createIntentActionBuffer();
+    queueWeaponFromWheelDelta(buffer, 0);
+    expect(drainIntentActions(buffer)).toEqual({
+      selectWeaponDigit: null,
+      prevWeapon: false,
+      nextWeapon: false,
+    });
+  });
+
+  it('uses the documented nextDeltaYSign (+1) for the down→next mapping', () => {
+    // Acceptance: wheel down → next; wheel up → previous (documented mapping).
+    expect(DEFAULT_KEY_BINDINGS.wheelWeapon.nextDeltaYSign).toBe(1);
+    const sign = DEFAULT_KEY_BINDINGS.wheelWeapon.nextDeltaYSign;
+    const buffer = createIntentActionBuffer();
+    queueWeaponFromWheelDelta(buffer, sign * 1);
+    expect(drainIntentActions(buffer).nextWeapon).toBe(true);
+    queueWeaponFromWheelDelta(buffer, -sign * 1);
+    expect(drainIntentActions(buffer).prevWeapon).toBe(true);
+  });
+
+  it('coexists with Q/E queues — wheel and key edges OR into the same buffer', () => {
+    const buffer = createIntentActionBuffer();
+    queuePrevWeapon(buffer); // Q
+    queueWeaponFromWheelDelta(buffer, 50); // wheel down → next
+    const actions = drainIntentActions(buffer);
+    expect(actions.prevWeapon).toBe(true);
+    expect(actions.nextWeapon).toBe(true);
+  });
+
+  it('samples wheel-queued actions into PlayerIntent like Q/E', () => {
+    const buffer = createIntentActionBuffer();
+    queueWeaponFromWheelDelta(buffer, -1);
+    const intent = sampleKeyboardMouseIntent({
+      held: held(),
+      pointer: pointer(),
+      actions: buffer,
+      allowFire: true,
+    });
+    expect(intent.prevWeapon).toBe(true);
+    expect(intent.nextWeapon).toBe(false);
+  });
+
+  it('requires preventDefault on the game surface (non-passive wheel listener)', () => {
+    // Acceptance: does not fight page scroll when the canvas has focus.
+    expect(shouldPreventGameWheelDefault()).toBe(true);
   });
 });

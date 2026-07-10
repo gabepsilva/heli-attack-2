@@ -8,10 +8,12 @@ import {
   createWeaponInventory,
   getActiveWeaponDef,
 } from '../combat/weaponInventory';
+import { POWERUP } from '../config/constants';
 import { SimSession } from '../core/simSession';
 import {
   createIntentActionBuffer,
   queueWeaponDigit,
+  queueWeaponFromWheelDelta,
   sampleKeyboardMouseIntent,
 } from './keyboardMouse';
 import { applyPlayerIntent, createPlayerIntent } from './playerIntent';
@@ -155,5 +157,123 @@ describe('playerIntent (issue #29)', () => {
     expect(session.fireHeld).toBe(true);
     expect(session.bulletTimeHeld).toBe(false);
     expect(getActiveWeaponDef(session.inventory).name).toBe('AkimboMac10');
+  });
+});
+
+describe('mouse wheel → intent → inventory (issue #104)', () => {
+  it('wheel down cycles to the next owned weapon; wheel up to the previous', () => {
+    const session = new SimSession();
+    grantTestArsenal(session);
+    expect(getActiveWeaponDef(session.inventory).name).toBe('MachineGun');
+
+    const downBuf = createIntentActionBuffer();
+    queueWeaponFromWheelDelta(downBuf, 100);
+    applyPlayerIntent(
+      session,
+      sampleKeyboardMouseIntent({
+        held: {
+          left: false,
+          right: false,
+          jump: false,
+          duck: false,
+          boost: false,
+          bulletTime: false,
+        },
+        pointer: {
+          aimX: 0,
+          aimY: 0,
+          primaryDown: false,
+          rightDown: false,
+        },
+        actions: downBuf,
+        allowFire: true,
+      }),
+    );
+    expect(getActiveWeaponDef(session.inventory).name).toBe('AkimboMac10');
+
+    const upBuf = createIntentActionBuffer();
+    queueWeaponFromWheelDelta(upBuf, -100);
+    applyPlayerIntent(
+      session,
+      sampleKeyboardMouseIntent({
+        held: {
+          left: false,
+          right: false,
+          jump: false,
+          duck: false,
+          boost: false,
+          bulletTime: false,
+        },
+        pointer: {
+          aimX: 0,
+          aimY: 0,
+          primaryDown: false,
+          rightDown: false,
+        },
+        actions: upBuf,
+        allowFire: true,
+      }),
+    );
+    expect(getActiveWeaponDef(session.inventory).name).toBe('MachineGun');
+  });
+
+  it('wheel cycle skips empty slots and never selects the predator gun', () => {
+    const session = new SimSession();
+    // Only MachineGun owned — next must stay on slot 0 (empty + predator skipped).
+    expect(session.inventory.activeIndex).toBe(0);
+    const buf = createIntentActionBuffer();
+    queueWeaponFromWheelDelta(buf, 1);
+    const intent = sampleKeyboardMouseIntent({
+      held: {
+        left: false,
+        right: false,
+        jump: false,
+        duck: false,
+        boost: false,
+        bulletTime: false,
+      },
+      pointer: {
+        aimX: 0,
+        aimY: 0,
+        primaryDown: false,
+        rightDown: false,
+      },
+      actions: buf,
+      allowFire: true,
+    });
+    applyPlayerIntent(session, intent);
+    expect(session.inventory.activeIndex).toBe(0);
+    expect(getActiveWeaponDef(session.inventory).name).toBe('MachineGun');
+  });
+
+  it('wheel switch is ignored while PredatorMode locks switching', () => {
+    const session = new SimSession();
+    grantTestArsenal(session);
+    session.playerPowerup.powerupOn = POWERUP.PredatorMode;
+    session.inventory.activeIndex = 0;
+
+    const buf = createIntentActionBuffer();
+    queueWeaponFromWheelDelta(buf, 50);
+    const intent = sampleKeyboardMouseIntent({
+      held: {
+        left: false,
+        right: false,
+        jump: false,
+        duck: false,
+        boost: false,
+        bulletTime: false,
+      },
+      pointer: {
+        aimX: 0,
+        aimY: 0,
+        primaryDown: false,
+        rightDown: false,
+      },
+      actions: buf,
+      allowFire: true,
+    });
+    expect(intent.nextWeapon).toBe(true);
+    applyPlayerIntent(session, intent);
+    expect(session.inventory.activeIndex).toBe(0);
   });
 });

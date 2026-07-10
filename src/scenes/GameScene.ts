@@ -54,7 +54,9 @@ import {
   queueNextWeapon,
   queuePrevWeapon,
   queueWeaponDigit,
+  queueWeaponFromWheelDelta,
   sampleKeyboardMouseIntent,
+  shouldPreventGameWheelDefault,
   weaponDigitKeydownEvent,
   type IntentActionBuffer,
 } from '../input/keyboardMouse';
@@ -157,6 +159,19 @@ export class GameScene extends Phaser.Scene {
       type: 'disconnected',
       index: pad.index,
     });
+  };
+  /**
+   * Canvas wheel → weapon cycle (#104). Non-passive so preventDefault stops
+   * page scroll when the game surface receives the wheel.
+   */
+  private readonly onCanvasWheel = (event: WheelEvent): void => {
+    if (shouldPreventGameWheelDefault()) {
+      event.preventDefault();
+    }
+    if (this.flow.phase !== 'playing') {
+      return;
+    }
+    queueWeaponFromWheelDelta(this.intentActions, event.deltaY);
   };
 
   private boxRect!: Phaser.GameObjects.Rectangle;
@@ -280,7 +295,7 @@ export class GameScene extends Phaser.Scene {
       .text(
         GAME_WIDTH / 2,
         28,
-        '↑ jump · Ctrl boost · Shift slow-mo · ↓ duck · ←/→ walk · mouse / pad aim · hold fire · 1–0 / Q–E / LB–RB weapons',
+        '↑ jump · Ctrl boost · Shift slow-mo · ↓ duck · ←/→ walk · mouse / pad aim · hold fire · 1–0 / Q–E / wheel / LB–RB weapons',
         {
           fontFamily: 'Arial, Helvetica, sans-serif',
           fontSize: '36px',
@@ -292,7 +307,7 @@ export class GameScene extends Phaser.Scene {
     this.add.text(
       40,
       GAME_HEIGHT - 60,
-      '←/→ walk · ↑ jump · Ctrl boost · Shift slow-mo · ↓ duck · mouse/pad aim · hold fire/RT · 1–0 / Q–E / LB–RB weapons · -/= timeStep · drag box · ` debug · P/Esc pause',
+      '←/→ walk · ↑ jump · Ctrl boost · Shift slow-mo · ↓ duck · mouse/pad aim · hold fire/RT · 1–0 / Q–E / wheel / LB–RB weapons · -/= timeStep · drag box · ` debug · P/Esc pause',
       {
         fontFamily: 'monospace',
         fontSize: '20px',
@@ -320,6 +335,10 @@ export class GameScene extends Phaser.Scene {
     });
     this.input.keyboard?.on(`keydown-${bind.nextWeapon.event}`, () => {
       queueNextWeapon(this.intentActions);
+    });
+    // Mouse wheel → same prev/next path as Q/E (#104). passive:false for preventDefault.
+    this.game.canvas.addEventListener('wheel', this.onCanvasWheel, {
+      passive: false,
     });
     // Flash pauseKey (80 / P) via GAME_FLOW — addKey avoids OS key-repeat strobe.
     this.pauseKey = this.input.keyboard!.addKey(GAME_FLOW.pauseKeyCode);
@@ -359,6 +378,7 @@ export class GameScene extends Phaser.Scene {
       this.events.off(Phaser.Scenes.Events.RESUME, this.onResume);
       this.pauseKey?.off('down');
       this.escKey?.off('down');
+      this.game.canvas.removeEventListener('wheel', this.onCanvasWheel);
       const gamepadPlugin = this.input.gamepad;
       if (gamepadPlugin) {
         gamepadPlugin.off('connected', this.onGamepadConnected);

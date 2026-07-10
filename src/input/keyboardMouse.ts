@@ -81,6 +81,15 @@ export const DEFAULT_KEY_BINDINGS = {
   weaponDigits: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] as const,
   /** Primary mouse button aims + fires while held. */
   fire: 'MousePrimary',
+  /**
+   * Mouse wheel weapon cycle (#104).
+   * Positive `deltaY` (wheel down) → nextWeapon; negative (wheel up) → prevWeapon.
+   * Same inventory rules as Q/E (empty-slot skip, no predator, PredatorMode lock).
+   */
+  wheelWeapon: {
+    /** Sign of WheelEvent.deltaY that queues nextWeapon. */
+    nextDeltaYSign: 1,
+  },
 } as const;
 
 /** Phaser `keydown-…` suffix for weapon digit 0–9. */
@@ -147,6 +156,36 @@ export function queuePrevWeapon(buffer: IntentActionBuffer): void {
 
 export function queueNextWeapon(buffer: IntentActionBuffer): void {
   buffer.nextWeapon = true;
+}
+
+/**
+ * Queue prev/next weapon from a mouse-wheel `deltaY` (#104).
+ *
+ * Mapping (documented in {@link DEFAULT_KEY_BINDINGS.wheelWeapon}):
+ * - `deltaY > 0` (wheel down) → {@link queueNextWeapon}
+ * - `deltaY < 0` (wheel up) → {@link queuePrevWeapon}
+ * - `deltaY === 0` → no-op
+ *
+ * Inventory rules (empty slots, predator skip, PredatorMode) are applied later
+ * when intent is applied via the same path as Q/E.
+ */
+export function queueWeaponFromWheelDelta(
+  buffer: IntentActionBuffer,
+  deltaY: number,
+): void {
+  if (deltaY > 0) {
+    queueNextWeapon(buffer);
+  } else if (deltaY < 0) {
+    queuePrevWeapon(buffer);
+  }
+}
+
+/**
+ * Wheel listeners on the game canvas must use `{ passive: false }` and call
+ * `preventDefault` so page scroll does not fight weapon cycling (#104).
+ */
+export function shouldPreventGameWheelDefault(): boolean {
+  return true;
 }
 
 /** Take and clear one-shot actions. */
