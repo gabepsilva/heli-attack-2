@@ -110,6 +110,7 @@ describe('config/constants (spec seed)', () => {
   });
 
   it('seeds MachineGun WEAPONS[0] and BULLET pool defaults from the spec', () => {
+    expect(WEAPONS).toHaveLength(14);
     expect(WEAPONS[0]).toEqual({
       name: 'MachineGun',
       reload: 5,

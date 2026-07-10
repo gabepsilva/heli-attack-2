@@ -8,6 +8,7 @@ import {
   WEAPONS,
   WORLD,
 } from '../config/constants';
+import { nextWeapon, selectWeaponByDigitKey } from '../combat/weaponInventory';
 import { PLAYER_SPAWN } from '../player/player';
 import { DEBUG_BOX_SPAWN, SimSession } from './simSession';
 
@@ -331,5 +332,48 @@ describe('SimSession', () => {
 
     session.reset();
     expect(session.score.value).toBe(0);
+  });
+
+  it('switches weapons instantly and keeps per-slot ammo/reload (issue #14)', () => {
+    const session = new SimSession();
+    expect(session.inventory.slots).toHaveLength(14);
+    expect(session.inventory.activeIndex).toBe(0);
+    expect(session.weapon.type).toBe(0);
+
+    // Charge MachineGun a couple frames after one shot.
+    session.fireHeld = true;
+    session.update(1000 / 30); // fires, reloadTime → 0
+    session.update(1000 / 30); // reloadTime → 1
+    session.update(1000 / 30); // reloadTime → 2
+    expect(session.weapon.shots).toBe(1);
+    expect(session.weapon.reloadTime).toBe(2);
+    const mgReload = session.weapon.reloadTime;
+
+    expect(nextWeapon(session.inventory)).toBe(true);
+    expect(session.inventory.activeIndex).toBe(1);
+    expect(session.weapon.type).toBe(1);
+    expect(session.weapon.bullets).toBe(50);
+    // Prior slot untouched.
+    expect(session.inventory.slots[0]!.reloadTime).toBe(mgReload);
+
+    // Fire Akimbo once — bullet uses Akimbo speed 8 / damage 9.
+    session.bullets.reset();
+    const before = session.bullets.acquireCount;
+    session.fireHeld = true;
+    session.update(1000 / 30);
+    expect(session.bullets.acquireCount).toBe(before + 1);
+    const bullet = session.bullets.slots.find((b) => b.active)!;
+    expect(bullet.damage).toBe(WEAPONS[1].damage);
+    expect(bullet.speed).toBe(WEAPONS[1].speed);
+    expect(session.weapon.bullets).toBe(49);
+
+    expect(selectWeaponByDigitKey(session.inventory, 1)).toBe(true);
+    expect(session.inventory.activeIndex).toBe(0);
+    expect(session.weapon.reloadTime).toBe(mgReload);
+
+    session.reset();
+    expect(session.inventory.activeIndex).toBe(0);
+    expect(session.weapon.shots).toBe(0);
+    expect(session.inventory.slots[1]!.bullets).toBe(50);
   });
 });

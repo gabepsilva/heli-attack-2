@@ -35,9 +35,15 @@ export type DebugOverlaySnapshot = {
   boostCharge: number;
   boostChargeMax: number;
   hjump: boolean;
-  /** MachineGun reload HUD — `ready` or `n/5` while charging (#11). */
+  /** Active weapon name (#14). */
+  weaponName: string;
+  /** Active weapon arsenal index (#14). */
+  weaponIndex: number;
+  /** Active weapon ammo readout — `∞` or remaining count (#14). */
+  weaponAmmoHud: string;
+  /** Active weapon reload HUD — `ready` or `n/reload` while charging (#11/#14). */
   mgReloadHud: string;
-  /** Lifetime MachineGun shot counter (#11). */
+  /** Lifetime shot counter for the active weapon (#11). */
   mgShots: number;
   bulletsActive: number;
   bulletsCapacity: number;
@@ -81,7 +87,8 @@ export function formatDebugStatus(s: DebugOverlaySnapshot): string {
     `(${s.x.toFixed(0)},${s.y.toFixed(0)})  ` +
     `${grounded}${duck}  ${j} up=${s.jumpUp}  ` +
     `boost=${s.boostCharge}/${s.boostChargeMax}${hj}  ` +
-    `MG ${s.mgReloadHud} shots=${s.mgShots}  ` +
+    `gun=${s.weaponIndex}:${s.weaponName} ammo=${s.weaponAmmoHud}  ` +
+    `rl ${s.mgReloadHud} shots=${s.mgShots}  ` +
     `pool ${s.bulletsActive}/${s.bulletsCapacity} ` +
     `fired ${s.bulletsFired} rc ${s.bulletsRecycled}`
   );
@@ -303,6 +310,9 @@ export function emptyDebugSnapshot(
     boostCharge: PLAYER.boostChargeFrames,
     boostChargeMax: PLAYER.boostChargeFrames,
     hjump: false,
+    weaponName: 'MachineGun',
+    weaponIndex: 0,
+    weaponAmmoHud: '∞',
     mgReloadHud: 'ready',
     mgShots: 0,
     bulletsActive: 0,

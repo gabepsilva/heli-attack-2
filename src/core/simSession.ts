@@ -16,11 +16,14 @@ import {
   createScoreState,
   type ScoreState,
 } from '../combat/score';
+import { stepWeaponFire, type WeaponState } from '../combat/weapon';
 import {
-  createMachineGunState,
-  stepWeaponFire,
-  type WeaponState,
-} from '../combat/weapon';
+  createWeaponInventory,
+  fallbackIfActiveEmpty,
+  getActiveWeapon,
+  getActiveWeaponDef,
+  type WeaponInventory,
+} from '../combat/weaponInventory';
 import { PLAYER_SPAWN, Player } from '../player/player';
 import { HELI } from '../config/constants';
 import { DebugBox } from '../world/debugBox';
@@ -36,7 +39,7 @@ export const DEBUG_BOX_SPAWN = { x: 200, y: 200 } as const;
 
 /**
  * Per-run sim state for GameScene: fixed-step accumulator, timeStep, HUD
- * counters, original level map, player, bullet pool, MachineGun reload,
+ * counters, original level map, player, bullet pool, weapon inventory (#14),
  * helicopter combat (#12/#13), and the debug box. Lives outside Phaser so
  * scene restarts and the update loop are unit-testable (Phaser reuses the
  * scene instance; only create() re-runs).
@@ -92,12 +95,20 @@ export class SimSession {
 
   /**
    * Held-fire intent (Flash `mouseD`): scene sets from pointer.isDown each
-   * render frame; sim ticks read it and stream at MachineGun reload cadence.
+   * render frame; sim ticks read it and stream at the active weapon's reload.
    */
   fireHeld = false;
 
-  /** Starting MachineGun slot — reload counter + infinite ammo (#11). */
-  weapon: WeaponState = createMachineGunState();
+  /**
+   * Full arsenal inventory (#14) — test-grants pickup ammo so number-key /
+   * next-prev switching is playable before drops (#21).
+   */
+  inventory: WeaponInventory = createWeaponInventory({ testGrant: true });
+
+  /** Active gun slot — Flash `this.guns[this.cgun]`. */
+  get weapon(): WeaponState {
+    return getActiveWeapon(this.inventory);
+  }
 
   /** Clear all per-run state — call from GameScene.create() on every start. */
   reset(): void {
@@ -118,7 +129,7 @@ export class SimSession {
     this.player.placeAt(PLAYER_SPAWN.x, PLAYER_SPAWN.y);
     this.bullets.reset();
     this.fireHeld = false;
-    this.weapon = createMachineGunState();
+    this.inventory = createWeaponInventory({ testGrant: true });
     this.helicopters = [
       spawnHelicopter(
         HELI.hp,
@@ -159,13 +170,21 @@ export class SimSession {
   }
 
   /**
-   * Spawn one pooled bullet from the current muzzle along the gun aim.
+   * Spawn one pooled bullet from the current muzzle along the gun aim,
+   * using the active weapon's speed/damage.
    * Returns false if the pool is exhausted (capacity never grows).
    */
   tryFire(): boolean {
     const { muzzle, gunAim } = this.player;
+    const def = getActiveWeaponDef(this.inventory);
     return (
-      this.bullets.acquire(muzzle.x, muzzle.y, gunAim.rotationDeg) !== null
+      this.bullets.acquire(
+        muzzle.x,
+        muzzle.y,
+        gunAim.rotationDeg,
+        def.speed,
+        def.damage,
+      ) !== null
     );
   }
 
@@ -174,8 +193,10 @@ export class SimSession {
     this.ticksThisSecond += 1;
     this.player.step(this.map, this.timeScale.timeStep);
     // Flash: reload++ every move frame; fire when held && reloadtime >= reload.
-    if (stepWeaponFire(this.weapon, this.fireHeld)) {
+    const def = getActiveWeaponDef(this.inventory);
+    if (stepWeaponFire(this.weapon, this.fireHeld, def)) {
       this.tryFire();
+      fallbackIfActiveEmpty(this.inventory);
     }
     const playerBody = this.player.body;
     for (let i = 0; i < this.helicopters.length; i += 1) {

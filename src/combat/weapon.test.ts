@@ -7,9 +7,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { SIM_HZ, WEAPONS } from '../config/constants';
+import { SIM_HZ } from '../config/constants';
+import { MACHINE_GUN, WEAPONS } from '../config/weapons';
 import {
-  MACHINE_GUN,
   createMachineGunState,
   hasAmmo,
   isReloadReady,
