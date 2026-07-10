@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GUN, PLAYER, SIM_HZ, WORLD } from '../config/constants';
+import { BULLET, GUN, PLAYER, SIM_HZ, WORLD } from '../config/constants';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/game';
 import { SCENE_KEYS } from '../config/scenes';
 import { SimSession } from '../core/simSession';
@@ -19,12 +19,14 @@ const PLAYER_STROKE = 0xd8f3dc;
 const GUN_COLOR = 0xc9ada7;
 const GUN_STROKE = 0xf2e9e4;
 const MUZZLE_COLOR = 0xff6b6b;
+const BULLET_COLOR = 0xffe066;
 
 /**
  * Thin Phaser shell: banks render deltas into a 30 Hz fixed sim, draws the
  * original level layout (placeholder tiles), hosts a controllable player
- * (←/→ walk, ↑ jump, ↓ duck, Ctrl boost, mouse aim), and a draggable debug box.
- * Game logic lives in plain modules under src/.
+ * (←/→ walk, ↑ jump, ↓ duck, Ctrl boost, mouse aim, click-fire pooled
+ * bullets), and a draggable debug box. Game logic lives in plain modules
+ * under src/.
  *
  * The debug overlay (#8) is a DOM panel outside Phaser so it can host real
  * `<input>` controls for live physics tuning and toggle off for clean demos.
@@ -36,6 +38,8 @@ export class GameScene extends Phaser.Scene {
   private playerRect!: Phaser.GameObjects.Rectangle;
   private gunRect!: Phaser.GameObjects.Rectangle;
   private muzzleDot!: Phaser.GameObjects.Arc;
+  /** One visual per pool slot — toggled visible when the slot is active. */
+  private bulletDots: Phaser.GameObjects.Arc[] = [];
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private boostKey!: Phaser.Input.Keyboard.Key;
   private overlay: DebugOverlay | null = null;
@@ -63,6 +67,7 @@ export class GameScene extends Phaser.Scene {
     this.drawArena();
     this.createPlayerVisual();
     this.createGunVisual();
+    this.createBulletVisuals();
     this.createDebugBoxVisual();
 
     this.cursors = this.input.keyboard!.createCursorKeys();
@@ -74,7 +79,7 @@ export class GameScene extends Phaser.Scene {
       .text(
         GAME_WIDTH / 2,
         28,
-        '↑ jump · Ctrl boost · ↓ duck · ←/→ walk · mouse aim',
+        '↑ jump · Ctrl boost · ↓ duck · ←/→ walk · mouse aim · click fire',
         {
           fontFamily: 'Arial, Helvetica, sans-serif',
           fontSize: '36px',
@@ -86,13 +91,24 @@ export class GameScene extends Phaser.Scene {
     this.add.text(
       40,
       GAME_HEIGHT - 60,
-      '←/→ walk · ↑ jump · Ctrl boost · ↓ duck · mouse aim · drag box · ` debug · 1/2 timeStep · Esc → Boot',
+      '←/→ walk · ↑ jump · Ctrl boost · ↓ duck · mouse aim · click fire · drag box · ` debug · 1/2 timeStep · Esc → Boot',
       {
         fontFamily: 'monospace',
         fontSize: '20px',
         color: '#9ab',
       },
     );
+
+    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (pointer.rightButtonDown()) {
+        return;
+      }
+      // Don't fire when starting a debug-box drag.
+      if (this.input.hitTestPointer(pointer).includes(this.boxRect)) {
+        return;
+      }
+      this.session.fireRequested = true;
+    });
 
     this.input.keyboard?.on('keydown-ONE', () => {
       this.session.timeScale.setTimeStep(1);
@@ -151,6 +167,7 @@ export class GameScene extends Phaser.Scene {
 
     this.syncPlayerVisual();
     this.syncGunVisual();
+    this.syncBulletVisuals();
     this.syncBoxVisual();
   }
 
@@ -252,6 +269,33 @@ export class GameScene extends Phaser.Scene {
       this.arenaOriginX + player.muzzle.x,
       this.arenaOriginY + player.muzzle.y,
     );
+  }
+
+  private createBulletVisuals(): void {
+    this.bulletDots = [];
+    for (let i = 0; i < this.session.bullets.capacity; i += 1) {
+      const dot = this.add
+        .circle(0, 0, BULLET.radius, BULLET_COLOR)
+        .setVisible(false);
+      this.bulletDots.push(dot);
+    }
+  }
+
+  private syncBulletVisuals(): void {
+    const slots = this.session.bullets.slots;
+    for (let i = 0; i < slots.length; i += 1) {
+      const bullet = slots[i]!;
+      const dot = this.bulletDots[i]!;
+      if (!bullet.active) {
+        dot.setVisible(false);
+        continue;
+      }
+      dot.setVisible(true);
+      dot.setPosition(
+        this.arenaOriginX + bullet.x,
+        this.arenaOriginY + bullet.y,
+      );
+    }
   }
 
   private createDebugBoxVisual(): void {

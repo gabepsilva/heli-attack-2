@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  BULLET,
   BULLET_TIME,
   GUN,
   HEALTH_PICKUP,
@@ -11,6 +12,7 @@ import {
   SIM_DT,
   SIM_DT_MS,
   SIM_HZ,
+  WEAPONS,
   WORLD,
   WORLD_DEFAULTS,
   resetPhysicsConstants,
@@ -93,5 +95,20 @@ describe('config/constants (spec seed)', () => {
       muzzleLocalY: 0,
       turnDivisor: 2,
     });
+  });
+
+  it('seeds MachineGun WEAPONS[0] and BULLET pool defaults from the spec', () => {
+    expect(WEAPONS[0]).toEqual({
+      name: 'MachineGun',
+      reload: 5,
+      speed: 8,
+      damage: 10,
+    });
+    expect(BULLET.defaultSpeed).toBe(8);
+    expect(BULLET.defaultDamage).toBe(10);
+    expect(BULLET.cullMargin).toBe(50);
+    expect(BULLET.maxLifetimeFrames).toBe(300);
+    expect(BULLET.poolCapacity).toBe(64);
+    expect(BULLET.radius).toBe(3);
   });
 });

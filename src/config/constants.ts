@@ -146,3 +146,34 @@ export const BULLET_TIME = {
   minScale: 0.2,
   easePerFrame: 0.1,
 } as const;
+
+/**
+ * Starting arsenal entry (MachineGun). Full table lands with #14–#17;
+ * #10/#11 only need the starter for default projectile speed/damage/reload.
+ */
+export const WEAPONS = [
+  { name: 'MachineGun', reload: 5, speed: 8, damage: 10 },
+] as const;
+
+/**
+ * Pooled projectile defaults (#10). Speed/damage match MachineGun; cull margin
+ * matches Flash ±1 tile past the camera/arena edge. Capacity is fixed — the
+ * pool never grows after construction (zero per-shot allocation).
+ */
+export const BULLET = {
+  /** MachineGun projectile speed (px per sim frame). */
+  defaultSpeed: WEAPONS[0].speed,
+  /** MachineGun damage per hit. */
+  defaultDamage: WEAPONS[0].damage,
+  /**
+   * Max age in sim frames before forced recycle (safety net beyond off-screen
+   * cull). Arena diagonal ≈ 1442 px / speed 8 ≈ 180 frames; pad for slow guns.
+   */
+  maxLifetimeFrames: 300,
+  /** Extra px beyond arena AABB before off-screen cull (Flash ±1 tile). */
+  cullMargin: WORLD.tile,
+  /** Fixed preallocated pool size — never grows on acquire. */
+  poolCapacity: 64,
+  /** Placeholder draw radius (px). */
+  radius: 3,
+} as const;
