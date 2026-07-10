@@ -18,6 +18,10 @@ const config: Phaser.Types.Core.GameConfig = {
   backgroundColor: '#000000',
   scene: [BootScene, MenuScene, GameScene, PauseScene, GameOverScene],
   scale: phaserScaleConfig(),
+  // Issue #31: enable the Gamepad Plugin for Standard Gamepad / Steam Input.
+  input: {
+    gamepad: true,
+  },
 };
 
 const game = new Phaser.Game(config);

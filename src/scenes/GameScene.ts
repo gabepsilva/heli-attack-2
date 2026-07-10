@@ -42,12 +42,21 @@ import {
   weaponDigitKeydownEvent,
   type IntentActionBuffer,
 } from '../input/keyboardMouse';
-import { applyPlayerIntent } from '../input/playerIntent';
+import { applyPlayerIntent, mergePlayerIntents } from '../input/playerIntent';
+import { sampleTouchIntent, stickActive } from '../input/touchControls';
 import {
-  mergePlayerIntents,
-  sampleTouchIntent,
-  stickActive,
-} from '../input/touchControls';
+  advanceGamepadWeaponEdges,
+  applyGamepadHotplugEvent,
+  createGamepadHotplugState,
+  createGamepadWeaponEdgeState,
+  gamepadStickActive,
+  isGamepadConnected,
+  sampleGamepadIntent,
+  syncGamepadHotplugFromPads,
+  type GamepadHotplugState,
+  type GamepadWeaponEdgeState,
+} from '../input/gamepadControls';
+import { DEFAULT_GAMEPAD_BINDINGS } from '../config/gamepad';
 import { DebugOverlay } from '../tooling/debugOverlay';
 import { buildHudSnapshot } from '../ui/hud';
 import { GameHud } from '../ui/gameHud';
@@ -87,9 +96,10 @@ const POWERUP_FRAME = 'powerup';
  * (#23), menu/pause/game-over session loop (#24), and a draggable debug box.
  * Game logic lives in plain modules under src/.
  *
- * Input (#29/#30): keyboard/mouse and on-screen touch feed the intent layer;
- * gameplay reads {@link applyPlayerIntent} output on the session — never raw
- * keys or touch events. Portrait shows a rotate overlay (#30).
+ * Input (#29/#30/#31): keyboard/mouse, on-screen touch, and gamepad feed the
+ * intent layer; gameplay reads {@link applyPlayerIntent} output on the session
+ * — never raw keys, touches, or pad APIs. Portrait shows a rotate overlay
+ * (#30). Unplugging a controller falls back to keyboard cleanly (#31).
  *
  * Audio (#26/#27): menu unlock + catalog load; GameScene starts looping music
  * and drains sim SFX events (weapon / hurt / hyper-jump / heliboom / powerups).
@@ -104,6 +114,23 @@ export class GameScene extends Phaser.Scene {
   /** Edge-triggered weapon actions queued from keydown (#29). */
   private readonly intentActions: IntentActionBuffer =
     createIntentActionBuffer();
+  /** Active gamepad hotplug state (#31). */
+  private gamepadHotplug: GamepadHotplugState = createGamepadHotplugState();
+  /** LB/RB rising-edge tracker for weapon switch (#31). */
+  private readonly gamepadWeaponEdges: GamepadWeaponEdgeState =
+    createGamepadWeaponEdgeState();
+  private readonly onGamepadConnected = (pad: { index: number }): void => {
+    this.gamepadHotplug = applyGamepadHotplugEvent(this.gamepadHotplug, {
+      type: 'connected',
+      index: pad.index,
+    });
+  };
+  private readonly onGamepadDisconnected = (pad: { index: number }): void => {
+    this.gamepadHotplug = applyGamepadHotplugEvent(this.gamepadHotplug, {
+      type: 'disconnected',
+      index: pad.index,
+    });
+  };
 
   private boxRect!: Phaser.GameObjects.Rectangle;
   private playerSprite!: Phaser.GameObjects.Image;
@@ -188,7 +215,7 @@ export class GameScene extends Phaser.Scene {
       .text(
         GAME_WIDTH / 2,
         28,
-        '↑ jump · Ctrl boost · Shift slow-mo · ↓ duck · ←/→ walk · mouse aim · hold fire · 1–0 / Q–E weapons',
+        '↑ jump · Ctrl boost · Shift slow-mo · ↓ duck · ←/→ walk · mouse / pad aim · hold fire · 1–0 / Q–E / LB–RB weapons',
         {
           fontFamily: 'Arial, Helvetica, sans-serif',
           fontSize: '36px',
@@ -200,7 +227,7 @@ export class GameScene extends Phaser.Scene {
     this.add.text(
       40,
       GAME_HEIGHT - 60,
-      '←/→ walk · ↑ jump · Ctrl boost · Shift slow-mo · ↓ duck · mouse aim · hold fire · 1–0 weapons · Q/E prev/next · -/= timeStep · drag box · ` debug · P/Esc pause',
+      '←/→ walk · ↑ jump · Ctrl boost · Shift slow-mo · ↓ duck · mouse/pad aim · hold fire/RT · 1–0 / Q–E / LB–RB weapons · -/= timeStep · drag box · ` debug · P/Esc pause',
       {
         fontFamily: 'monospace',
         fontSize: '20px',
@@ -245,6 +272,17 @@ export class GameScene extends Phaser.Scene {
       this.overlay?.toggle();
     });
 
+    // Gamepad hotplug (#31): listen for connect/disconnect; sync already-present pads.
+    const gp = this.input.gamepad;
+    if (gp) {
+      gp.on('connected', this.onGamepadConnected);
+      gp.on('disconnected', this.onGamepadDisconnected);
+      this.gamepadHotplug = syncGamepadHotplugFromPads(
+        this.gamepadHotplug,
+        gp.gamepads,
+      );
+    }
+
     // Resume may re-enter without a full create() — keep flow in sync.
     this.events.on(Phaser.Scenes.Events.RESUME, this.onResume);
 
@@ -252,6 +290,11 @@ export class GameScene extends Phaser.Scene {
       this.events.off(Phaser.Scenes.Events.RESUME, this.onResume);
       this.pauseKey?.off('down');
       this.escKey?.off('down');
+      const gamepadPlugin = this.input.gamepad;
+      if (gamepadPlugin) {
+        gamepadPlugin.off('connected', this.onGamepadConnected);
+        gamepadPlugin.off('disconnected', this.onGamepadDisconnected);
+      }
       this.gameSfx?.destroy();
       this.gameSfx = null;
       this.audioHud?.destroy();
@@ -291,7 +334,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
-    // Keyboard/mouse (+ touch #30) → intent → session. Never raw keys/touches.
+    // Keyboard/mouse (+ touch #30 + gamepad #31) → intent → session.
+    // Never raw keys / touches / pad APIs in gameplay.
     const pointer = this.input.activePointer;
     const allowFire =
       this.flow.phase === 'playing' && !this.session.debugBox.dragging;
@@ -327,17 +371,73 @@ export class GameScene extends Phaser.Scene {
         touchSample,
         this.session.player.body,
         {
-          fallbackAimX: kbIntent.aimX,
-          fallbackAimY: kbIntent.aimY,
+          fallbackAimX: intent.aimX,
+          fallbackAimY: intent.aimY,
         },
       );
-      intent = mergePlayerIntents(kbIntent, touchIntent, {
-        touchAimActive: stickActive(
+      intent = mergePlayerIntents(intent, touchIntent, {
+        preferSecondaryAim: stickActive(
           touchSample.aimStickX,
           touchSample.aimStickY,
         ),
       });
     }
+
+    // Gamepad (#31): sample when a pad is connected; unplug → keyboard path.
+    const gp = this.input.gamepad;
+    if (gp) {
+      this.gamepadHotplug = syncGamepadHotplugFromPads(
+        this.gamepadHotplug,
+        gp.gamepads,
+      );
+    }
+    if (gp && isGamepadConnected(this.gamepadHotplug)) {
+      const pad =
+        this.gamepadHotplug.padIndex !== null
+          ? gp.getPad(this.gamepadHotplug.padIndex)
+          : null;
+      if (pad?.connected) {
+        const bind = DEFAULT_GAMEPAD_BINDINGS;
+        const weaponEdges = advanceGamepadWeaponEdges(this.gamepadWeaponEdges, {
+          prevWeapon: pad.isButtonDown(bind.prevWeapon),
+          nextWeapon: pad.isButtonDown(bind.nextWeapon),
+        });
+        // Analog triggers report 0–1; treat >0.5 as pressed (RT fire).
+        const fireHeld =
+          pad.isButtonDown(bind.fire) || pad.getButtonValue(bind.fire) > 0.5;
+        const padIntent = sampleGamepadIntent(
+          {
+            moveX: pad.leftStick.x,
+            moveY: pad.leftStick.y,
+            aimStickX: pad.rightStick.x,
+            aimStickY: pad.rightStick.y,
+            jump: pad.isButtonDown(bind.jump),
+            boost: pad.isButtonDown(bind.boost),
+            bulletTime: pad.isButtonDown(bind.bulletTime),
+            fire: fireHeld,
+            dpadLeft: pad.isButtonDown(bind.dpadLeft) || pad.left,
+            dpadRight: pad.isButtonDown(bind.dpadRight) || pad.right,
+            dpadDown: pad.isButtonDown(bind.dpadDown) || pad.down,
+            dpadUp: pad.isButtonDown(bind.dpadUp) || pad.up,
+            prevWeapon: weaponEdges.prevWeapon,
+            nextWeapon: weaponEdges.nextWeapon,
+            allowFire,
+          },
+          this.session.player.body,
+          {
+            fallbackAimX: intent.aimX,
+            fallbackAimY: intent.aimY,
+          },
+        );
+        intent = mergePlayerIntents(intent, padIntent, {
+          preferSecondaryAim: gamepadStickActive(
+            pad.rightStick.x,
+            pad.rightStick.y,
+          ),
+        });
+      }
+    }
+
     applyPlayerIntent(this.session, intent);
 
     const wasDying = this.flow.phase === 'dying';
