@@ -5,6 +5,7 @@ import { AudioHud } from '../audio/audioHud';
 import { getGameAudio } from '../audio/gameAudio';
 import { ATLAS_KEY } from '../config/art';
 import { AUDIO_TEST_SFX_ID } from '../config/audio';
+import { formatScoreHud } from '../combat/score';
 import {
   BULLET,
   GUN,
@@ -34,13 +35,17 @@ const MUZZLE_COLOR = 0xff6b6b;
 const BULLET_COLOR = 0xffe066;
 const HELI_TINT = 0xffffff;
 const EXPLOSION_COLOR = 0xff9f1c;
+const SCORE_COLOR = '#ffe066';
+const HELI_FRAME = 'heli';
+const HELI_HIT_FRAME = 'heli_hit';
 
 /**
  * Thin Phaser shell: banks render deltas into a 30 Hz fixed sim, draws the
  * original level layout (placeholder tiles), hosts a controllable player
  * (←/→ walk, ↑ jump, ↓ duck, Ctrl boost, mouse aim, hold-to-fire MachineGun
- * pooled bullets) rendered from the packed atlas (#32), and a draggable debug
- * box. Game logic lives in plain modules under src/.
+ * pooled bullets) rendered from the packed atlas (#32), a shootable heli with
+ * hit flash / death boom / score HUD (#12/#13), and a draggable debug box.
+ * Game logic lives in plain modules under src/.
  *
  * Audio (#26): click plays the test SFX after Boot unlock; DOM HUD owns
  * master volume + mute. Pooling / gain math lives in {@link AudioManager}.
@@ -60,6 +65,7 @@ export class GameScene extends Phaser.Scene {
   private bulletDots: Phaser.GameObjects.Arc[] = [];
   private heliSprite!: Phaser.GameObjects.Image;
   private explosionSprite!: Phaser.GameObjects.Arc;
+  private scoreText!: Phaser.GameObjects.Text;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private audioHud: AudioHud | null = null;
   private boostKey!: Phaser.Input.Keyboard.Key;
@@ -91,6 +97,7 @@ export class GameScene extends Phaser.Scene {
     this.createGunVisual();
     this.createBulletVisuals();
     this.createHeliVisual();
+    this.createScoreHud();
     this.createDebugBoxVisual();
     this.setupAudioDemo();
 
@@ -224,6 +231,7 @@ export class GameScene extends Phaser.Scene {
     this.syncGunVisual();
     this.syncBulletVisuals();
     this.syncHeliVisual();
+    this.syncScoreHud();
     this.syncBoxVisual();
   }
 
@@ -376,13 +384,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createHeliVisual(): void {
-    const def = getSpriteDef('heli');
+    const def = getSpriteDef(HELI_FRAME);
     const place = placeOnCenter(0, 0, def.pivot, {
       w: def.originalW,
       h: def.originalH,
     });
     this.heliSprite = this.add
-      .image(0, 0, ATLAS_KEY, 'heli')
+      .image(0, 0, ATLAS_KEY, HELI_FRAME)
       .setOrigin(place.originX, place.originY)
       .setDisplaySize(place.displayW, place.displayH)
       .setTint(HELI_TINT)
@@ -393,29 +401,52 @@ export class GameScene extends Phaser.Scene {
       .setVisible(false);
   }
 
+  private createScoreHud(): void {
+    // Temporary on-screen score readout (#13) until the full HUD lands in M6.
+    this.scoreText = this.add
+      .text(40, 40, formatScoreHud(0), {
+        fontFamily: 'monospace',
+        fontSize: '42px',
+        color: SCORE_COLOR,
+      })
+      .setOrigin(0, 0)
+      .setDepth(20);
+  }
+
+  private syncScoreHud(): void {
+    this.scoreText.setText(formatScoreHud(this.session.score.value));
+  }
+
   private syncHeliVisual(): void {
     const heli = this.session.helicopters.find((h) => h.active);
     if (!heli) {
       this.heliSprite.setVisible(false);
     } else {
-      const def = getSpriteDef('heli');
+      const flashing = heli.hitFlashRemaining > 0;
+      const frame = flashing ? HELI_HIT_FRAME : HELI_FRAME;
+      const def = getSpriteDef(frame);
       const place = placeOnCenter(heli.x, heli.y, def.pivot, {
         w: def.originalW,
         h: def.originalH,
       });
       this.heliSprite.setVisible(true);
+      this.heliSprite.setTexture(ATLAS_KEY, frame);
+      this.heliSprite.setOrigin(place.originX, place.originY);
+      this.heliSprite.setDisplaySize(place.displayW, place.displayH);
       this.heliSprite.setPosition(
         this.arenaOriginX + place.x,
         this.arenaOriginY + place.y,
       );
       this.heliSprite.setAngle(heli.rotationDeg);
+      // Brighten during flash so the hit reads even if frames look similar.
+      this.heliSprite.setTint(flashing ? 0xffffff : HELI_TINT);
     }
 
     const boom = this.session.explosions.find((e) => e.active);
     if (!boom) {
       this.explosionSprite.setVisible(false);
     } else {
-      const scale = 1 + (boom.age / boom.maxAge) * 0.5;
+      const scale = 1 + (boom.age / boom.maxAge) * 1.5;
       this.explosionSprite.setVisible(true);
       this.explosionSprite.setPosition(
         this.arenaOriginX + boom.x,

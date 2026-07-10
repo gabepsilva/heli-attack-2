@@ -69,6 +69,7 @@ describe('SimSession', () => {
     expect(session.secondTimerMs).toBe(0);
     expect(session.displayedSimRate).toBe(0);
     expect(session.accumulator.leftoverSeconds).toBe(0);
+    expect(session.score.value).toBe(0);
   });
 
   it('steps the player walk curve through the fixed sim (ramp to cap, decay to 0)', () => {
@@ -286,5 +287,49 @@ describe('SimSession', () => {
     expect(
       session.explosions.some((e) => e.active) || session.explosions.length > 0,
     ).toBe(true);
+  });
+
+  it('increments score by damage per hit and resets score (issue #13)', () => {
+    const session = new SimSession();
+    expect(session.score.value).toBe(0);
+
+    const heli = session.helicopters[0]!;
+    heli.x = 900;
+    heli.y = 220;
+    heli.xspeed = 0;
+    heli.yspeed = 0;
+    heli.tx = heli.x;
+    heli.ty = heli.y;
+
+    const hit = {
+      x: heli.x - HELI.spriteW / 2 + 22,
+      y: heli.y - HELI.spriteH / 2 + 2,
+    };
+    session.player.placeAt(hit.x - 80, hit.y);
+    session.player.mouse = { x: hit.x, y: hit.y };
+    session.fireHeld = true;
+
+    let sawFlash = false;
+    for (let tick = 0; tick < SIM_HZ * 20 && heli.active; tick += 1) {
+      heli.xspeed = 0;
+      heli.yspeed = 0;
+      heli.tx = heli.x;
+      heli.ty = heli.y;
+      session.update(1000 / 30);
+      if (heli.hitFlashRemaining > 0) {
+        sawFlash = true;
+      }
+    }
+
+    expect(heli.active).toBe(false);
+    expect(session.score.value).toBe(HELI.hp);
+    expect(session.score.value).toBe(30 * WEAPONS[0].damage);
+    expect(sawFlash).toBe(true);
+    expect(
+      session.explosions.some((e) => e.active) || session.explosions.length > 0,
+    ).toBe(true);
+
+    session.reset();
+    expect(session.score.value).toBe(0);
   });
 });

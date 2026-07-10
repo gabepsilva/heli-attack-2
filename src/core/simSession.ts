@@ -12,6 +12,11 @@ import {
   type Helicopter,
 } from '../combat/helicopter';
 import {
+  addDamageScore,
+  createScoreState,
+  type ScoreState,
+} from '../combat/score';
+import {
   createMachineGunState,
   stepWeaponFire,
   type WeaponState,
@@ -31,9 +36,10 @@ export const DEBUG_BOX_SPAWN = { x: 200, y: 200 } as const;
 
 /**
  * Per-run sim state for GameScene: fixed-step accumulator, timeStep, HUD
- * counters, original level map, player, bullet pool, MachineGun reload, and
- * the debug box. Lives outside Phaser so scene restarts and the update loop
- * are unit-testable (Phaser reuses the scene instance; only create() re-runs).
+ * counters, original level map, player, bullet pool, MachineGun reload,
+ * helicopter combat (#12/#13), and the debug box. Lives outside Phaser so
+ * scene restarts and the update loop are unit-testable (Phaser reuses the
+ * scene instance; only create() re-runs).
  *
  * The debug overlay (#8) is a DOM panel outside Phaser so it can host real
  * `<input>` controls for live physics tuning and toggle off for clean demos.
@@ -75,8 +81,11 @@ export class SimSession {
     ),
   ];
 
-  /** Short-lived placeholder explosions after heli kills (#12). */
+  /** Short-lived placeholder explosions after heli kills (#12/#13). */
   explosions: HeliExplosion[] = [];
+
+  /** Damage-dealt score (Flash `score += damage`) (#13). */
+  score: ScoreState = createScoreState();
 
   /** Spawn RNG — fixed seed so tests and demos are reproducible. */
   readonly spawnRng = createSpawnRng(12);
@@ -119,6 +128,7 @@ export class SimSession {
       ),
     ];
     this.explosions = [];
+    this.score = createScoreState();
     this.debugBox.dragging = false;
     this.debugBox.placeAt(DEBUG_BOX_SPAWN.x, DEBUG_BOX_SPAWN.y);
   }
@@ -183,8 +193,11 @@ export class SimSession {
       this.helicopters,
       this.bulletCullBounds,
       this.timeScale.timeStep,
-      (heli) => {
-        this.explosions.push(createHeliExplosion(heli.x, heli.y));
+      (event) => {
+        addDamageScore(this.score, event.damage);
+        if (event.killed) {
+          this.explosions.push(createHeliExplosion(event.heli.x, event.heli.y));
+        }
       },
     );
     for (let i = this.explosions.length - 1; i >= 0; i -= 1) {

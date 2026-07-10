@@ -26,6 +26,20 @@ export type Helicopter = {
   /** Drift offset from player X (Flash `xdif`). */
   xDrift: number;
   frameCounter: number;
+  /**
+   * Sim frames of hit flash remaining (Flash white tint when
+   * `lasthealth != health`). Scene swaps to `heli_hit` while > 0.
+   */
+  hitFlashRemaining: number;
+};
+
+/** Callback fired when a bullet damages a heli (#13 score + kill VFX). */
+export type HeliHitEvent = {
+  heli: Helicopter;
+  /** Damage applied this hit (weapon damage). */
+  damage: number;
+  /** True when this hit reduced health to ≤ 0. */
+  killed: boolean;
 };
 
 export type HeliExplosion = {
@@ -114,6 +128,7 @@ export function createHelicopter(
     stepAccum: 0,
     xDrift: 0,
     frameCounter: 0,
+    hitFlashRemaining: 0,
   };
 }
 
@@ -127,15 +142,21 @@ export function createHeliExplosion(
 
 /** Apply weapon damage; returns true when the heli dies this hit. */
 export function damageHelicopter(heli: Helicopter, amount: number): boolean {
-  if (!heli.active) {
+  if (!heli.active || amount <= 0) {
     return false;
   }
   heli.health -= amount;
+  heli.hitFlashRemaining = HELI.hitFlashFrames;
   if (heli.health <= 0) {
     heli.active = false;
     return true;
   }
   return false;
+}
+
+/** True while the heli should show the damaged flash sprite/tint. */
+export function isHeliFlashing(heli: Helicopter): boolean {
+  return heli.active && heli.hitFlashRemaining > 0;
 }
 
 /**
@@ -152,6 +173,11 @@ export function stepHelicopter(
 ): void {
   if (!heli.active) {
     return;
+  }
+
+  // Expire prior-frame flash before motion (Flash clears after one heliFrame).
+  if (heli.hitFlashRemaining > 0) {
+    heli.hitFlashRemaining = Math.max(0, heli.hitFlashRemaining - timeStep);
   }
 
   heli.stepAccum += timeStep;
@@ -216,13 +242,14 @@ export function stepHeliExplosion(
 /**
  * Advance bullets, pixel-test against active helis, apply damage, recycle on hit.
  * Mirrors Flash `bulletFrame` enemy loop (point vs `hit` clip).
+ * {@link onHit} receives damage dealt so callers can add score (#13).
  */
 export function stepBulletsVsHelis(
   pool: BulletPool,
   helis: readonly Helicopter[],
   bounds: Parameters<BulletPool['stepAll']>[1],
   timeStep: number,
-  onHeliKilled?: (heli: Helicopter) => void,
+  onHit?: (event: HeliHitEvent) => void,
 ): void {
   for (let i = 0; i < pool.slots.length; i += 1) {
     const bullet = pool.slots[i]!;
@@ -235,7 +262,7 @@ export function stepBulletsVsHelis(
       helis,
       timeStep,
       bounds,
-      onHeliKilled,
+      onHit,
     );
     if (shouldCull) {
       pool.release(bullet);
@@ -248,7 +275,7 @@ function stepBulletWithHit(
   helis: readonly Helicopter[],
   timeStep: number,
   bounds: Parameters<BulletPool['stepAll']>[1],
-  onHeliKilled?: (heli: Helicopter) => void,
+  onHit?: (event: HeliHitEvent) => void,
 ): boolean {
   bullet.x += bullet.vx * timeStep;
   bullet.y += bullet.vy * timeStep;
@@ -267,9 +294,10 @@ function stepBulletWithHit(
         spriteH: HELI.spriteH,
       })
     ) {
-      const killed = damageHelicopter(heli, bullet.damage);
-      if (killed && onHeliKilled) {
-        onHeliKilled(heli);
+      const damage = bullet.damage;
+      const killed = damageHelicopter(heli, damage);
+      if (onHit) {
+        onHit({ heli, damage, killed });
       }
       return true;
     }

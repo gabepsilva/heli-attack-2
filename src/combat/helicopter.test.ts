@@ -74,8 +74,10 @@ describe('helicopter (issue #12 — enemy entity)', () => {
 
     for (let i = 0; i < 29; i += 1) {
       fireHit(pool, heli);
-      stepBulletsVsHelis(pool, [heli], bounds, 1, () => {
-        kills += 1;
+      stepBulletsVsHelis(pool, [heli], bounds, 1, (event) => {
+        if (event.killed) {
+          kills += 1;
+        }
       });
       expect(heli.active).toBe(true);
       expect(heli.health).toBe(300 - (i + 1) * 10);
@@ -83,8 +85,10 @@ describe('helicopter (issue #12 — enemy entity)', () => {
     }
 
     fireHit(pool, heli);
-    stepBulletsVsHelis(pool, [heli], bounds, 1, () => {
-      kills += 1;
+    stepBulletsVsHelis(pool, [heli], bounds, 1, (event) => {
+      if (event.killed) {
+        kills += 1;
+      }
     });
     expect(heli.health).toBe(0);
     expect(heli.active).toBe(false);

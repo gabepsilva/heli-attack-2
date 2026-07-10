@@ -104,6 +104,19 @@ export const HELI = {
   onScreenFramesRand: 100,
   /** Placeholder boom VFX lifetime (sim frames). */
   explosionDurationFrames: 20,
+  /**
+   * Hit-flash duration in sim frames. Flash applies a white tint for the
+   * single heliFrame where `lasthealth != health` after a bullet hit.
+   */
+  hitFlashFrames: 1,
+} as const;
+
+/**
+ * Score display (#13). Internal score accumulates damage dealt; the HUD
+ * multiplies by {@link SCORE.displayScale} (Flash `Math.floor(score)*100`).
+ */
+export const SCORE = {
+  displayScale: 100,
 } as const;
 
 /**
