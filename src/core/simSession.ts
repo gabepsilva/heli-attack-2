@@ -323,11 +323,7 @@ export class SimSession {
         this.timeScale.timeStep,
         this.playerPowerup.powerupOn,
       );
-      this.player.step(
-        this.map,
-        playerStep,
-        this.playerPowerup.powerupOn,
-      );
+      this.player.step(this.map, playerStep, this.playerPowerup.powerupOn);
       const def = getActiveWeaponDef(this.inventory);
       if (stepWeaponFire(this.weapon, this.fireHeld, def)) {
         this.tryFire();
@@ -340,8 +336,7 @@ export class SimSession {
     const playerBody = this.player.body;
     const playerCenterX = playerBody.x + playerBody.w / 2;
     const playerCenterY = playerBody.y + playerBody.h / 2;
-    const predatorMode =
-      this.playerPowerup.powerupOn === POWERUP.PredatorMode;
+    const predatorMode = this.playerPowerup.powerupOn === POWERUP.PredatorMode;
 
     for (let i = 0; i < this.helicopters.length; i += 1) {
       const heli = this.helicopters[i]!;

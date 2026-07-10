@@ -4,10 +4,7 @@ import {
   type GunAimState,
   type Vec2,
 } from '../combat/gunAim';
-import {
-  applyJetpackThrust,
-  isJetpackActive,
-} from '../combat/powerupEffects';
+import { applyJetpackThrust, isJetpackActive } from '../combat/powerupEffects';
 import { GUN, PLAYER, WORLD } from '../config/constants';
 import { createAabbBody, type AabbBody } from '../world/aabbBody';
 import { resolveAabbAgainstTiles } from '../world/tileResolve';

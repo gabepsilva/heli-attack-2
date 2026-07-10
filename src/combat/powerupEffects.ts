@@ -13,11 +13,7 @@
  * | 5 | Jetpack — hold jump → yspeed = max(yspeed−2, −32) |
  */
 
-import {
-  POWERUP,
-  POWERUP_EFFECTS,
-  POWERUP_FRAMES,
-} from '../config/constants';
+import { POWERUP, POWERUP_EFFECTS, POWERUP_FRAMES } from '../config/constants';
 import { PREDATOR_WEAPON_INDEX } from '../config/weapons';
 import type { PlayerPowerupState } from './powerupDrop';
 import type { WeaponInventory } from './weaponInventory';

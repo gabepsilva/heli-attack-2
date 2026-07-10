@@ -195,16 +195,10 @@ export class GameScene extends Phaser.Scene {
       });
     }
     this.input.keyboard?.on('keydown-Q', () => {
-      prevWeapon(
-        this.session.inventory,
-        this.session.playerPowerup.powerupOn,
-      );
+      prevWeapon(this.session.inventory, this.session.playerPowerup.powerupOn);
     });
     this.input.keyboard?.on('keydown-E', () => {
-      nextWeapon(
-        this.session.inventory,
-        this.session.playerPowerup.powerupOn,
-      );
+      nextWeapon(this.session.inventory, this.session.playerPowerup.powerupOn);
     });
     this.input.keyboard?.on('keydown-ESC', () => {
       this.scene.start(SCENE_KEYS.Boot);

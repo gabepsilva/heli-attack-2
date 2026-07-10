@@ -14,10 +14,7 @@ import {
   POWERUP_FRAMES,
 } from '../config/constants';
 import { PREDATOR_WEAPON_INDEX, WEAPONS } from '../config/weapons';
-import {
-  createPlayerHealth,
-  damagePlayer,
-} from './playerHealth';
+import { createPlayerHealth, damagePlayer } from './playerHealth';
 import { createPlayerPowerupState } from './powerupDrop';
 import {
   applyJetpackThrust,
@@ -41,15 +38,8 @@ import {
   selectWeaponByDigitKey,
 } from './weaponInventory';
 import { SimSession } from '../core/simSession';
-import {
-  createSpawnRng,
-  createHelicopter,
-  stepHeliGunAim,
-} from './helicopter';
-import {
-  EnemyBulletPool,
-  stepEnemyBulletsVsPlayer,
-} from './enemyBullet';
+import { createSpawnRng, createHelicopter, stepHeliGunAim } from './helicopter';
+import { EnemyBulletPool, stepEnemyBulletsVsPlayer } from './enemyBullet';
 import { createAabbBody } from '../world/aabbBody';
 
 describe('powerup effects (issue #22)', () => {
@@ -159,16 +149,7 @@ describe('powerup effects (issue #22)', () => {
     const targets = new Set<number>();
     for (let i = 0; i < 20; i += 1) {
       heli.gunRotationDeg = 0;
-      const t = stepHeliGunAim(
-        heli,
-        playerX,
-        playerY,
-        1,
-        10,
-        true,
-        rng,
-        800,
-      );
+      const t = stepHeliGunAim(heli, playerX, playerY, 1, 10, true, rng, 800);
       targets.add(Math.round(t));
     }
     expect(targets.size).toBeGreaterThan(1);
