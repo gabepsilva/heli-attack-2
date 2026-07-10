@@ -34,10 +34,7 @@ import {
   WEAPON_COUNT,
   WEAPONS,
 } from '../config/weapons';
-import {
-  WEAPON_HUD_ICON_FRAMES,
-  weaponHudIconFrame,
-} from '../art/catalog';
+import { WEAPON_HUD_ICON_FRAMES, weaponHudIconFrame } from '../art/catalog';
 import {
   buildHudSnapshot,
   DEATH_AMMO_HUD,

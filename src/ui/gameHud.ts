@@ -12,11 +12,7 @@
 import type Phaser from 'phaser';
 import { ATLAS_KEY } from '../config/art';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/game';
-import {
-  HUD_LAYOUT,
-  weaponHudIconDisplaySize,
-  type HudSnapshot,
-} from './hud';
+import { HUD_LAYOUT, weaponHudIconDisplaySize, type HudSnapshot } from './hud';
 
 const COLORS = {
   panel: 0x1b263b,
