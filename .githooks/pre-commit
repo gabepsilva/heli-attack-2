@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+# Local quality gate (issue #2): lint + typecheck before commit.
+set -e
+cd "$(dirname "$0")/.."
+npm run lint
+npm run typecheck
