@@ -38,6 +38,7 @@ export function resolveAabbAgainstTiles(
   const xchange = body.vx;
   const ychange = body.vy;
   body.onGround = false;
+  body.onCeiling = false;
 
   resolveX(map, body, xchange, timeStep, tile);
   resolveY(map, body, ychange, timeStep, tile);
@@ -126,6 +127,7 @@ function resolveY(
       const row = Math.max(tiley, -1);
       body.y = (row + 1) * tile - 1;
       body.vy = 0;
+      body.onCeiling = true;
     }
   }
 }

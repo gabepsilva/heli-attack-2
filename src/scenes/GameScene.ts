@@ -61,7 +61,7 @@ export class GameScene extends Phaser.Scene {
     this.cursors = this.input.keyboard!.createCursorKeys();
 
     this.add
-      .text(GAME_WIDTH / 2, 28, 'Walk ←/→ — watch vx ramp & decay', {
+      .text(GAME_WIDTH / 2, 28, '↑ jump · ↓ duck · ←/→ walk', {
         fontFamily: 'Arial, Helvetica, sans-serif',
         fontSize: '36px',
         color: '#f5f5f5',
@@ -76,7 +76,7 @@ export class GameScene extends Phaser.Scene {
     this.add.text(
       40,
       GAME_HEIGHT - 60,
-      '←/→ walk · drag box · 1/2 = timeStep 1.0/0.5 · Esc → BootScene',
+      '←/→ walk · ↑ jump · ↓ duck · drag box · 1/2 = timeStep · Esc → Boot',
       { ...HUD_STYLE, fontSize: '20px', color: '#9ab' },
     );
 
@@ -95,6 +95,8 @@ export class GameScene extends Phaser.Scene {
     this.session.player.input = {
       left: this.cursors.left.isDown,
       right: this.cursors.right.isDown,
+      jump: this.cursors.up.isDown,
+      duck: this.cursors.down.isDown,
     };
 
     this.session.update(delta);
@@ -106,11 +108,14 @@ export class GameScene extends Phaser.Scene {
       `timeStep: ${this.session.timeScale.timeStep.toFixed(2)}`,
     );
     const p = this.session.player.body;
+    const pl = this.session.player;
     this.playerText.setText(
       `player vx=${p.vx.toFixed(0)}  vy=${p.vy.toFixed(1)}  ` +
         `(${p.x.toFixed(0)}, ${p.y.toFixed(0)})  ` +
-        `${p.onGround ? 'grounded' : 'air'}  ` +
-        `cap±${PLAYER.walkCap}/hard±${PLAYER.hardCap}`,
+        `${p.onGround ? 'grounded' : 'air'}` +
+        `${pl.ducking ? ' duck' : ''}  ` +
+        `j${pl.jumpState.jump ? 1 : 0}${pl.jumpState.jump2 ? 2 : ''}  ` +
+        `up=${pl.jumpState.up}`,
     );
     const b = this.session.debugBox.body;
     this.boxText.setText(
@@ -176,6 +181,7 @@ export class GameScene extends Phaser.Scene {
       this.arenaOriginX + p.x + p.w / 2,
       this.arenaOriginY + p.y + p.h / 2,
     );
+    this.playerRect.setSize(p.w, p.h);
   }
 
   private createDebugBoxVisual(): void {
