@@ -73,7 +73,10 @@ import {
   type GamepadWeaponEdgeState,
 } from '../input/gamepadControls';
 import { DEFAULT_GAMEPAD_BINDINGS } from '../config/gamepad';
+import { PERF, parsePerfHudVisible } from '../config/perf';
 import { DebugOverlay } from '../tooling/debugOverlay';
+import { PerfHud } from '../tooling/perfHud';
+import { PerfMonitor } from '../tooling/perfMonitor';
 import { buildHudSnapshot } from '../ui/hud';
 import { GameHud } from '../ui/gameHud';
 import { getMountedTouchControlsHud } from '../ui/touchControlsHud';
@@ -125,6 +128,9 @@ const TILE_FRAME = 'tile_floor';
  *
  * Camera feel (#36): damage-scaled screen shake, hit flash, hit-stop, damage
  * vignette, and subtle aim/velocity lead — intensity toggle in the DOM HUD.
+ *
+ * Perf (#37): rolling FPS / frame-budget HUD (F3), fixed pool audit, single
+ * atlas batching, and a measured peak-load report under the mobile frame budget.
  *
  * The debug overlay (#8) is a DOM panel outside Phaser so it can host real
  * `<input>` controls for live physics tuning and toggle off for clean demos.
@@ -182,6 +188,9 @@ export class GameScene extends Phaser.Scene {
   private gameParticles: GameParticles | null = null;
   private gameCameraFeel: GameCameraFeel | null = null;
   private cameraFeelHud: CameraFeelHud | null = null;
+  /** Rolling FPS / pool sampler for the perf HUD (#37). */
+  private readonly perfMonitor = new PerfMonitor();
+  private perfHud: PerfHud | null = null;
   private boostKey!: Phaser.Input.Keyboard.Key;
   private bulletTimeKey!: Phaser.Input.Keyboard.Key;
   private pauseKey!: Phaser.Input.Keyboard.Key;
@@ -210,13 +219,21 @@ export class GameScene extends Phaser.Scene {
     this.gameCameraFeel = null;
     this.cameraFeelHud?.destroy();
     this.cameraFeelHud = null;
+    this.perfHud?.destroy();
+    this.perfHud = null;
+    this.perfMonitor.reset();
     this.gameSfx?.destroy();
     this.gameSfx = null;
     this.audioHud?.destroy();
     this.overlay?.destroy();
-    this.overlay = new DebugOverlay({
-      search:
-        typeof window !== 'undefined' ? window.location.search : undefined,
+    const search =
+      typeof window !== 'undefined' ? window.location.search : undefined;
+    this.overlay = new DebugOverlay({ search });
+    const perfVisible =
+      parsePerfHudVisible(search ?? '') ?? PERF.defaultHudVisible;
+    this.perfHud = new PerfHud({
+      monitor: this.perfMonitor,
+      visible: perfVisible,
     });
 
     this.cameras.main.setBackgroundColor('#0d1b2a');
@@ -319,6 +336,10 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-BACKTICK', () => {
       this.overlay?.toggle();
     });
+    // F3 — toggle perf HUD (issue #37).
+    this.input.keyboard?.on('keydown-F3', () => {
+      this.perfHud?.toggle();
+    });
 
     // Gamepad hotplug (#31): listen for connect/disconnect; sync already-present pads.
     const gp = this.input.gamepad;
@@ -349,6 +370,8 @@ export class GameScene extends Phaser.Scene {
       this.gameCameraFeel = null;
       this.cameraFeelHud?.destroy();
       this.cameraFeelHud = null;
+      this.perfHud?.destroy();
+      this.perfHud = null;
       this.gameSfx?.destroy();
       this.gameSfx = null;
       this.audioHud?.destroy();
@@ -587,6 +610,24 @@ export class GameScene extends Phaser.Scene {
       bulletsRecycled: pool.recycleCount,
     });
 
+    // Perf HUD (#37): sample render delta + pool occupancy against frame budgets.
+    const helisActive = this.session.helicopters.reduce(
+      (n, h) => n + (h.active ? 1 : 0),
+      0,
+    );
+    this.perfMonitor.sample(delta, {
+      bulletsActive: pool.activeCount,
+      bulletsCapacity: pool.capacity,
+      enemyBulletsActive: this.session.enemyBullets.activeCount,
+      enemyBulletsCapacity: this.session.enemyBullets.capacity,
+      helisActive,
+      helisMax: PERF.heliMaxConcurrent,
+      particlesQueued: this.session.particleFx.length,
+      particlesCapacity: this.session.particleFx.capacity,
+      particleBudgetCap: PERF.particleBudgetCap,
+    });
+    this.perfHud?.refresh();
+
     this.syncPlayerVisual();
     this.syncGunVisual();
     this.syncBulletVisuals();
@@ -808,9 +849,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createHeliVisual(): void {
-    // Pool sized for max concurrent + a couple spare explosion slots (#19).
-    const heliPool = 8;
-    const boomPool = 8;
+    // Pool sized for max concurrent + spare explosion slots (#19 / #37 audit).
+    const heliPool = PERF.heliVisualPool;
+    const boomPool = PERF.explosionVisualPool;
     const def = getSpriteDef('heli');
     const place = placeOnCenter(0, 0, def.pivot, {
       w: def.originalW,

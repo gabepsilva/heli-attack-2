@@ -33,6 +33,7 @@ packageable for Steam.
 Work is tracked as [GitHub issues](https://github.com/gabepsilva/heli-attack-2/issues)
 (the source of truth for every ticket); [`docs/MIGRATION_PLAN.md`](docs/MIGRATION_PLAN.md)
 holds the principles, definition of done, deliberate cuts, and milestone map.
+The performance pass (#37) report is [`docs/PERF_REPORT.md`](docs/PERF_REPORT.md).
 
 ## What we're porting vs. recreating
 
