@@ -85,16 +85,13 @@ describe('player bullets vs solid tiles (issue #96)', () => {
   it('MachineGun ballistic shot recycles on first solid-tile contact (AC)', () => {
     const map = solidFloorMap();
     const pool = new BulletPool(4);
-    const bounds = arenaCullBounds(map.width * WORLD.tile, map.height * WORLD.tile);
+    const bounds = arenaCullBounds(
+      map.width * WORLD.tile,
+      map.height * WORLD.tile,
+    );
     // Fire straight down from empty cell (2,1) toward floor row 4.
     // World: col 2 → x=100..149 center 125; row 1 → y=50..99.
-    const shot = pool.acquire(
-      125,
-      75,
-      90,
-      WEAPONS[0].speed,
-      WEAPONS[0].damage,
-    );
+    const shot = pool.acquire(125, 75, 90, WEAPONS[0].speed, WEAPONS[0].damage);
     expect(shot).not.toBeNull();
     expect(shot!.behavior).toBe('ballistic');
     expect(shot!.speed).toBe(8);
@@ -121,7 +118,14 @@ describe('player bullets vs solid tiles (issue #96)', () => {
     const map = solidFloorMap();
     const bounds = arenaCullBounds(300, 300);
     const bullet = createInactiveBullet(0);
-    activateBullet(bullet, 125, 175, 90, BULLET.defaultSpeed, BULLET.defaultDamage);
+    activateBullet(
+      bullet,
+      125,
+      175,
+      90,
+      BULLET.defaultSpeed,
+      BULLET.defaultDamage,
+    );
 
     // One step into the floor band (y=175+8=183 still air; keep stepping).
     let hitSolid = false;
