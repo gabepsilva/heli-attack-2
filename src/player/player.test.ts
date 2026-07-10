@@ -770,5 +770,29 @@ describe('Player (gravity, jump, duck — issue #6)', () => {
     expect(player.jumpState.up).toBe(PLAYER.jumpHoldFrames);
     expect(player.boostState.charge).toBe(PLAYER.boostChargeFrames);
     expect(player.boostState.hjump).toBe(false);
+    expect(player.gunAim.rotationDeg).toBe(0);
+    expect(player.gunAim.flipY).toBe(false);
+  });
+
+  it('tracks the mouse so the muzzle sits on the barrel after settling', () => {
+    const map = createTestArena();
+    const player = new Player(100, 200);
+    // Settle onto the floor so gravity does not keep shifting the grip.
+    for (let i = 0; i < 40; i += 1) {
+      player.step(map, 1);
+    }
+    expect(player.body.onGround).toBe(true);
+
+    // Point mouse far right of the grip; settle the Flash turn lerp.
+    player.mouse = {
+      x: player.gunPivot.x + 400,
+      y: player.gunPivot.y,
+    };
+    for (let i = 0; i < 40; i += 1) {
+      player.step(map, 1);
+    }
+    expect(player.gunAim.flipY).toBe(false);
+    expect(player.muzzle.x).toBeCloseTo(player.gunPivot.x + (1 - 0.2) * 29, 5);
+    expect(player.muzzle.y).toBeCloseTo(player.gunPivot.y, 5);
   });
 });

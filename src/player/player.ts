@@ -1,4 +1,10 @@
-import { PLAYER, WORLD } from '../config/constants';
+import {
+  createGunAimState,
+  updateGunAim,
+  type GunAimState,
+  type Vec2,
+} from '../combat/gunAim';
+import { GUN, PLAYER, WORLD } from '../config/constants';
 import { createAabbBody, type AabbBody } from '../world/aabbBody';
 import { resolveAabbAgainstTiles } from '../world/tileResolve';
 import type { TileMap } from '../world/tileMap';
@@ -38,8 +44,8 @@ export type PlayerInput = {
 
 /**
  * Controllable player: walk + gravity + variable jump + double-jump + charged
- * hyper-jump + duck + AABB resolve.
- * Plain module — Phaser only owns the visual and keyboard → {@link input}.
+ * hyper-jump + duck + AABB resolve + mouse gun aim.
+ * Plain module — Phaser only owns the visual and keyboard/mouse → {@link input}.
  */
 export class Player {
   readonly body: AabbBody;
@@ -48,6 +54,15 @@ export class Player {
 
   /** True while the duck hitbox is active (after the last duck tick). */
   ducking = false;
+
+  /** Live gun pose (rotation + facing flip). Updated each sim tick. */
+  gunAim: GunAimState = createGunAimState();
+
+  /** Last computed muzzle tip in arena/world space (for #10 bullets). */
+  muzzle: Vec2 = { x: 0, y: 0 };
+
+  /** Last gun grip/pivot in arena/world space. */
+  gunPivot: Vec2 = { x: 0, y: 0 };
 
   /** Set by the scene each render frame from keyboard state. */
   input: PlayerInput = {
@@ -58,6 +73,12 @@ export class Player {
     boost: false,
   };
 
+  /**
+   * Mouse position in arena/world space (same coords as {@link body}).
+   * Scene converts pointer → arena each frame.
+   */
+  mouse: Vec2 = { x: PLAYER_SPAWN.x + 100, y: PLAYER_SPAWN.y };
+
   constructor(
     x: number = PLAYER_SPAWN.x,
     y: number = PLAYER_SPAWN.y,
@@ -67,9 +88,11 @@ export class Player {
     this.body = createAabbBody(x, y, w, h);
     this.jumpState = createJumpState();
     this.boostState = createBoostState();
+    this.mouse = { x: x + GUN.attachX + 100, y: y + GUN.attachY };
+    this.syncGunPose(0);
   }
 
-  /** Teleport and clear velocity / jump / boost / duck (scene reset). */
+  /** Teleport and clear velocity / jump / boost / duck / aim (scene reset). */
   placeAt(x: number, y: number): void {
     this.body.x = x;
     this.body.y = y;
@@ -82,13 +105,16 @@ export class Player {
     this.ducking = false;
     Object.assign(this.jumpState, createJumpState());
     Object.assign(this.boostState, createBoostState());
+    this.gunAim = createGunAimState();
+    // Default mouse to the right of the grip so aim starts at 0° (no turn).
+    this.mouse = { x: x + GUN.attachX + 100, y: y + GUN.attachY };
+    this.syncGunPose(0);
   }
 
   /**
    * One sim tick — order matches `heroAction`:
    * duck hitbox → walk → airborne mark → boost → jump → gravity → AABB
-   * resolve → land / ceiling jump flags. Close to `heroAction`; friction
-   * reads jump one frame earlier than the original (negligible).
+   * resolve → land / ceiling jump flags → gun aim.
    */
   step(map: TileMap, timeStep: number): void {
     this.ducking = applyDuckHitbox(this.body, this.input.duck, this.ducking);
@@ -127,5 +153,14 @@ export class Player {
     } else if (this.body.onCeiling) {
       cancelJumpOnCeiling(this.jumpState);
     }
+
+    this.syncGunPose(timeStep);
+  }
+
+  private syncGunPose(timeStep: number): void {
+    const result = updateGunAim(this.gunAim, this.body, this.mouse, timeStep);
+    this.gunAim = result.state;
+    this.gunPivot = result.pivot;
+    this.muzzle = result.muzzle;
   }
 }
