@@ -50,6 +50,8 @@ export const POWERUP_HUD_NAMES: Readonly<Record<number, string>> = {
 
 /**
  * Layout anchored to the 1920×1080 design resolution (#23 / #28).
+ * Under Phaser Scale.FIT these design-space coords stay correct at any
+ * window / fullscreen aspect (uniform canvas scale + letterbox).
  * Sizes chosen so bars and labels read clearly at full HD.
  */
 export const HUD_LAYOUT = {
@@ -92,6 +94,27 @@ export const HUD_LAYOUT = {
   death: { fontSize: 96 },
   depth: 40,
 } as const;
+
+/**
+ * HUD corner anchors in design space — the positions GameHud uses (#28).
+ * Under FIT these stay at the corresponding corners of the fitted canvas.
+ */
+export function hudDesignAnchors() {
+  return {
+    health: { x: HUD_LAYOUT.health.x, y: HUD_LAYOUT.health.y },
+    score: { x: HUD_LAYOUT.score.x, y: HUD_LAYOUT.score.y },
+    weapon: { x: HUD_LAYOUT.weapon.x, y: HUD_LAYOUT.weapon.y },
+    powerup: { x: HUD_LAYOUT.powerup.x, y: HUD_LAYOUT.powerup.y },
+    meters: {
+      hyperJumpX: HUD_LAYOUT.meters.hyperJumpX,
+      bulletTimeX: HUD_LAYOUT.meters.bulletTimeX,
+      y: HUD_LAYOUT.meters.y,
+    },
+    designWidth: HUD_LAYOUT.designWidth,
+    designHeight: HUD_LAYOUT.designHeight,
+    margin: HUD_LAYOUT.margin,
+  };
+}
 
 /** Live values the HUD view needs each frame. */
 export type HudSnapshot = {

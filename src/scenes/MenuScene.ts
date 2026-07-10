@@ -82,7 +82,7 @@ export class MenuScene extends Phaser.Scene {
       .text(
         GAME_WIDTH / 2,
         GAME_HEIGHT - 80,
-        'In game: P / Esc pause · die for game over',
+        'Fullscreen (top-left) · In game: P / Esc pause · die for game over',
         {
           fontFamily: 'monospace',
           fontSize: '22px',
