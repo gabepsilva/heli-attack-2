@@ -98,13 +98,67 @@ describe('resolveAabbAgainstTiles — acceptance criteria', () => {
 
   it('clamps vy to WORLD.terminal (50) before resolving', () => {
     const map = roomMap();
+    // From (60,60) with vy=999 → clamp to 50, free-fall to y=110 (no floor hit).
     const body = createAabbBody(60, 60, 20, 20);
-    body.vy = 999; // absurd — must clamp to 50
+    body.vy = 999;
 
     resolveAabbAgainstTiles(map, body, 1);
 
-    // After resolve, either still falling (clamped) or grounded (0).
-    expect(body.vy).toBeLessThanOrEqual(WORLD.terminal);
+    expect(body.vy).toBe(WORLD.terminal);
+    expect(body.y).toBe(110);
+  });
+
+  it('clamps upward vy to -WORLD.terminal (-50) before resolving', () => {
+    const map = roomMap();
+    // From (60,120) with vy=-999 → clamp to -50, free rise to y=70 (no ceiling hit).
+    const body = createAabbBody(60, 120, 20, 20);
+    body.vy = -999;
+
+    resolveAabbAgainstTiles(map, body, 1);
+
+    expect(body.vy).toBe(-WORLD.terminal);
+    expect(body.y).toBe(70);
+  });
+
+  it('cannot tunnel through a ceiling at terminal rise speed', () => {
+    const map = roomMap();
+    // Ceiling-adjacent: y=55, vy=-999 → clamp -50, probe hits row 0, snap to y=49.
+    const body = createAabbBody(60, 55, 20, 20);
+    body.vy = -999;
+
+    resolveAabbAgainstTiles(map, body, 1);
+
+    expect(body.vy).toBe(0);
+    expect(body.y).toBe(WORLD.tile - 1);
+  });
+
+  it('does not escape further left when already past the map edge', () => {
+    const map = roomMap();
+    // Lead repro: body at x=-1 with vx=-50 must stabilize, not walk to -∞.
+    // Snap clamps tilex to -1 → x stays at -1 (not -51, -101, …).
+    const body = createAabbBody(-1, 100, 20, 20);
+
+    for (let i = 0; i < 4; i += 1) {
+      body.vx = -WORLD.tile;
+      resolveAabbAgainstTiles(map, body, 1);
+    }
+
+    expect(body.vx).toBe(0);
+    expect(body.x).toBe(-1);
+  });
+
+  it('does not escape further up when already past the map edge', () => {
+    const map = roomMap();
+    // Symmetric ceiling path: snap clamps tiley to -1 → y stays at -1.
+    const body = createAabbBody(60, -1, 20, 20);
+
+    for (let i = 0; i < 4; i += 1) {
+      body.vy = -WORLD.tile;
+      resolveAabbAgainstTiles(map, body, 1);
+    }
+
+    expect(body.vy).toBe(0);
+    expect(body.y).toBe(-1);
   });
 
   it('rests on the floating platform in the test arena', () => {
@@ -182,5 +236,17 @@ describe('resolveAabbAgainstTiles — acceptance criteria', () => {
 
     expect(body.vx).toBe(0);
     expect(body.x).toBe(WORLD.tile - 1);
+  });
+
+  it('clamps positive vx to tile size before resolving', () => {
+    const map = roomMap();
+    // From (60,100) with vx=999 → clamp to 50, free move to x=110 (no wall hit).
+    const body = createAabbBody(60, 100, 20, 20);
+    body.vx = 999;
+
+    resolveAabbAgainstTiles(map, body, 1);
+
+    expect(body.vx).toBe(WORLD.tile);
+    expect(body.x).toBe(110);
   });
 });

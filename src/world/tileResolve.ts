@@ -67,8 +67,9 @@ function resolveX(
     if (!hits) {
       body.x += xchange * timeStep;
     } else {
-      // Snap so the body's right edge sits 1px left of the solid tile column.
-      body.x = tile2x * tile - body.w - 1;
+      // Clamp snap column into bounds — raw OOB tile2x would push further right each tick.
+      const col = Math.min(tile2x, map.width);
+      body.x = col * tile - body.w - 1;
       body.vx = 0;
     }
   } else {
@@ -78,8 +79,9 @@ function resolveX(
     if (!hits) {
       body.x += xchange * timeStep;
     } else {
-      // Original: (tilex+1)*tileWidth - 1 (when sprite == hitbox width).
-      body.x = (tilex + 1) * tile - 1;
+      // Clamp snap column into bounds — raw OOB tilex < -1 would push further left each tick.
+      const col = Math.max(tilex, -1);
+      body.x = (col + 1) * tile - 1;
       body.vx = 0;
     }
   }
@@ -100,13 +102,18 @@ function resolveY(
   const tilex = Math.floor((body.x + 1) / tile);
   const tile2x = Math.floor((body.x + body.w) / tile);
 
+  // Note: probes use unscaled `ychange` while the free move is `ychange * timeStep`.
+  // Faithful to the original — at timeStep < 1 a near-floor body can snap further
+  // than the scaled step alone would travel (contact "teleport" under bullet-time).
+
   if (ychange > 0) {
     const tile2y = Math.floor((body.y + ychange + body.h) / tile);
     if (!hitCheck(map, tile2y, tilex, tile2y, tile2x, 0)) {
       body.y += ychange * timeStep;
     } else {
-      // Snap so the body's bottom sits 1px above the solid tile row.
-      body.y = tile2y * tile - body.h - 1;
+      // Clamp snap row into bounds — raw OOB tile2y would push further down each tick.
+      const row = Math.min(tile2y, map.height);
+      body.y = row * tile - body.h - 1;
       body.vy = 0;
       body.onGround = true;
     }
@@ -115,8 +122,9 @@ function resolveY(
     if (!hitCheck(map, tiley, tilex, tiley, tile2x, 0)) {
       body.y += ychange * timeStep;
     } else {
-      // Original: (tiley+1)*tileHeight - 1 (when sprite == hitbox height).
-      body.y = (tiley + 1) * tile - 1;
+      // Clamp snap row into bounds — raw OOB tiley < -1 would push further up each tick.
+      const row = Math.max(tiley, -1);
+      body.y = (row + 1) * tile - 1;
       body.vy = 0;
     }
   }

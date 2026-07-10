@@ -8,8 +8,10 @@ import { getTile, type TileMap } from './tileMap';
  * `equal=0` (default), counts cells `!= type`. When `hold=0` (default), returns
  * `1` on the first match; when `hold=1`, returns the full count.
  *
- * Callers (X resolve) use `type=1, equal=1, hold=1` to count solid tiles;
- * Y resolve uses `type=0, equal=0` to detect any non-empty cell.
+ * Callers (X resolve) use `type=1, equal=1, hold=1` to count cells `=== 1`;
+ * Y resolve uses `type=0, equal=0` to detect any non-empty cell in `[0,100)`.
+ * Faithful asymmetry: a future tile type 2 would block vertically but not
+ * horizontally unless X-resolve's `type`/`equal` args change too.
  */
 export function hitCheck(
   map: TileMap,
