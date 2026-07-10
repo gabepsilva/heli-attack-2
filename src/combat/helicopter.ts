@@ -1,0 +1,279 @@
+/**
+ * Helicopter enemy — plain sim matching HA2 `addEnemy` / `heliFrame` essentials.
+ * Phaser only draws; hit tests use the baked alpha mask ({@link bulletHitsHeli}).
+ */
+
+import { HELI, WORLD } from '../config/constants';
+import { bulletHitsHeli } from './heliHit';
+import { isOutsideCullBounds, type Bullet, type BulletPool } from './bullet';
+
+export type Helicopter = {
+  active: boolean;
+  /** Center position in arena space (Flash `_x`, `_y`). */
+  x: number;
+  y: number;
+  health: number;
+  xspeed: number;
+  yspeed: number;
+  /** Hover target X/Y (Flash `tx`, `ty`). */
+  tx: number;
+  ty: number;
+  rotationDeg: number;
+  /** Frames until off-screen reposition (Flash `onscreen`). */
+  onScreen: number;
+  /** Per-frame motion accumulator (Flash `stepc`). */
+  stepAccum: number;
+  /** Drift offset from player X (Flash `xdif`). */
+  xDrift: number;
+  frameCounter: number;
+};
+
+export type HeliExplosion = {
+  active: boolean;
+  x: number;
+  y: number;
+  /** Sim frames remaining (placeholder VFX lifetime). */
+  age: number;
+  maxAge: number;
+};
+
+export type SpawnRng = Readonly<{
+  /** Returns [0, 1). */
+  next(): number;
+}>;
+
+/** Deterministic RNG for tests and spawn replay. */
+export function createSpawnRng(seed = 1): SpawnRng {
+  let state = seed >>> 0;
+  return {
+    next(): number {
+      state = (state * 1664525 + 1013904223) >>> 0;
+      return state / 0x1_0000_0000;
+    },
+  };
+}
+
+function randomInt(rng: SpawnRng, maxExclusive: number): number {
+  return Math.floor(rng.next() * maxExclusive);
+}
+
+function pseudoRand(seed: number): number {
+  return ((seed * 1103515245 + 12345) >>> 0) / 0x1_0000_0000;
+}
+
+/**
+ * Flash `addEnemy` spawn positions — mostly offscreen left/right, sometimes top.
+ * Positions are in arena coordinates (0..arenaW, 0..arenaH).
+ */
+export function spawnHelicopter(
+  health: number = HELI.hp,
+  arenaW: number,
+  _arenaH: number,
+  rng: SpawnRng = createSpawnRng(),
+): Helicopter {
+  const w = HELI.spriteW;
+  const h = HELI.spriteH;
+  let x: number;
+  let y: number;
+
+  if (randomInt(rng, 3) !== 0) {
+    // Side spawn (2/3): left or right edge, high in the sky.
+    if (randomInt(rng, 2) === 0) {
+      x = -w / 2;
+    } else {
+      x = arenaW + w / 2;
+    }
+    y = h;
+  } else {
+    // Top spawn (1/3): centered above the playfield.
+    x = arenaW / 2;
+    y = -h / 2;
+  }
+
+  return createHelicopter(x, y, health, rng);
+}
+
+export function createHelicopter(
+  x: number,
+  y: number,
+  health: number = HELI.hp,
+  rng: SpawnRng = createSpawnRng(),
+): Helicopter {
+  return {
+    active: true,
+    x,
+    y,
+    health,
+    xspeed: 0,
+    yspeed: 0,
+    tx: x,
+    ty: y,
+    rotationDeg: 0,
+    onScreen:
+      HELI.onScreenFramesMin + randomInt(rng, HELI.onScreenFramesRand + 1),
+    stepAccum: 0,
+    xDrift: 0,
+    frameCounter: 0,
+  };
+}
+
+export function createHeliExplosion(
+  x: number,
+  y: number,
+  maxAge: number = HELI.explosionDurationFrames,
+): HeliExplosion {
+  return { active: true, x, y, age: 0, maxAge };
+}
+
+/** Apply weapon damage; returns true when the heli dies this hit. */
+export function damageHelicopter(
+  heli: Helicopter,
+  amount: number,
+): boolean {
+  if (!heli.active) {
+    return false;
+  }
+  heli.health -= amount;
+  if (heli.health <= 0) {
+    heli.active = false;
+    return true;
+  }
+  return false;
+}
+
+/**
+ * One sim tick of hover/drift (simplified `heliFrame` motion when on-screen).
+ * Tracks the player horizontally with periodic vertical jitter.
+ */
+export function stepHelicopter(
+  heli: Helicopter,
+  timeStep: number,
+  playerCenterX: number,
+  playerY: number,
+  arenaW: number,
+  arenaH: number,
+): void {
+  if (!heli.active) {
+    return;
+  }
+
+  heli.stepAccum += timeStep;
+  let move = 0;
+  if (heli.stepAccum >= 1) {
+    move = 1;
+    heli.stepAccum -= 1;
+  }
+
+  if (move) {
+    heli.frameCounter += 1;
+    if (heli.frameCounter % 75 === 1) {
+      const r = pseudoRand(heli.frameCounter);
+      heli.xDrift = -arenaW / 4 + r * (arenaW / 2);
+    }
+    heli.tx = playerCenterX + heli.xDrift;
+    const halfW = HELI.spriteW / 2;
+    heli.tx = Math.max(halfW, Math.min(arenaW - halfW, heli.tx));
+
+    if (heli.frameCounter % 40 === 1) {
+      const r = pseudoRand(heli.frameCounter + 17);
+      heli.ty = playerY - arenaH / 4 + (Math.floor(r * 5) - 2) * 10;
+    }
+    heli.ty = Math.min(arenaH - WORLD.tile * 2, heli.ty);
+  }
+
+  const dx = heli.tx - heli.x;
+  const dy = heli.ty - heli.y;
+  heli.xspeed += dx / 200;
+  heli.yspeed += dy / 100;
+
+  if (move) {
+    const r = Math.floor((heli.xspeed / 20) * 15);
+    heli.rotationDeg = Math.abs(r) > 2 ? r : 0;
+  }
+
+  heli.x += heli.xspeed * timeStep;
+  heli.y += heli.yspeed * timeStep;
+
+  if (move) {
+    heli.xspeed *= 0.9 * timeStep;
+    heli.yspeed *= 0.9 * timeStep;
+    heli.onScreen -= 1;
+  }
+}
+
+export function stepHeliExplosion(
+  explosion: HeliExplosion,
+  timeStep: number,
+): boolean {
+  if (!explosion.active) {
+    return false;
+  }
+  explosion.age += timeStep;
+  if (explosion.age >= explosion.maxAge) {
+    explosion.active = false;
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Advance bullets, pixel-test against active helis, apply damage, recycle on hit.
+ * Mirrors Flash `bulletFrame` enemy loop (point vs `hit` clip).
+ */
+export function stepBulletsVsHelis(
+  pool: BulletPool,
+  helis: readonly Helicopter[],
+  bounds: Parameters<BulletPool['stepAll']>[1],
+  timeStep: number,
+  onHeliKilled?: (heli: Helicopter) => void,
+): void {
+  for (let i = 0; i < pool.slots.length; i += 1) {
+    const bullet = pool.slots[i]!;
+    if (!bullet.active) {
+      continue;
+    }
+
+    const shouldCull = stepBulletWithHit(bullet, helis, timeStep, bounds, onHeliKilled);
+    if (shouldCull) {
+      pool.release(bullet);
+    }
+  }
+}
+
+function stepBulletWithHit(
+  bullet: Bullet,
+  helis: readonly Helicopter[],
+  timeStep: number,
+  bounds: Parameters<BulletPool['stepAll']>[1],
+  onHeliKilled?: (heli: Helicopter) => void,
+): boolean {
+  bullet.x += bullet.vx * timeStep;
+  bullet.y += bullet.vy * timeStep;
+  bullet.age += timeStep;
+
+  for (let h = 0; h < helis.length; h += 1) {
+    const heli = helis[h]!;
+    if (!heli.active) {
+      continue;
+    }
+    if (
+      bulletHitsHeli(bullet.x, bullet.y, {
+        x: heli.x,
+        y: heli.y,
+        spriteW: HELI.spriteW,
+        spriteH: HELI.spriteH,
+      })
+    ) {
+      const killed = damageHelicopter(heli, bullet.damage);
+      if (killed && onHeliKilled) {
+        onHeliKilled(heli);
+      }
+      return true;
+    }
+  }
+
+  if (bullet.age >= bullet.maxLifetime) {
+    return true;
+  }
+  return isOutsideCullBounds(bullet.x, bullet.y, bounds);
+}

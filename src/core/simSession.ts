@@ -2,11 +2,22 @@ import { FixedTimestepAccumulator } from './fixedTimestep';
 import { TimeScale } from './timeScale';
 import { BulletPool, arenaCullBounds, type CullBounds } from '../combat/bullet';
 import {
+  createHeliExplosion,
+  createSpawnRng,
+  spawnHelicopter,
+  stepBulletsVsHelis,
+  stepHeliExplosion,
+  stepHelicopter,
+  type HeliExplosion,
+  type Helicopter,
+} from '../combat/helicopter';
+import {
   createMachineGunState,
   stepWeaponFire,
   type WeaponState,
 } from '../combat/weapon';
 import { PLAYER_SPAWN, Player } from '../player/player';
+import { HELI } from '../config/constants';
 import { DebugBox } from '../world/debugBox';
 import {
   LEVEL1_HEIGHT_PX,
@@ -54,6 +65,17 @@ export class SimSession {
   /** Draggable/droppable AABB that collides with {@link map}. */
   readonly debugBox = new DebugBox(DEBUG_BOX_SPAWN.x, DEBUG_BOX_SPAWN.y);
 
+  /** Active helicopter enemies in arena space (#12). */
+  helicopters: Helicopter[] = [
+    spawnHelicopter(HELI.hp, LEVEL1_WIDTH_PX, LEVEL1_HEIGHT_PX, createSpawnRng(12)),
+  ];
+
+  /** Short-lived placeholder explosions after heli kills (#12). */
+  explosions: HeliExplosion[] = [];
+
+  /** Spawn RNG — fixed seed so tests and demos are reproducible. */
+  readonly spawnRng = createSpawnRng(12);
+
   /**
    * Held-fire intent (Flash `mouseD`): scene sets from pointer.isDown each
    * render frame; sim ticks read it and stream at MachineGun reload cadence.
@@ -83,6 +105,15 @@ export class SimSession {
     this.bullets.reset();
     this.fireHeld = false;
     this.weapon = createMachineGunState();
+    this.helicopters = [
+      spawnHelicopter(
+        HELI.hp,
+        LEVEL1_WIDTH_PX,
+        LEVEL1_HEIGHT_PX,
+        this.spawnRng,
+      ),
+    ];
+    this.explosions = [];
     this.debugBox.dragging = false;
     this.debugBox.placeAt(DEBUG_BOX_SPAWN.x, DEBUG_BOX_SPAWN.y);
   }
@@ -131,7 +162,31 @@ export class SimSession {
     if (stepWeaponFire(this.weapon, this.fireHeld)) {
       this.tryFire();
     }
-    this.bullets.stepAll(this.timeScale.timeStep, this.bulletCullBounds);
+    const playerBody = this.player.body;
+    for (let i = 0; i < this.helicopters.length; i += 1) {
+      stepHelicopter(
+        this.helicopters[i]!,
+        this.timeScale.timeStep,
+        playerBody.x + playerBody.w / 2,
+        playerBody.y,
+        LEVEL1_WIDTH_PX,
+        LEVEL1_HEIGHT_PX,
+      );
+    }
+    stepBulletsVsHelis(
+      this.bullets,
+      this.helicopters,
+      this.bulletCullBounds,
+      this.timeScale.timeStep,
+      (heli) => {
+        this.explosions.push(createHeliExplosion(heli.x, heli.y));
+      },
+    );
+    for (let i = this.explosions.length - 1; i >= 0; i -= 1) {
+      if (stepHeliExplosion(this.explosions[i]!, this.timeScale.timeStep)) {
+        this.explosions.splice(i, 1);
+      }
+    }
     this.debugBox.step(this.map, this.timeScale.timeStep);
   }
 }

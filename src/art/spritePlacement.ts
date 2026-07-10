@@ -38,6 +38,23 @@ export function placeOnAabbBottomCenter(
   };
 }
 
+/** Placement for center-pivot sprites (helis, projectiles, VFX). */
+export function placeOnCenter(
+  centerX: number,
+  centerY: number,
+  pivot: SpritePivot,
+  display: Readonly<{ w: number; h: number }>,
+): SpritePlacement {
+  return {
+    x: centerX,
+    y: centerY,
+    displayW: display.w,
+    displayH: display.h,
+    originX: pivot.x,
+    originY: pivot.y,
+  };
+}
+
 /** Placement for the player placeholder from body + sprite def. */
 export function playerSpritePlacement(
   body: Aabb,

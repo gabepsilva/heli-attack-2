@@ -96,6 +96,14 @@ export const HELI = {
   hp: 300,
   bulletSpeed: 7,
   aimSpreadDeg: 10,
+  /** Flash `heli.png` logical size (game-space pixels). */
+  spriteW: 212,
+  spriteH: 106,
+  /** Flash `onscreen = 150+random(100)` spawn timer. */
+  onScreenFramesMin: 150,
+  onScreenFramesRand: 100,
+  /** Placeholder boom VFX lifetime (sim frames). */
+  explosionDurationFrames: 20,
 } as const;
 
 /**

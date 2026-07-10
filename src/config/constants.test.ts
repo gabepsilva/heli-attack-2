@@ -67,7 +67,16 @@ describe('config/constants (spec seed)', () => {
   });
 
   it('seeds HELI, powerups, health pickup, and bullet-time from the spec', () => {
-    expect(HELI).toEqual({ hp: 300, bulletSpeed: 7, aimSpreadDeg: 10 });
+    expect(HELI).toEqual({
+      hp: 300,
+      bulletSpeed: 7,
+      aimSpreadDeg: 10,
+      spriteW: 212,
+      spriteH: 106,
+      onScreenFramesMin: 150,
+      onScreenFramesRand: 100,
+      explosionDurationFrames: 20,
+    });
     expect(POWERUP_FRAMES).toBe(500);
     expect(POWERUP).toEqual({
       TriDamage: 1,
