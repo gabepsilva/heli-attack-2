@@ -2,6 +2,7 @@ import { PLAYER, WORLD } from '../config/constants';
 import { createAabbBody, type AabbBody } from '../world/aabbBody';
 import { resolveAabbAgainstTiles } from '../world/tileResolve';
 import type { TileMap } from '../world/tileMap';
+import { LEVEL1_PLAYER_SPAWN } from '../world/level1';
 import {
   applyBoostInput,
   createBoostState,
@@ -19,8 +20,8 @@ import {
 } from './jumpPhysics';
 import { applyHorizontalWalk } from './walkPhysics';
 
-/** Default spawn above the left floor shoulder of the test arena. */
-export const PLAYER_SPAWN = { x: 100, y: 200 } as const;
+/** Default spawn on the original level (see {@link LEVEL1_PLAYER_SPAWN}). */
+export const PLAYER_SPAWN = LEVEL1_PLAYER_SPAWN;
 
 /**
  * Per-frame keyboard state. Phaser only fills this; all physics lives here.
@@ -86,20 +87,16 @@ export class Player {
   /**
    * One sim tick — order matches `heroAction`:
    * duck hitbox → walk → airborne mark → boost → jump → gravity → AABB
-   * resolve → land / ceiling jump flags.
+   * resolve → land / ceiling jump flags. Close to `heroAction`; friction
+   * reads jump one frame earlier than the original (negligible).
    */
   step(map: TileMap, timeStep: number): void {
-    this.ducking = applyDuckHitbox(
-      this.body,
-      this.input.duck,
-      this.ducking,
-      this.body.onGround,
-    );
+    this.ducking = applyDuckHitbox(this.body, this.input.duck, this.ducking);
 
     this.body.vx = applyHorizontalWalk(this.body.vx, {
       left: this.input.left,
       right: this.input.right,
-      duck: this.ducking,
+      duck: this.input.duck,
       // Original friction gate uses the airborne flag, not the jump key.
       jump: this.jumpState.jump,
     });
@@ -115,7 +112,7 @@ export class Player {
 
     this.body.vy = applyJumpInput(this.body.vy, this.jumpState, {
       jump: this.input.jump,
-      duck: this.ducking,
+      duck: this.input.duck,
     });
 
     // Gravity after jump (original: clamp → yspeed++). Terminal clamp lives

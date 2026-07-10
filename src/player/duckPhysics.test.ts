@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PLAYER } from '../config/constants';
-import {
-  DUCK_SIZE,
-  STAND_SIZE,
-  STAND_UP_NUDGE,
-  applyDuckHitbox,
-} from './duckPhysics';
+import { DUCK_SIZE, STAND_SIZE, applyDuckHitbox } from './duckPhysics';
 
 describe('duckPhysics (spec §Duck)', () => {
   it('locks duckScale and derived sizes to exact spec values', () => {
@@ -16,8 +11,6 @@ describe('duckPhysics (spec §Duck)', () => {
     // Spec: ~6.7 × 28
     expect(DUCK_SIZE.w).toBeCloseTo(6.6667, 3);
     expect(DUCK_SIZE.h).toBeCloseTo(28, 5);
-    // Stand-up nudge uses Width, not Height (faithful quirk).
-    expect(STAND_UP_NUDGE).toBeCloseTo(10 * (2 / 3), 10);
   });
 
   it('shrinks the hitbox to 2/3 W&H and keeps feet planted', () => {
@@ -25,7 +18,7 @@ describe('duckPhysics (spec §Duck)', () => {
     const feet = body.y + body.h;
     const centerX = body.x + body.w / 2;
 
-    const ducked = applyDuckHitbox(body, true, false, true);
+    const ducked = applyDuckHitbox(body, true, false);
 
     expect(ducked).toBe(true);
     expect(body.w).toBeCloseTo(DUCK_SIZE.w, 10);
@@ -34,27 +27,25 @@ describe('duckPhysics (spec §Duck)', () => {
     expect(body.x + body.w / 2).toBeCloseTo(centerX, 10);
   });
 
-  it('nudges _y up by 2/3·boxW on release while grounded', () => {
+  it('keeps feet planted when standing up from duck on the ground', () => {
     const body = { x: 100, y: 200, w: DUCK_SIZE.w, h: DUCK_SIZE.h };
     const feetBefore = body.y + body.h;
 
-    const ducked = applyDuckHitbox(body, false, true, true);
+    const ducked = applyDuckHitbox(body, false, true);
 
     expect(ducked).toBe(false);
     expect(body.w).toBe(STAND_SIZE.w);
     expect(body.h).toBe(STAND_SIZE.h);
-    // Feet planted, then quirk nudge upward.
-    expect(body.y + body.h).toBeCloseTo(feetBefore - STAND_UP_NUDGE, 10);
+    expect(body.y + body.h).toBeCloseTo(feetBefore, 10);
   });
 
-  it('restores standing size in air without the grounded quirk nudge', () => {
-    const body = { x: 100, y: 200, w: DUCK_SIZE.w, h: DUCK_SIZE.h };
-    const feetBefore = body.y + body.h;
+  it('always restores standing size when releasing duck (no headroom gate)', () => {
+    const body = { x: 100, y: 557, w: DUCK_SIZE.w, h: DUCK_SIZE.h };
 
-    applyDuckHitbox(body, false, true, false);
+    const ducked = applyDuckHitbox(body, false, true);
 
+    expect(ducked).toBe(false);
     expect(body.w).toBe(STAND_SIZE.w);
     expect(body.h).toBe(STAND_SIZE.h);
-    expect(body.y + body.h).toBeCloseTo(feetBefore, 10);
   });
 });

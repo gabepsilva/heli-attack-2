@@ -4,7 +4,8 @@ import { PLAYER } from '../config/constants';
  * Charged hyper-jump (boost) matching `heroAction` in the decompiled AS.
  *
  * Charge ticks +1/frame up to {@link PLAYER.boostChargeFrames} (150 ≈ 5s @30Hz).
- * On a rising edge of the boost key while fully charged and a jump slot remains
+ * On a rising edge of the fire condition (not the key — holding Ctrl refires
+ * as soon as the meter refills after landing) while fully charged and a jump slot remains
  * (`!jump || !jump2`) and `!hjump`, fires `vy = {@link PLAYER.boostVel}` (−32),
  * zeroes the meter, and marks `hjump` so it cannot re-fire until landing.
  *

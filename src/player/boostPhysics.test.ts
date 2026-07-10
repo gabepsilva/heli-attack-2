@@ -40,7 +40,7 @@ describe('boostPhysics (spec §Player physics — hyper/boost jump)', () => {
     expect(boostChargeRatio(state)).toBe(0);
   });
 
-  it('does not re-fire while the boost key is held (edge detect)', () => {
+  it('does not re-fire while hjump blocks a second burst in the same airtime', () => {
     const state = createBoostState();
     const flags: BoostJumpFlags = { jump: false, jump2: false };
 
@@ -69,7 +69,7 @@ describe('boostPhysics (spec §Player physics — hyper/boost jump)', () => {
     expect(boostChargeRatio(state)).toBe(1);
   });
 
-  it('refuses to fire until the meter is full again', () => {
+  it('fires on the same frame charge increments from 149 to 150 (AS order)', () => {
     const state = createBoostState();
     const flags: BoostJumpFlags = { jump: false, jump2: false };
 

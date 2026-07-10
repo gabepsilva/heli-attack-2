@@ -5,10 +5,10 @@ import { SCENE_KEYS } from '../config/scenes';
 import { SimSession } from '../core/simSession';
 import { DEBUG_BOX_SIZE } from '../world/debugBox';
 import {
-  TEST_ARENA_HEIGHT_PX,
-  TEST_ARENA_WIDTH_PX,
-  isArenaSolid,
-} from '../world/testArena';
+  LEVEL1_HEIGHT_PX,
+  LEVEL1_WIDTH_PX,
+  isLevelSolid,
+} from '../world/level1';
 
 const HUD_STYLE: Phaser.Types.GameObjects.Text.TextStyle = {
   fontFamily: 'monospace',
@@ -24,8 +24,9 @@ const PLAYER_STROKE = 0xd8f3dc;
 
 /**
  * Thin Phaser shell: banks render deltas into a 30 Hz fixed sim, draws the
- * hand-authored tile arena, hosts a controllable player (←/→ walk), and a
- * draggable debug box. Game logic lives in plain modules under src/.
+ * original level layout (placeholder tiles), hosts a controllable player
+ * (←/→ walk), and a draggable debug box. Game logic lives in plain modules
+ * under src/.
  */
 export class GameScene extends Phaser.Scene {
   private readonly session = new SimSession();
@@ -51,9 +52,8 @@ export class GameScene extends Phaser.Scene {
 
     this.cameras.main.setBackgroundColor('#0d1b2a');
 
-    this.arenaOriginX = Math.floor((GAME_WIDTH - TEST_ARENA_WIDTH_PX) / 2);
-    this.arenaOriginY =
-      Math.floor((GAME_HEIGHT - TEST_ARENA_HEIGHT_PX) / 2) - 40;
+    this.arenaOriginX = Math.floor((GAME_WIDTH - LEVEL1_WIDTH_PX) / 2);
+    this.arenaOriginY = Math.floor((GAME_HEIGHT - LEVEL1_HEIGHT_PX) / 2) - 40;
 
     this.drawArena();
     this.createPlayerVisual();
@@ -139,7 +139,7 @@ export class GameScene extends Phaser.Scene {
 
     for (let row = 0; row < map.height; row += 1) {
       for (let col = 0; col < map.width; col += 1) {
-        if (!isArenaSolid(map, col, row)) {
+        if (!isLevelSolid(map, col, row)) {
           continue;
         }
         g.fillRect(
@@ -155,7 +155,7 @@ export class GameScene extends Phaser.Scene {
     g.lineStyle(1, 0x1b263b, 0.6);
     for (let row = 0; row < map.height; row += 1) {
       for (let col = 0; col < map.width; col += 1) {
-        if (!isArenaSolid(map, col, row)) {
+        if (!isLevelSolid(map, col, row)) {
           continue;
         }
         g.strokeRect(
