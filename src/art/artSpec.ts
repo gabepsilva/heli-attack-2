@@ -6,11 +6,17 @@ import {
   ART_PLACEHOLDER_SCALE,
   ART_PLAYER_FINAL_DIR,
   ART_PLAYER_FINAL_SCALE,
+  ART_WORLD_FINAL_DIR,
+  ART_WORLD_FINAL_SCALE,
   ATLAS_KEY,
+  BG_IMAGE_PATH,
+  BG_ORIGINAL_H,
+  BG_ORIGINAL_W,
 } from '../config/art';
 import { PLAYER, WORLD } from '../config/constants';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/game';
 import {
+  HELI_LOOK_FRAMES,
   PLAYER_ANIM_FRAMES,
   SPRITE_DEFS,
   gameDrawSize,
@@ -41,12 +47,14 @@ export function renderArtSpecMarkdown(): string {
 | Player sprite box (spec) | **${PLAYER.spriteW}×${PLAYER.spriteH}** |
 | Player collision box | **${PLAYER.boxW}×${PLAYER.boxH}** (top-left origin) |
 | Tile size | **${WORLD.tile}×${WORLD.tile}** |
-| Placeholder upscale | **${ART_PLACEHOLDER_SCALE}×** nearest-neighbor from reference PNGs |
+| Legacy placeholder upscale | **${ART_PLACEHOLDER_SCALE}×** (retired after #34) |
 | Player final scale | **${ART_PLAYER_FINAL_SCALE}×** Flash original size (committed under \`${ART_PLAYER_FINAL_DIR}/\`) |
+| World final scale | **${ART_WORLD_FINAL_SCALE}×** Flash original size (committed under \`${ART_WORLD_FINAL_DIR}/\`) |
 | Phaser atlas key | \`${ATLAS_KEY}\` |
+| Background plate | \`public/${BG_IMAGE_PATH}\` (not packed; ${BG_ORIGINAL_W}×${BG_ORIGINAL_H} @ ${ART_WORLD_FINAL_SCALE}×) |
 
-Player frames are **final** hi-res redraws (#33). Remaining placeholders are
-replaced in #34. Do not ship original GPL art as final product art.
+All catalog frames are **final** hi-res redraws (#33 player, #34 world). Do not
+ship original GPL art as final product art.
 
 ## Pivot convention
 
@@ -78,6 +86,14 @@ origin  = (pivot.x, pivot.y)   // usually (0.5, 1)
 | Hurt | \`${PLAYER_ANIM_FRAMES.hurt}\` | i-frame / hit flash pose |
 | Death | \`${PLAYER_ANIM_FRAMES.death}\` | \`guyBurned\` swap |
 
+## Heli look frames
+
+| Look | Behavior | Frame id |
+|---|---|---|
+| 0 | hover | \`${HELI_LOOK_FRAMES[0]}\` |
+| 1 | strafe | \`${HELI_LOOK_FRAMES[1]}\` |
+| (hit) | damaged flash | \`heli_hit\` |
+
 ## Sprite table
 
 | Frame id | Source file | Original (Flash) | Texture | Game draw size | Pivot | Role |
@@ -86,18 +102,18 @@ ${rows}
 
 ## Adding a new sprite
 
-1. **Placeholder (until #34):** drop the reference PNG into
-   \`reference/ha2-source/gfx/\` (gitignored — pull from
-   [iopred/heliattack](https://github.com/iopred/heliattack) \`ha2/assets\`).
-2. **Final player:** add / regenerate under \`${ART_PLAYER_FINAL_DIR}/\` via
-   \`npm run art:player\`, then set \`final: true\` on the catalog entry.
-3. Append a \`SpriteDef\` to \`SPRITE_DEFS\` in \`src/art/catalog.ts\` with measured
+1. **Final art:** add / regenerate under \`${ART_PLAYER_FINAL_DIR}/\` (\`npm run art:player\`)
+   or \`${ART_WORLD_FINAL_DIR}/\` (\`npm run art:world\`), then set \`final: true\` on the catalog
+   entry.
+2. Append a \`SpriteDef\` to \`SPRITE_DEFS\` in \`src/art/catalog.ts\` with measured
    \`originalW\` / \`originalH\`, pivot, and role.
+3. Mirror the entry in \`scripts/art/pack-atlas.mjs\`.
 4. Run \`npm run art:pack\` — packs \`public/atlas/game-atlas.{png,json}\`,
-   and regenerates this file.
-5. Use the frame via \`ATLAS_KEY\` + frame id (see \`selectPlayerAnimFrame\`).
-6. Add / update unit tests in \`src/art/*.test.ts\` / \`src/player/playerAnim.test.ts\`
-   if sizes, pivots, or state→frame mapping are acceptance-critical.
+   copies \`public/${BG_IMAGE_PATH}\`, and regenerates this file.
+5. Use the frame via \`ATLAS_KEY\` + frame id (see \`selectPlayerAnimFrame\`,
+   \`heliFrameForLook\`).
+6. Add / update unit tests in \`src/art/*.test.ts\` if sizes, pivots, or
+   final-vs-placeholder acceptance are critical.
 
 ## Pipeline commands
 
@@ -105,15 +121,20 @@ ${rows}
 # Regenerate final player redraws (Pillow)
 npm run art:player
 
-# Pack atlas (requires ImageMagick; reference PNGs for non-player placeholders)
+# Regenerate final world redraws (Pillow) — helis, weapons, VFX, tiles, bg
+npm run art:world
+
+# Pack atlas (requires ImageMagick)
 npm run art:pack
 \`\`\`
 
 Outputs (committed):
 
 - \`${ART_PLAYER_FINAL_DIR}/player_*.png\` (final player sources)
+- \`${ART_WORLD_FINAL_DIR}/*.png\` (final world sources + bg plate)
 - \`public/atlas/game-atlas.png\`
 - \`public/atlas/game-atlas.json\`
+- \`public/${BG_IMAGE_PATH}\`
 - \`docs/ART-SPEC.md\` (this file)
 `;
 }

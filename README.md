@@ -105,15 +105,16 @@ npm run lint      # ESLint (type-aware)
 npm run format    # Prettier --write (format:check to verify only)
 npm test          # Vitest (test:watch for watch mode)
 npm run art:player # regenerate final player PNGs (Pillow)
+npm run art:world  # regenerate final world PNGs + bg (Pillow)
 npm run art:pack   # pack atlas + ART-SPEC (needs ImageMagick)
 npm run audio:transcode  # WAV → public/audio (.ogg/.webm/.mp3); needs ffmpeg
 ```
 
 Packed atlas lives in `public/atlas/` (committed). Final player sources live in
-`art/player/` (committed, #33). Reference PNGs for remaining placeholders stay
-gitignored under `reference/ha2-source/gfx/` — pull from
-[iopred/heliattack](https://github.com/iopred/heliattack) `ha2/assets` when regenerating,
-then run `npm run art:pack`. See [`docs/ART-SPEC.md`](docs/ART-SPEC.md).
+`art/player/` (#33). Final world sources (helis, weapons, VFX, tiles, bg) live in
+`art/world/` (#34). Background plate is copied to `public/art/bg.png` by the packer.
+Reference PNGs under `reference/ha2-source/gfx/` stay gitignored (art bible only —
+not packed after #34). See [`docs/ART-SPEC.md`](docs/ART-SPEC.md).
 
 Web-ready SFX live in `public/audio/` (committed). Source WAVs stay gitignored under
 `reference/ha2-source/wav/` — pull from [iopred/heliattack](https://github.com/iopred/heliattack)

@@ -1,18 +1,19 @@
 #!/usr/bin/env node
 /**
- * Pack Phaser hash atlas + write ART-SPEC.md.
+ * Pack Phaser hash atlas + write ART-SPEC.md + copy background plate.
  *
  * - Final player frames (#33): committed PNGs under art/player/ (8× Flash size).
- * - Other sprites (#32 placeholders): 4× nearest-neighbor from
- *   reference/ha2-source/gfx/ (gitignored — pull from iopred/heliattack).
+ * - Final world frames (#34): committed PNGs under art/world/ (4× Flash size).
+ * - Background (#34): art/world/bg.png → public/art/bg.png (not packed).
  *
- * Outputs (committed): public/atlas/game-atlas.{png,json}, docs/ART-SPEC.md
+ * Outputs (committed): public/atlas/game-atlas.{png,json}, public/art/bg.png,
+ * docs/ART-SPEC.md
  *
  * Catalog numbers here must match src/art/catalog.ts — Vitest asserts parity.
  *
  * Usage: npm run art:pack
  * Requires: ImageMagick (`convert`, `identify`).
- * Optional: npm run art:player  (regenerate final player PNGs)
+ * Optional: npm run art:player / npm run art:world
  */
 import { spawnSync } from 'node:child_process';
 import {
@@ -26,16 +27,18 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(fileURLToPath(new URL('../..', import.meta.url)));
-const gfxDir = join(root, 'reference/ha2-source/gfx');
 const playerFinalDir = join(root, 'art/player');
+const worldFinalDir = join(root, 'art/world');
 const outDir = join(root, 'public/atlas');
+const publicArtDir = join(root, 'public/art');
 const stagingDir = join(outDir, '.staging');
 const artSpecPath = join(root, 'docs/ART-SPEC.md');
 
 export const PLACEHOLDER_SCALE = 4;
 export const PLAYER_FINAL_SCALE = 8;
+export const WORLD_FINAL_SCALE = 4;
 export const ATLAS_PADDING = 2;
-export const ATLAS_MAX_SIZE = 2048;
+export const ATLAS_MAX_SIZE = 4096;
 
 /** Mirrors src/art/catalog.ts SPRITE_DEFS — tests assert parity. */
 export const SPRITE_DEFS = [
@@ -117,7 +120,17 @@ export const SPRITE_DEFS = [
     originalW: 212,
     originalH: 106,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Enemy helicopter',
+    role: 'Enemy helicopter look 0 / hover (final hi-res; warm desert)',
+    final: true,
+  },
+  {
+    id: 'heli_strafe',
+    sourceFile: 'heli_strafe.png',
+    originalW: 212,
+    originalH: 106,
+    pivot: { x: 0.5, y: 0.5 },
+    role: 'Enemy helicopter look 1 / strafe (final hi-res; cool steel)',
+    final: true,
   },
   {
     id: 'heli_hit',
@@ -125,7 +138,8 @@ export const SPRITE_DEFS = [
     originalW: 212,
     originalH: 106,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Helicopter damaged flash',
+    role: 'Helicopter damaged flash (final hi-res)',
+    final: true,
   },
   {
     id: 'heli_destroyed',
@@ -133,7 +147,8 @@ export const SPRITE_DEFS = [
     originalW: 173,
     originalH: 89,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Helicopter wreck',
+    role: 'Helicopter wreck (final hi-res)',
+    final: true,
   },
   {
     id: 'enemy_guy',
@@ -141,7 +156,8 @@ export const SPRITE_DEFS = [
     originalW: 25,
     originalH: 50,
     pivot: { x: 0.5, y: 1 },
-    role: 'Paratrooper / ground enemy',
+    role: 'Paratrooper / ground enemy (final hi-res)',
+    final: true,
   },
   {
     id: 'bullet_player',
@@ -149,7 +165,8 @@ export const SPRITE_DEFS = [
     originalW: 10,
     originalH: 9,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Player projectile',
+    role: 'Player projectile (final hi-res)',
+    final: true,
   },
   {
     id: 'bullet_enemy',
@@ -157,7 +174,8 @@ export const SPRITE_DEFS = [
     originalW: 10,
     originalH: 9,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Enemy projectile',
+    role: 'Enemy projectile (final hi-res)',
+    final: true,
   },
   {
     id: 'weapon_machinegun',
@@ -165,7 +183,17 @@ export const SPRITE_DEFS = [
     originalW: 29,
     originalH: 16,
     pivot: { x: 0.2, y: 0.5 },
-    role: 'Starting machine gun',
+    role: 'Starting machine gun (final hi-res)',
+    final: true,
+  },
+  {
+    id: 'muzzle_flash',
+    sourceFile: 'muzzle_flash.png',
+    originalW: 16,
+    originalH: 16,
+    pivot: { x: 0.5, y: 0.5 },
+    role: 'Weapon muzzle flash (final hi-res)',
+    final: true,
   },
   {
     id: 'grenade',
@@ -173,7 +201,8 @@ export const SPRITE_DEFS = [
     originalW: 19,
     originalH: 11,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Grenade projectile',
+    role: 'Grenade projectile (final hi-res)',
+    final: true,
   },
   {
     id: 'rocket',
@@ -181,7 +210,8 @@ export const SPRITE_DEFS = [
     originalW: 21,
     originalH: 15,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Rocket projectile',
+    role: 'Rocket projectile (final hi-res)',
+    final: true,
   },
   {
     id: 'smoke',
@@ -189,7 +219,8 @@ export const SPRITE_DEFS = [
     originalW: 28,
     originalH: 27,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Smoke VFX',
+    role: 'Smoke VFX (final hi-res)',
+    final: true,
   },
   {
     id: 'blood',
@@ -197,7 +228,17 @@ export const SPRITE_DEFS = [
     originalW: 30,
     originalH: 30,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Hit / blood VFX',
+    role: 'Hit / blood VFX (final hi-res)',
+    final: true,
+  },
+  {
+    id: 'explosion',
+    sourceFile: 'explosion.png',
+    originalW: 187,
+    originalH: 186,
+    pivot: { x: 0.5, y: 0.5 },
+    role: 'Heli death explosion (final hi-res; half Flash bigboom)',
+    final: true,
   },
   {
     id: 'powerup',
@@ -205,7 +246,8 @@ export const SPRITE_DEFS = [
     originalW: 33,
     originalH: 32,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Powerup crate base',
+    role: 'Powerup crate base (final hi-res)',
+    final: true,
   },
   {
     id: 'tile_floor',
@@ -213,7 +255,8 @@ export const SPRITE_DEFS = [
     originalW: 52,
     originalH: 52,
     pivot: { x: 0, y: 0 },
-    role: 'Solid floor tile (maps to WORLD.tile in game space)',
+    role: 'Solid floor tile (final hi-res; maps to WORLD.tile)',
+    final: true,
   },
 ];
 
@@ -277,16 +320,29 @@ function identifySize(path) {
   return { w, h };
 }
 
+function isPlayer(def) {
+  return def.id.startsWith('player_');
+}
+
 function textureSize(def) {
-  const scale = def.final ? PLAYER_FINAL_SCALE : PLACEHOLDER_SCALE;
+  const scale = isPlayer(def) ? PLAYER_FINAL_SCALE : WORLD_FINAL_SCALE;
   return { w: def.originalW * scale, h: def.originalH * scale };
+}
+
+function finalSourceDir(def) {
+  return isPlayer(def) ? playerFinalDir : worldFinalDir;
 }
 
 /**
  * Mirrors src/art/artSpec.ts — Vitest asserts the TypeScript renderer produces
  * the same markdown as this function for the shared catalog.
  */
-export function renderArtSpecMarkdown(defs, placeholderScale, playerScale) {
+export function renderArtSpecMarkdown(
+  defs,
+  placeholderScale,
+  playerScale,
+  worldScale,
+) {
   const PLAYER = { spriteW: 48, spriteH: 48, boxW: 10, boxH: 42 };
   const WORLD = { tile: 50 };
   const GAME_WIDTH = 1920;
@@ -300,12 +356,23 @@ export function renderArtSpecMarkdown(defs, placeholderScale, playerScale) {
     if (def.id === 'tile_floor') {
       return { w: WORLD.tile, h: WORLD.tile };
     }
+    if (def.id === 'explosion') {
+      return { w: 120, h: 120 };
+    }
+    if (def.id === 'muzzle_flash') {
+      return { w: 18, h: 18 };
+    }
     return { w: def.originalW, h: def.originalH };
+  }
+
+  function texSize(def) {
+    const scale = def.id.startsWith('player_') ? playerScale : worldScale;
+    return { w: def.originalW * scale, h: def.originalH * scale };
   }
 
   const rows = defs
     .map((def) => {
-      const tex = textureSize(def);
+      const tex = texSize(def);
       const draw = gameDrawSize(def);
       const kind = def.final ? 'final' : 'placeholder';
       return `| \`${def.id}\` | \`${def.sourceFile}\` | ${def.originalW}×${def.originalH} | ${tex.w}×${tex.h} (${kind}) | ${draw.w}×${draw.h} | (${def.pivot.x}, ${def.pivot.y}) | ${def.role} |`;
@@ -326,12 +393,14 @@ export function renderArtSpecMarkdown(defs, placeholderScale, playerScale) {
 | Player sprite box (spec) | **${PLAYER.spriteW}×${PLAYER.spriteH}** |
 | Player collision box | **${PLAYER.boxW}×${PLAYER.boxH}** (top-left origin) |
 | Tile size | **${WORLD.tile}×${WORLD.tile}** |
-| Placeholder upscale | **${placeholderScale}×** nearest-neighbor from reference PNGs |
+| Legacy placeholder upscale | **${placeholderScale}×** (retired after #34) |
 | Player final scale | **${playerScale}×** Flash original size (committed under \`art/player/\`) |
+| World final scale | **${worldScale}×** Flash original size (committed under \`art/world/\`) |
 | Phaser atlas key | \`${ATLAS_KEY}\` |
+| Background plate | \`public/art/bg.png\` (not packed; 452×322 @ ${worldScale}×) |
 
-Player frames are **final** hi-res redraws (#33). Remaining placeholders are
-replaced in #34. Do not ship original GPL art as final product art.
+All catalog frames are **final** hi-res redraws (#33 player, #34 world). Do not
+ship original GPL art as final product art.
 
 ## Pivot convention
 
@@ -363,6 +432,14 @@ origin  = (pivot.x, pivot.y)   // usually (0.5, 1)
 | Hurt | \`player_hurt\` | i-frame / hit flash pose |
 | Death | \`player_death\` | \`guyBurned\` swap |
 
+## Heli look frames
+
+| Look | Behavior | Frame id |
+|---|---|---|
+| 0 | hover | \`heli\` |
+| 1 | strafe | \`heli_strafe\` |
+| (hit) | damaged flash | \`heli_hit\` |
+
 ## Sprite table
 
 | Frame id | Source file | Original (Flash) | Texture | Game draw size | Pivot | Role |
@@ -371,18 +448,18 @@ ${rows}
 
 ## Adding a new sprite
 
-1. **Placeholder (until #34):** drop the reference PNG into
-   \`reference/ha2-source/gfx/\` (gitignored — pull from
-   [iopred/heliattack](https://github.com/iopred/heliattack) \`ha2/assets\`).
-2. **Final player:** add / regenerate under \`art/player/\` via
-   \`npm run art:player\`, then set \`final: true\` on the catalog entry.
-3. Append a \`SpriteDef\` to \`SPRITE_DEFS\` in \`src/art/catalog.ts\` with measured
+1. **Final art:** add / regenerate under \`art/player/\` (\`npm run art:player\`)
+   or \`art/world/\` (\`npm run art:world\`), then set \`final: true\` on the catalog
+   entry.
+2. Append a \`SpriteDef\` to \`SPRITE_DEFS\` in \`src/art/catalog.ts\` with measured
    \`originalW\` / \`originalH\`, pivot, and role.
+3. Mirror the entry in \`scripts/art/pack-atlas.mjs\`.
 4. Run \`npm run art:pack\` — packs \`public/atlas/game-atlas.{png,json}\`,
-   and regenerates this file.
-5. Use the frame via \`ATLAS_KEY\` + frame id (see \`selectPlayerAnimFrame\`).
-6. Add / update unit tests in \`src/art/*.test.ts\` / \`src/player/playerAnim.test.ts\`
-   if sizes, pivots, or state→frame mapping are acceptance-critical.
+   copies \`public/art/bg.png\`, and regenerates this file.
+5. Use the frame via \`ATLAS_KEY\` + frame id (see \`selectPlayerAnimFrame\`,
+   \`heliFrameForLook\`).
+6. Add / update unit tests in \`src/art/*.test.ts\` if sizes, pivots, or
+   final-vs-placeholder acceptance are critical.
 
 ## Pipeline commands
 
@@ -390,21 +467,27 @@ ${rows}
 # Regenerate final player redraws (Pillow)
 npm run art:player
 
-# Pack atlas (requires ImageMagick; reference PNGs for non-player placeholders)
+# Regenerate final world redraws (Pillow) — helis, weapons, VFX, tiles, bg
+npm run art:world
+
+# Pack atlas (requires ImageMagick)
 npm run art:pack
 \`\`\`
 
 Outputs (committed):
 
 - \`art/player/player_*.png\` (final player sources)
+- \`art/world/*.png\` (final world sources + bg plate)
 - \`public/atlas/game-atlas.png\`
 - \`public/atlas/game-atlas.json\`
+- \`public/art/bg.png\`
 - \`docs/ART-SPEC.md\` (this file)
 `;
 }
 
 function main() {
   mkdirSync(outDir, { recursive: true });
+  mkdirSync(publicArtDir, { recursive: true });
   rmSync(stagingDir, { recursive: true, force: true });
   mkdirSync(stagingDir, { recursive: true });
 
@@ -413,55 +496,23 @@ function main() {
   for (const def of SPRITE_DEFS) {
     const tex = textureSize(def);
     const staged = join(stagingDir, `${def.id}.png`);
+    const srcDir = finalSourceDir(def);
+    const src = join(srcDir, def.sourceFile);
 
-    if (def.final) {
-      const src = join(playerFinalDir, def.sourceFile);
-      if (!existsSync(src)) {
-        console.error(
-          `Missing final player sprite: ${src}\nRun: npm run art:player`,
-        );
-        process.exit(1);
-      }
-      const measured = identifySize(src);
-      if (measured.w !== tex.w || measured.h !== tex.h) {
-        console.error(
-          `Size mismatch for final ${def.sourceFile}: file ${measured.w}×${measured.h}, expected ${tex.w}×${tex.h}`,
-        );
-        process.exit(1);
-      }
-      console.log(`final ${def.id} ${tex.w}×${tex.h}`);
-      copyFileSync(src, staged);
-    } else {
-      if (!existsSync(gfxDir)) {
-        console.error(
-          `Missing ${gfxDir}\nPull PNGs from iopred/heliattack (ha2/assets) first.`,
-        );
-        process.exit(1);
-      }
-      const src = join(gfxDir, def.sourceFile);
-      if (!existsSync(src)) {
-        console.error(`Missing source sprite: ${src}`);
-        process.exit(1);
-      }
-      const measured = identifySize(src);
-      if (measured.w !== def.originalW || measured.h !== def.originalH) {
-        console.error(
-          `Size mismatch for ${def.sourceFile}: file ${measured.w}×${measured.h}, catalog ${def.originalW}×${def.originalH}`,
-        );
-        process.exit(1);
-      }
-      console.log(
-        `upscale ${def.id} ${def.originalW}×${def.originalH} → ${tex.w}×${tex.h}`,
-      );
-      run('convert', [
-        src,
-        '-filter',
-        'point',
-        '-resize',
-        `${tex.w}x${tex.h}`,
-        staged,
-      ]);
+    if (!existsSync(src)) {
+      const regen = isPlayer(def) ? 'npm run art:player' : 'npm run art:world';
+      console.error(`Missing final sprite: ${src}\nRun: ${regen}`);
+      process.exit(1);
     }
+    const measured = identifySize(src);
+    if (measured.w !== tex.w || measured.h !== tex.h) {
+      console.error(
+        `Size mismatch for final ${def.sourceFile}: file ${measured.w}×${measured.h}, expected ${tex.w}×${tex.h}`,
+      );
+      process.exit(1);
+    }
+    console.log(`final ${def.id} ${tex.w}×${tex.h}`);
+    copyFileSync(src, staged);
 
     packInputs.push({
       id: def.id,
@@ -510,7 +561,7 @@ function main() {
     frames,
     meta: {
       app: 'heli-attack-2/scripts/art/pack-atlas.mjs',
-      version: '1.1',
+      version: '1.2',
       image: 'game-atlas.png',
       format: 'RGBA8888',
       size: { w: packed.width, h: packed.height },
@@ -519,9 +570,35 @@ function main() {
   };
   writeFileSync(atlasJson, JSON.stringify(json, null, 2) + '\n');
 
+  // Background plate (not packed).
+  const bgSrc = join(worldFinalDir, 'bg.png');
+  const bgDst = join(publicArtDir, 'bg.png');
+  if (!existsSync(bgSrc)) {
+    console.error(`Missing background plate: ${bgSrc}\nRun: npm run art:world`);
+    process.exit(1);
+  }
+  const bgExpected = {
+    w: 452 * WORLD_FINAL_SCALE,
+    h: 322 * WORLD_FINAL_SCALE,
+  };
+  const bgMeasured = identifySize(bgSrc);
+  if (bgMeasured.w !== bgExpected.w || bgMeasured.h !== bgExpected.h) {
+    console.error(
+      `Size mismatch for bg.png: file ${bgMeasured.w}×${bgMeasured.h}, expected ${bgExpected.w}×${bgExpected.h}`,
+    );
+    process.exit(1);
+  }
+  copyFileSync(bgSrc, bgDst);
+  console.log(`bg ${bgExpected.w}×${bgExpected.h} → public/art/bg.png`);
+
   writeFileSync(
     artSpecPath,
-    renderArtSpecMarkdown(SPRITE_DEFS, PLACEHOLDER_SCALE, PLAYER_FINAL_SCALE),
+    renderArtSpecMarkdown(
+      SPRITE_DEFS,
+      PLACEHOLDER_SCALE,
+      PLAYER_FINAL_SCALE,
+      WORLD_FINAL_SCALE,
+    ),
   );
   console.log('wrote ART-SPEC.md');
 
@@ -529,6 +606,7 @@ function main() {
 
   console.log(`Done → ${atlasPng}`);
   console.log(`Done → ${atlasJson}`);
+  console.log(`Done → ${bgDst}`);
   console.log(`Done → ${artSpecPath}`);
 }
 
