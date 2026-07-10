@@ -25,9 +25,9 @@ packageable for Steam.
 
 | Layer | Choice | Why |
 |---|---|---|
-| Language | **TypeScript** (strict) | Type safety for lots of interacting game state |
-| Engine | **Phaser 3** | 2D WebGL renderer, Arcade physics, input, audio, responsive scaling — built for exactly this genre |
-| Bundler | **Vite** | Instant HMR, one-command production build |
+| Language | **TypeScript 7** (strict) | Type safety for lots of interacting game state; TS 6 kept alongside for `typescript-eslint` until that ships a TS 7 API |
+| Engine | **Phaser 4** | 2D WebGL renderer, Arcade physics, input, audio, responsive scaling — built for exactly this genre |
+| Bundler | **Vite 8** | Instant HMR, one-command production build (Rolldown) |
 | Desktop | **Tauri** or **Electron** (later) | Wrap the web build for Steam |
 
 Work is tracked as [GitHub issues](https://github.com/gabepsilva/heli-attack-2/issues)
