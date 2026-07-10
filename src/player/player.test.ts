@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PLAYER, WORLD } from '../config/constants';
+import { BULLET_TIME, PLAYER, WORLD } from '../config/constants';
 import { createTestArena } from '../world/testArena';
 import { DUCK_SIZE, STAND_SIZE } from './duckPhysics';
 import { PLAYER_SPAWN, Player } from './player';
@@ -23,6 +23,7 @@ function settle(player: Player, frames = 40): void {
 function measureJumpPeak(
   holdFrames: number,
   totalFrames = 80,
+  timeStep = 1,
 ): { peakRise: number; landed: boolean } {
   const map = createTestArena();
   const player = new Player(100, 200);
@@ -39,7 +40,7 @@ function measureJumpPeak(
       duck: false,
       boost: false,
     };
-    player.step(map, 1);
+    player.step(map, timeStep);
     if (player.body.y < peakY) {
       peakY = player.body.y;
     }
@@ -49,6 +50,35 @@ function measureJumpPeak(
     peakRise: groundY - peakY,
     landed: player.body.onGround,
   };
+}
+
+/** Peak rise for a charged hyper-jump (boost) under a given timeStep. */
+function measureBoostPeak(
+  timeStep: number,
+  totalFrames = 200,
+): { peakRise: number } {
+  const map = createTestArena();
+  const player = new Player(100, 200);
+  settle(player);
+  const groundY = player.body.y;
+  let peakY = groundY;
+
+  for (let i = 0; i < totalFrames; i += 1) {
+    player.input = {
+      left: false,
+      right: false,
+      jump: false,
+      duck: false,
+      // Rising-edge fire on the first tick only; charge stays spent after.
+      boost: i === 0,
+    };
+    player.step(map, timeStep);
+    if (player.body.y < peakY) {
+      peakY = player.body.y;
+    }
+  }
+
+  return { peakRise: groundY - peakY };
 }
 
 describe('Player (gravity, jump, duck — issue #6)', () => {
@@ -794,5 +824,91 @@ describe('Player (gravity, jump, duck — issue #6)', () => {
     expect(player.gunAim.flipY).toBe(false);
     expect(player.muzzle.x).toBeCloseTo(player.gunPivot.x + (1 - 0.2) * 29, 5);
     expect(player.muzzle.y).toBeCloseTo(player.gunPivot.y, 5);
+  });
+});
+
+describe('Player bullet-time jump height (issue #90)', () => {
+  /** Spec floor for manual bullet-time. */
+  const SLOW = BULLET_TIME.minScale;
+
+  it('locks bullet-time floor and jump specs used by the height fix', () => {
+    expect(BULLET_TIME.minScale).toBe(0.2);
+    expect(PLAYER.jumpVel).toBe(-8);
+    expect(PLAYER.jumpHoldFrames).toBe(6);
+    expect(PLAYER.boostVel).toBe(-32);
+    expect(WORLD.gravity).toBe(1);
+  });
+
+  it('keeps grounded full-hold jump height unchanged at timeStep 1', () => {
+    // Exact apex for a 6-frame hold under Flash-identical integration at 1×.
+    const full = measureJumpPeak(PLAYER.jumpHoldFrames, 80, 1);
+    expect(full.landed).toBe(true);
+    expect(full.peakRise).toBe(63);
+  });
+
+  it('produces a clear upward arc when holding jump at bullet-time 0.2×', () => {
+    // Hold long enough to drain the full 6-unit window (6 / 0.2 = 30 ticks).
+    const holdTicks = PLAYER.jumpHoldFrames / SLOW;
+    const slow = measureJumpPeak(holdTicks, 400, SLOW);
+    const normal = measureJumpPeak(PLAYER.jumpHoldFrames, 80, 1);
+
+    // Pre-fix bullet-time hops were ~0.2× normal (~12px). Require a real arc.
+    expect(slow.peakRise).toBeGreaterThan(50);
+    expect(slow.peakRise).toBeGreaterThan(normal.peakRise * 0.85);
+    // Finer Euler steps under 0.2× land slightly above the 1× apex — still
+    // the same ballistic family, not a collapsed hop.
+    expect(slow.peakRise).toBeCloseTo(76.44, 1);
+  });
+
+  it('keeps double-jump usable in slow-mo (second press re-clamps to jumpVel)', () => {
+    const map = createTestArena();
+    const player = new Player(100, 200);
+    settle(player);
+
+    // First jump — hold one slow tick.
+    player.input = {
+      left: false,
+      right: false,
+      jump: true,
+      duck: false,
+      boost: false,
+    };
+    player.step(map, SLOW);
+    expect(player.jumpState.jump).toBe(true);
+    expect(player.body.vy).toBe(PLAYER.jumpVel + WORLD.gravity * SLOW);
+
+    // Release to refill the hold window (!jump2).
+    player.input = {
+      left: false,
+      right: false,
+      jump: false,
+      duck: false,
+      boost: false,
+    };
+    player.step(map, SLOW);
+    expect(player.jumpState.up).toBe(PLAYER.jumpHoldFrames);
+
+    // Double-jump press while falling — must snap back to jumpVel.
+    player.body.vy = 4;
+    player.input = {
+      left: false,
+      right: false,
+      jump: true,
+      duck: false,
+      boost: false,
+    };
+    player.step(map, SLOW);
+    expect(player.jumpState.jump2).toBe(true);
+    expect(player.body.vy).toBe(PLAYER.jumpVel + WORLD.gravity * SLOW);
+  });
+
+  it('keeps charged hyper-jump usable in slow-mo (boost arc stays tall)', () => {
+    const normal = measureBoostPeak(1, 120);
+    const slow = measureBoostPeak(SLOW, 800);
+
+    // Flash boostVel −32 → large apex; slow-mo must not shrink it to a hop.
+    expect(normal.peakRise).toBe(496);
+    expect(slow.peakRise).toBeGreaterThan(400);
+    expect(slow.peakRise).toBeGreaterThan(normal.peakRise * 0.85);
   });
 });

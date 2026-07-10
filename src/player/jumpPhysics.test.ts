@@ -167,4 +167,32 @@ describe('jumpPhysics (spec §Player physics — jump)', () => {
     expect(ceil.jump2).toBe(true);
     expect(ceil.up).toBe(0);
   });
+
+  it('drains the hold window by timeStep so bullet-time keeps a full 6-unit hold (#90)', () => {
+    const state = createJumpState();
+    const frames: number[] = [];
+
+    // At 0.2×, exhausting the 6-unit window takes 30 sim ticks.
+    for (let i = 0; i < 30; i += 1) {
+      const after = applyJumpInput(0, state, { jump: true, duck: false }, 0.2);
+      frames.push(after);
+    }
+
+    expect(frames.every((vy) => vy === PLAYER.jumpVel)).toBe(true);
+    expect(state.up).toBeCloseTo(0, 10);
+    expect(state.jump).toBe(true);
+    expect(state.jump2).toBe(false);
+
+    // One more tick must not re-clamp once the window is spent.
+    const coast = applyJumpInput(-4, state, { jump: true, duck: false }, 0.2);
+    expect(coast).toBe(-4);
+  });
+
+  it('still drains 1 unit per tick at timeStep 1 (Flash-identical)', () => {
+    const state = createJumpState();
+    applyJumpInput(0, state, { jump: true, duck: false }, 1);
+    expect(state.up).toBe(5);
+    applyJumpInput(-8, state, { jump: true, duck: false }, 1);
+    expect(state.up).toBe(4);
+  });
 });

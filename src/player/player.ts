@@ -156,15 +156,22 @@ export class Player {
       this.boostState.hjump = true;
       this.body.vy = applyJetpackThrust(this.body.vy);
     } else {
-      this.body.vy = applyJumpInput(this.body.vy, this.jumpState, {
-        jump: this.input.jump,
-        duck: this.input.duck,
-      });
+      this.body.vy = applyJumpInput(
+        this.body.vy,
+        this.jumpState,
+        {
+          jump: this.input.jump,
+          duck: this.input.duck,
+        },
+        timeStep,
+      );
     }
 
-    // Gravity after jump (original: clamp → yspeed++). Terminal clamp lives
-    // in the resolver so tunneling stays impossible.
-    this.body.vy += WORLD.gravity;
+    // Gravity after jump (Flash: clamp → yspeed++). Scale by timeStep so
+    // ballistic arcs keep their height under bullet-time (#90); at timeStep
+    // 1 this is identical to the original +1/frame. Terminal clamp lives in
+    // the resolver so tunneling stays impossible.
+    this.body.vy += WORLD.gravity * timeStep;
 
     resolveAabbAgainstTiles(map, this.body, timeStep);
 
