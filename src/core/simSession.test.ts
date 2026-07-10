@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   BULLET,
+  BULLET_TIME,
   HELI,
   PLAYER,
+  POWERUP,
   SIM_DT,
   SIM_HZ,
   WEAPONS,
@@ -18,8 +20,8 @@ describe('SimSession', () => {
 
     session.timeScale.setTimeStep(0.5);
     session.accumulator.advance(SIM_DT / 2);
-    session.update(1000 / 30); // one sim tick at half speed
-    expect(session.timeScale.timeStep).toBe(0.5);
+    session.update(1000 / 30); // one sim tick — idle bullet-time eases 0.5 → 0.6
+    expect(session.timeScale.timeStep).toBeCloseTo(0.6, 10);
     expect(session.debugBox.body.vy).toBeGreaterThan(0);
     expect(session.player.body.vy).toBeGreaterThan(0);
     expect(session.simTickCount).toBeGreaterThan(0);
@@ -36,6 +38,8 @@ describe('SimSession', () => {
     session.debugBox.placeAt(400, 50);
     session.debugBox.dragging = true;
     session.fireHeld = true;
+    session.bulletTimeHeld = true;
+    session.bulletTime.meter = 10;
     session.update(1000 / 30);
     expect(session.weapon.shots).toBeGreaterThan(0);
 
@@ -43,6 +47,8 @@ describe('SimSession', () => {
     session.reset();
 
     expect(session.timeScale.timeStep).toBe(1);
+    expect(session.bulletTime.meter).toBe(250);
+    expect(session.bulletTimeHeld).toBe(false);
     expect(session.player.body.x).toBe(PLAYER_SPAWN.x);
     expect(session.player.body.y).toBe(PLAYER_SPAWN.y);
     expect(session.player.body.vx).toBe(0);
@@ -158,14 +164,20 @@ describe('SimSession', () => {
 
   it('steps the debug box under gravity scaled by the live timeStep', () => {
     const session = new SimSession();
-    session.timeScale.setTimeStep(0.5);
-    session.update(1000 / 30); // exactly one SIM_DT in ms
+    // Hold bullet-time 5 frames: 1 → 0.5 (Flash −0.1/frame ease).
+    session.bulletTimeHeld = true;
+    for (let i = 0; i < 5; i += 1) {
+      session.update(1000 / 30);
+    }
+    expect(session.timeScale.timeStep).toBeCloseTo(0.5, 10);
 
-    // Gravity applied once; displacement = vy * timeStep = 1 * 0.5.
-    expect(session.debugBox.body.vy).toBe(WORLD.gravity);
-    expect(session.debugBox.body.y).toBe(
-      DEBUG_BOX_SPAWN.y + WORLD.gravity * 0.5,
-    );
+    const y0 = session.debugBox.body.y;
+    const vy0 = session.debugBox.body.vy;
+    session.update(1000 / 30); // eases to 0.4, then steps with that scale
+
+    expect(session.timeScale.timeStep).toBeCloseTo(0.4, 10);
+    expect(session.debugBox.body.vy).toBe(vy0 + WORLD.gravity);
+    expect(session.debugBox.body.y).toBe(y0 + (vy0 + WORLD.gravity) * 0.4);
   });
 
   it('owns the original 35×15 level of 50px tiles (not the test arena)', () => {
@@ -548,5 +560,115 @@ describe('SimSession', () => {
     expect(shoulder.speed).toBe(20);
     expect(shoulder.damage).toBe(300);
     expect(WEAPONS[13].reload).toBe(100);
+  });
+
+  it('bullet-time: hold eases to 0.2×, release eases to 1×, player slows with world (#42)', () => {
+    const session = new SimSession();
+    expect(session.bulletTime.meter).toBe(BULLET_TIME.maxFrames);
+
+    // Settle on the floor so walk displacement is horizontal-only.
+    for (let i = 0; i < 40; i += 1) {
+      session.update(1000 / 30);
+    }
+    expect(session.player.body.onGround).toBe(true);
+
+    session.bulletTimeHeld = true;
+    const down: number[] = [];
+    for (let i = 0; i < 8; i += 1) {
+      session.update(1000 / 30);
+      down.push(session.timeScale.timeStep);
+    }
+    expect(down).toEqual([0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2]);
+    expect(session.bulletTime.meter).toBe(BULLET_TIME.maxFrames - 8);
+
+    // Player walk uses the eased scale (same as the world — not TimeRift).
+    session.player.body.vx = PLAYER.walkCap;
+    session.player.input = {
+      left: false,
+      right: true,
+      jump: false,
+      duck: false,
+      boost: false,
+    };
+    const x0 = session.player.body.x;
+    session.update(1000 / 30);
+    expect(session.timeScale.timeStep).toBe(0.2);
+    expect(session.player.body.x - x0).toBeCloseTo(PLAYER.walkCap * 0.2, 10);
+
+    session.bulletTimeHeld = false;
+    const up: number[] = [];
+    for (let i = 0; i < 8; i += 1) {
+      session.update(1000 / 30);
+      up.push(session.timeScale.timeStep);
+    }
+    expect(up).toEqual([0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]);
+  });
+
+  it('bullet-time: meter ends slow-mo at 0; heli kill refills ⅓ max (#42)', () => {
+    const session = new SimSession();
+    session.bulletTime.meter = 2;
+    session.bulletTimeHeld = true;
+    session.update(1000 / 30);
+    session.update(1000 / 30);
+    expect(session.bulletTime.meter).toBe(0);
+
+    // Still holding with empty meter → ease back up (slow-mo ended).
+    const before = session.timeScale.timeStep;
+    session.update(1000 / 30);
+    expect(session.bulletTime.meter).toBe(0);
+    expect(session.timeScale.timeStep).toBeGreaterThan(before);
+
+    session.bulletTimeHeld = false;
+    // Drain to a known empty, then simulate kill refill via the public helper path.
+    session.bulletTime.meter = 0;
+    const heli = session.helicopters[0]!;
+    heli.health = 1;
+    heli.x = 900;
+    heli.y = 220;
+    heli.xspeed = 0;
+    heli.yspeed = 0;
+    heli.tx = heli.x;
+    heli.ty = heli.y;
+    const hit = {
+      x: heli.x - HELI.spriteW / 2 + 22,
+      y: heli.y - HELI.spriteH / 2 + 2,
+    };
+    session.player.placeAt(hit.x - 80, hit.y);
+    session.player.mouse = { x: hit.x, y: hit.y };
+    session.fireHeld = true;
+    session.weapon.reloadTime = Number.POSITIVE_INFINITY;
+
+    for (let tick = 0; tick < 30 && heli.active; tick += 1) {
+      heli.xspeed = 0;
+      heli.yspeed = 0;
+      heli.tx = heli.x;
+      heli.ty = heli.y;
+      session.update(1000 / 30);
+    }
+
+    expect(heli.active).toBe(false);
+    expect(session.bulletTime.meter).toBeCloseTo(BULLET_TIME.refillPerKill, 10);
+  });
+
+  it('TimeRift forces bullet-time slow-mo without draining the meter (#42)', () => {
+    const session = new SimSession();
+    session.playerPowerup.powerupOn = POWERUP.TimeRift;
+    session.playerPowerup.powerupTime = 500;
+    session.bulletTimeHeld = false;
+    const meterBefore = session.bulletTime.meter;
+
+    const down: number[] = [];
+    for (let i = 0; i < 8; i += 1) {
+      session.update(1000 / 30);
+      down.push(session.timeScale.timeStep);
+    }
+    expect(down).toEqual([0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2]);
+    expect(session.bulletTime.meter).toBe(meterBefore);
+
+    // Key held under TimeRift still must not drain.
+    session.bulletTimeHeld = true;
+    session.update(1000 / 30);
+    expect(session.bulletTime.meter).toBe(meterBefore);
+    expect(session.timeScale.timeStep).toBe(0.2);
   });
 });

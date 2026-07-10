@@ -1,5 +1,11 @@
 import { FixedTimestepAccumulator } from './fixedTimestep';
 import { TimeScale } from './timeScale';
+import {
+  createBulletTimeState,
+  refillBulletTimeOnKill,
+  stepBulletTime,
+  type BulletTimeState,
+} from './bulletTime';
 import { BulletPool, arenaCullBounds, type CullBounds } from '../combat/bullet';
 import {
   EnemyBulletPool,
@@ -55,7 +61,7 @@ import {
   type WeaponInventory,
 } from '../combat/weaponInventory';
 import { PLAYER_SPAWN, Player } from '../player/player';
-import { BULLET, HELI } from '../config/constants';
+import { BULLET, HELI, POWERUP } from '../config/constants';
 import { DebugBox } from '../world/debugBox';
 import {
   LEVEL1_HEIGHT_PX,
@@ -72,7 +78,7 @@ export const DEBUG_BOX_SPAWN = { x: 200, y: 200 } as const;
  * counters, original level map, player, bullet pool, weapon inventory (#14),
  * helicopter combat (#12/#13), enemy return fire + player health (#18),
  * replacement spawn treadmill + difficulty ramp (#19), parachuting powerup
- * drops (#21), and the debug box.
+ * drops (#21), manual bullet-time meter (#42), and the debug box.
  * Lives outside Phaser so scene restarts and the update loop are
  * unit-testable (Phaser reuses the scene instance; only create() re-runs).
  *
@@ -82,6 +88,9 @@ export const DEBUG_BOX_SPAWN = { x: 200, y: 200 } as const;
 export class SimSession {
   readonly accumulator = new FixedTimestepAccumulator();
   readonly timeScale = new TimeScale();
+
+  /** Manual slow-mo meter (Flash `player.bullettime`) — HUD (#23) reads this. */
+  bulletTime: BulletTimeState = createBulletTimeState();
 
   simTickCount = 0;
   ticksThisSecond = 0;
@@ -151,6 +160,12 @@ export class SimSession {
   fireHeld = false;
 
   /**
+   * Bullet-time key held (Flash `Key.isDown(bulletTimeKey)` / Shift).
+   * Scene sets each render frame; sim ticks ease `timeScale` from it.
+   */
+  bulletTimeHeld = false;
+
+  /**
    * Full arsenal inventory (#14) — test-grants pickup ammo so number-key /
    * next-prev switching is playable before drops (#21).
    */
@@ -181,6 +196,8 @@ export class SimSession {
     this.bullets.reset();
     this.enemyBullets.reset();
     this.fireHeld = false;
+    this.bulletTimeHeld = false;
+    this.bulletTime = createBulletTimeState();
     this.inventory = createWeaponInventory({ testGrant: true });
     this.heliSpawn = createHeliSpawnState();
     this.helicopters = [];
@@ -268,7 +285,16 @@ export class SimSession {
     this.simTickCount += 1;
     this.ticksThisSecond += 1;
 
+    // Ease global timeStep before any entity motion (Flash sendGameSpeed).
+    const nextStep = stepBulletTime(this.bulletTime, this.timeScale.timeStep, {
+      keyHeld: this.bulletTimeHeld,
+      timeRiftActive: this.playerPowerup.powerupOn === POWERUP.TimeRift,
+      gameOver: !this.playerHealth.alive,
+    });
+    this.timeScale.setTimeStep(nextStep);
+
     // Dead players stop moving / firing; helis still update so the scene reads.
+    // Manual bullet-time slows the player with the world (no TimeRift override).
     if (this.playerHealth.alive) {
       this.player.step(this.map, this.timeScale.timeStep);
       const def = getActiveWeaponDef(this.inventory);
@@ -322,6 +348,7 @@ export class SimSession {
           // State only — never splice/push helis here. Rail + A-Bomb keep
           // iterating the same array after a kill (#19 Lead review).
           recordHeliKill(this.heliSpawn, this.score.value);
+          refillBulletTimeOnKill(this.bulletTime);
           trySpawnDropOnKill(
             this.heliSpawn.kills,
             this.powerupDrop,

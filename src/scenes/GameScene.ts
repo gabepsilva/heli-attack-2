@@ -58,10 +58,11 @@ const POWERUP_FRAME = 'powerup';
 /**
  * Thin Phaser shell: banks render deltas into a 30 Hz fixed sim, draws the
  * original level layout (placeholder tiles), hosts a controllable player
- * (←/→ walk, ↑ jump, ↓ duck, Ctrl boost, mouse aim, hold-to-fire, weapon
- * switch via 1–0 / Q–E (#14), pooled bullets) rendered from the packed atlas
- * (#32), shootable heli variants with hit flash / death boom / score HUD
- * (#12/#13/#20), parachuting powerup crates (#21), and a draggable debug box.
+ * (←/→ walk, ↑ jump, ↓ duck, Ctrl boost, Shift bullet-time, mouse aim,
+ * hold-to-fire, weapon switch via 1–0 / Q–E (#14), pooled bullets) rendered
+ * from the packed atlas (#32), shootable heli variants with hit flash / death
+ * boom / score HUD (#12/#13/#20), parachuting powerup crates (#21), and a
+ * draggable debug box.
  * Game logic lives in plain modules under src/.
  *
  * Audio (#26): click plays the test SFX after Boot unlock; DOM HUD owns
@@ -95,6 +96,7 @@ export class GameScene extends Phaser.Scene {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private audioHud: AudioHud | null = null;
   private boostKey!: Phaser.Input.Keyboard.Key;
+  private bulletTimeKey!: Phaser.Input.Keyboard.Key;
   private overlay: DebugOverlay | null = null;
   private arenaOriginX = 0;
   private arenaOriginY = 0;
@@ -133,12 +135,15 @@ export class GameScene extends Phaser.Scene {
     this.boostKey = this.input.keyboard!.addKey(
       Phaser.Input.Keyboard.KeyCodes.CTRL,
     );
+    this.bulletTimeKey = this.input.keyboard!.addKey(
+      Phaser.Input.Keyboard.KeyCodes.SHIFT,
+    );
 
     this.add
       .text(
         GAME_WIDTH / 2,
         28,
-        '↑ jump · Ctrl boost · ↓ duck · ←/→ walk · mouse aim · hold fire · 1–0 / Q–E weapons · click SFX',
+        '↑ jump · Ctrl boost · Shift slow-mo · ↓ duck · ←/→ walk · mouse aim · hold fire · 1–0 / Q–E weapons · click SFX',
         {
           fontFamily: 'Arial, Helvetica, sans-serif',
           fontSize: '36px',
@@ -150,7 +155,7 @@ export class GameScene extends Phaser.Scene {
     this.add.text(
       40,
       GAME_HEIGHT - 60,
-      '←/→ walk · ↑ jump · Ctrl boost · ↓ duck · mouse aim · hold fire · 1–0 weapons · Q/E prev/next · -/= timeStep · click SFX · drag box · ` debug · Esc → Boot',
+      '←/→ walk · ↑ jump · Ctrl boost · Shift slow-mo · ↓ duck · mouse aim · hold fire · 1–0 weapons · Q/E prev/next · -/= timeStep · click SFX · drag box · ` debug · Esc → Boot',
       {
         fontFamily: 'monospace',
         fontSize: '20px',
@@ -233,6 +238,7 @@ export class GameScene extends Phaser.Scene {
       duck: this.cursors.down.isDown,
       boost: this.boostKey.isDown,
     };
+    this.session.bulletTimeHeld = this.bulletTimeKey.isDown;
     this.session.player.mouse = {
       x: this.input.activePointer.worldX - this.arenaOriginX,
       y: this.input.activePointer.worldY - this.arenaOriginY,
