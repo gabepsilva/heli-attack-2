@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { PLAYER } from '../config/constants';
+import { TILE_ART_SIZE } from '../config/art';
+import { PLAYER, WORLD } from '../config/constants';
 import { gameDrawSize, getSpriteDef } from './catalog';
 import {
+  TILE_ART_OFFSET,
   explosionAgeScale,
   playerSpritePlacement,
   scaledDisplaySize,
+  tilePlacement,
 } from './spritePlacement';
 
 describe('sprite placement', () => {
@@ -23,6 +26,40 @@ describe('sprite placement', () => {
       originX: 0.5,
       originY: 1,
     });
+  });
+});
+
+describe('ground tile placement (Flash drawMap parity)', () => {
+  it('centers the 52px tile art on the 50px cell — the 1px Flash bleed', () => {
+    expect(TILE_ART_SIZE).toBe(52);
+    expect(WORLD.tile).toBe(50);
+    // Flash: temp._x = x * tileWidth - 1, temp._y = y * tileHeight - 1.
+    expect(TILE_ART_OFFSET).toBe(-1);
+    expect(tilePlacement(0, 0, 0, 0)).toEqual({
+      x: -1,
+      y: -1,
+      displayW: 52,
+      displayH: 52,
+      originX: 0,
+      originY: 0,
+    });
+    expect(tilePlacement(3, 2, 100, 40)).toMatchObject({
+      x: 100 + 3 * 50 - 1,
+      y: 40 + 2 * 50 - 1,
+    });
+  });
+
+  it('overlaps neighbouring tiles so no seam can open at fractional scales', () => {
+    const left = tilePlacement(4, 7, 0, 0);
+    const right = tilePlacement(5, 7, 0, 0);
+    const below = tilePlacement(4, 8, 0, 0);
+
+    // Each tile covers its whole cell...
+    expect(left.x).toBeLessThan(4 * WORLD.tile);
+    expect(left.x + left.displayW).toBeGreaterThan(5 * WORLD.tile);
+    // ...and shares a 2px band with each neighbour.
+    expect(left.x + left.displayW - right.x).toBe(2);
+    expect(left.y + left.displayH - below.y).toBe(2);
   });
 });
 

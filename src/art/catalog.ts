@@ -11,8 +11,9 @@ import {
   ART_PLAYER_FINAL_SCALE,
   ART_WORLD_FINAL_DIR,
   ART_WORLD_FINAL_SCALE,
+  TILE_ART_SIZE,
 } from '../config/art';
-import { PLAYER, WORLD } from '../config/constants';
+import { PLAYER } from '../config/constants';
 
 /** Normalized pivot: (0,0) = top-left, (0.5,1) = bottom-center, etc. */
 export type SpritePivot = Readonly<{ x: number; y: number }>;
@@ -468,13 +469,98 @@ export const SPRITE_DEFS = [
     role: 'HUD weapon crate cgun 13 ShoulderCannon (Flash powershouldercannon.png)',
     final: true,
   },
+  // Ground tileset — Flash `tiles` MovieClip frames 2..11, extracted from the
+  // original SWF (`npm run art:extract-tiles`). Map cell frame `n` draws
+  // `tile_0n`. Flash renders frames 5, 7 and 11 by mirroring an earlier bitmap
+  // (negative fill scale); the extractor bakes those flips into the PNGs.
   {
-    id: 'tile_floor',
-    sourceFile: 'Floor.png',
+    id: 'tile_01',
+    sourceFile: 'tile_01.png',
     originalW: 52,
     originalH: 52,
     pivot: { x: 0, y: 0 },
-    role: 'Solid floor tile (temp Flash assets/new/Floor.png; maps to WORLD.tile)',
+    role: 'Ground surface — grass cap on exposed dirt',
+    final: true,
+  },
+  {
+    id: 'tile_02',
+    sourceFile: 'tile_02.png',
+    originalW: 52,
+    originalH: 52,
+    pivot: { x: 0, y: 0 },
+    role: 'Buried dirt — no grass (a tile sits on top)',
+    final: true,
+  },
+  {
+    id: 'tile_03',
+    sourceFile: 'tile_03.png',
+    originalW: 52,
+    originalH: 52,
+    pivot: { x: 0, y: 0 },
+    role: 'Left end cap — grass cap + rocky left edge',
+    final: true,
+  },
+  {
+    id: 'tile_04',
+    sourceFile: 'tile_04.png',
+    originalW: 52,
+    originalH: 52,
+    pivot: { x: 0, y: 0 },
+    role: 'Right end cap — grass cap + rocky right edge (mirrors tile_03)',
+    final: true,
+  },
+  {
+    id: 'tile_05',
+    sourceFile: 'tile_05.png',
+    originalW: 52,
+    originalH: 52,
+    pivot: { x: 0, y: 0 },
+    role: 'Bush at the left side of a ledge base',
+    final: true,
+  },
+  {
+    id: 'tile_06',
+    sourceFile: 'tile_06.png',
+    originalW: 52,
+    originalH: 52,
+    pivot: { x: 0, y: 0 },
+    role: 'Bush at the right side of a ledge base (mirrors tile_05)',
+    final: true,
+  },
+  {
+    id: 'tile_07',
+    sourceFile: 'tile_07.png',
+    originalW: 52,
+    originalH: 52,
+    pivot: { x: 0, y: 0 },
+    role: 'Rocky overhang corner — grass cap, open right edge + underside',
+    final: true,
+  },
+  {
+    id: 'tile_08',
+    sourceFile: 'tile_08.png',
+    originalW: 52,
+    originalH: 52,
+    pivot: { x: 0, y: 0 },
+    role: 'Rocky overhang corner — Flash frame 9, same art as tile_07',
+    final: true,
+  },
+  {
+    id: 'tile_09',
+    sourceFile: 'tile_09.png',
+    originalW: 52,
+    originalH: 52,
+    pivot: { x: 0, y: 0 },
+    role: 'Buried dirt variant (tileset frame 10; unused by map1)',
+    final: true,
+  },
+  {
+    id: 'tile_10',
+    sourceFile: 'tile_10.png',
+    originalW: 52,
+    originalH: 52,
+    pivot: { x: 0, y: 0 },
+    role: 'Bush at a ledge base — Flash frame 11, same art as tile_06',
     final: true,
   },
 ] as const satisfies readonly SpriteDef[];
@@ -513,6 +599,38 @@ export const PLAYER_FINAL_FRAME_IDS: readonly SpriteId[] = [
   PLAYER_ANIM_FRAMES.hurt,
   PLAYER_ANIM_FRAMES.death,
 ];
+
+/**
+ * Ground tileset frames, indexed by the Flash map cell frame slot: cell frame
+ * `n` (1..10) draws `TILE_FRAME_IDS[n - 1]`, i.e. `tiles.gotoAndStop(n + 1)`.
+ * Cell frame `0` is the blank tileset frame and draws nothing.
+ */
+export const TILE_FRAME_IDS = [
+  'tile_01',
+  'tile_02',
+  'tile_03',
+  'tile_04',
+  'tile_05',
+  'tile_06',
+  'tile_07',
+  'tile_08',
+  'tile_09',
+  'tile_10',
+] as const satisfies readonly SpriteId[];
+
+/**
+ * Atlas frame for a map cell's visual slot, or `null` for a blank cell.
+ * Out-of-range frames are treated as blank rather than throwing — a malformed
+ * cell should leave a hole, not crash the render.
+ */
+export function tileFrameForCell(frame: number): SpriteId | null {
+  return TILE_FRAME_IDS[frame - 1] ?? null;
+}
+
+/** True for ground tileset frames (they share the 52×52 draw box). */
+export function isTileFrame(id: string): boolean {
+  return (TILE_FRAME_IDS as readonly string[]).includes(id);
+}
 
 /**
  * Heli look → atlas frame (#20 / #34 / #95).
@@ -580,7 +698,18 @@ export const FLASH_ORIGINAL_SOURCES = {
   powerrail: 'powerrail.png',
   powergrapple: 'powergrapple.png',
   powershouldercannon: 'powershouldercannon.png',
-  tile_floor: 'new/Floor.png',
+  // Extracted from the SWF `tiles` MovieClip, not shipped as ha2/assets PNGs
+  // (those are the fills only) — see scripts/art/extract-swf-tiles.py.
+  tile_01: 'tiles/tile_01.png',
+  tile_02: 'tiles/tile_02.png',
+  tile_03: 'tiles/tile_03.png',
+  tile_04: 'tiles/tile_04.png',
+  tile_05: 'tiles/tile_05.png',
+  tile_06: 'tiles/tile_06.png',
+  tile_07: 'tiles/tile_07.png',
+  tile_08: 'tiles/tile_08.png',
+  tile_09: 'tiles/tile_09.png',
+  tile_10: 'tiles/tile_10.png',
 } as const satisfies Record<SpriteId, string | null>;
 
 /**
@@ -725,15 +854,16 @@ export function textureSize(def: SpriteDef): { w: number; h: number } {
 
 /**
  * Game-space draw size for a sprite.
- * Characters map to the spec sprite box; tiles map to {@link WORLD.tile};
+ * Characters map to the spec sprite box; tiles keep their oversized Flash art
+ * box ({@link TILE_ART_SIZE}, drawn overlapping the {@link WORLD.tile} grid);
  * everything else uses original Flash pixels (1 game unit = 1 Flash px).
  */
 export function gameDrawSize(def: SpriteDef): { w: number; h: number } {
   if (def.id.startsWith('player_')) {
     return { w: PLAYER.spriteW, h: PLAYER.spriteH };
   }
-  if (def.id === 'tile_floor') {
-    return { w: WORLD.tile, h: WORLD.tile };
+  if (isTileFrame(def.id)) {
+    return { w: TILE_ART_SIZE, h: TILE_ART_SIZE };
   }
   if (def.id === 'explosion') {
     // Flash bigboom ~374px; catalog stores half-res source, draw at full feel.

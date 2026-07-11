@@ -106,6 +106,7 @@ npm run typecheck # strict TS check (src + vite.config.ts)
 npm run lint      # ESLint (type-aware)
 npm run format    # Prettier --write (format:check to verify only)
 npm test          # Vitest (test:watch for watch mode)
+npm run art:extract-tiles    # ground tileset ← original SWF (needs heli2.swf)
 npm run art:import-original  # NN-upscale Flash originals → art/ (needs gfx/)
 npm run art:pack   # pack atlas + ART-SPEC (needs ImageMagick)
 npm run audio:transcode  # WAV → public/audio (.ogg/.webm/.mp3); needs ffmpeg
@@ -116,6 +117,17 @@ original Flash** (#95): player sources in `art/player/` (8×), world sources in
 `art/world/` (4×), background copied to `public/art/bg.png` by the packer.
 Pull iopred `ha2/assets` into `reference/ha2-source/gfx/` (gitignored) before
 `art:import-original`. Hi-res redraws TBD. See [`docs/ART-SPEC.md`](docs/ART-SPEC.md).
+
+The ground tileset is the exception: `ha2/assets` ships only the tile *fills*
+(`Floor.png`, `FloorEdge.png`, …), while the game draws the composed `tiles`
+MovieClip — grass caps, rocky end caps, bushes, and three mirrored frames. Grab
+the original SWF once, then extract the ten frames:
+
+```bash
+curl -L -o reference/ha2-source/heli2.swf \
+  https://github.com/iopred/heliattack/raw/main/ha2/heli2miniclip.%24wf
+npm run art:extract-tiles   # → reference/ha2-source/gfx/tiles/tile_01..10.png
+```
 
 Web-ready SFX live in `public/audio/` (committed). Source WAVs stay gitignored under
 `reference/ha2-source/wav/` — pull from [iopred/heliattack](https://github.com/iopred/heliattack)

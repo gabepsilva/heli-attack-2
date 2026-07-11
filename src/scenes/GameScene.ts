@@ -5,6 +5,7 @@ import {
   heliFrameForLook,
   powerupCrateFrame,
   projectileFrameForWeapon,
+  tileFrameForCell,
   type SpriteId,
 } from '../art/catalog';
 import {
@@ -12,6 +13,7 @@ import {
   placeOnCenter,
   playerSpritePlacement,
   scaledDisplaySize,
+  tilePlacement,
 } from '../art/spritePlacement';
 import { getGameAudio } from '../audio/gameAudio';
 import { GameSfx } from '../audio/gameSfx';
@@ -34,7 +36,6 @@ import {
   POWERUP,
   POWERUP_DROP,
   SIM_HZ,
-  WORLD,
 } from '../config/constants';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/game';
 import { SCENE_KEYS } from '../config/scenes';
@@ -84,11 +85,8 @@ import { PerfMonitor } from '../tooling/perfMonitor';
 import { buildHudSnapshot } from '../ui/hud';
 import { GameHud } from '../ui/gameHud';
 import { getMountedTouchControlsHud } from '../ui/touchControlsHud';
-import {
-  LEVEL1_HEIGHT_PX,
-  LEVEL1_WIDTH_PX,
-  isLevelSolid,
-} from '../world/level1';
+import { LEVEL1_HEIGHT_PX, LEVEL1_WIDTH_PX } from '../world/level1';
+import { getTileFrame } from '../world/tileMap';
 
 const PLAYER_HITBOX_STROKE = 0xd8f3dc;
 const POWERUP_CHUTE_COLOR = 0xf8f9fa;
@@ -112,7 +110,6 @@ const BULLET_PLAYER_FRAME = 'bullet_player';
 const BULLET_ENEMY_FRAME = 'bullet_enemy';
 const MUZZLE_FRAME = 'muzzle_flash';
 const EXPLOSION_FRAME = 'explosion';
-const TILE_FRAME = 'tile_floor';
 /** Planted FireMine body — replaces the lobbed projectile frame on contact. */
 const MINE_PLANTED_FRAME = 'mine';
 /** Crate frame every powerup sprite is built with; swapped per pickup kind. */
@@ -677,24 +674,31 @@ export class GameScene extends Phaser.Scene {
     this.syncPlayerCombatFx();
   }
 
+  /**
+   * Draw the level from its visual grid, one Flash tileset frame per cell.
+   * Row-major order matches Flash tile depths (`y * width + x`), so where the
+   * oversized art overlaps, the lower / right neighbour wins — same as the
+   * original.
+   */
   private drawArena(): void {
     const map = this.session.map;
-    const tileDef = getSpriteDef(TILE_FRAME);
 
     for (let row = 0; row < map.height; row += 1) {
       for (let col = 0; col < map.width; col += 1) {
-        if (!isLevelSolid(map, col, row)) {
+        const frame = tileFrameForCell(getTileFrame(map, col, row));
+        if (frame === null) {
           continue;
         }
+        const place = tilePlacement(
+          col,
+          row,
+          this.arenaOriginX,
+          this.arenaOriginY,
+        );
         this.add
-          .image(
-            this.arenaOriginX + col * WORLD.tile,
-            this.arenaOriginY + row * WORLD.tile,
-            ATLAS_KEY,
-            TILE_FRAME,
-          )
-          .setOrigin(tileDef.pivot.x, tileDef.pivot.y)
-          .setDisplaySize(WORLD.tile, WORLD.tile)
+          .image(place.x, place.y, ATLAS_KEY, frame)
+          .setOrigin(place.originX, place.originY)
+          .setDisplaySize(place.displayW, place.displayH)
           .setDepth(0);
       }
     }

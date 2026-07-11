@@ -15,6 +15,7 @@ import {
   BG_IMAGE_PATH,
   BG_ORIGINAL_H,
   BG_ORIGINAL_W,
+  TILE_ART_SIZE,
   TITLE_IMAGE_PATH,
   TITLE_ORIGINAL_H,
   TITLE_ORIGINAL_W,
@@ -25,6 +26,7 @@ import {
   PLAYER_ANIM_FRAMES,
   PLAYER_FINAL_FRAME_IDS,
   SPRITE_DEFS,
+  TILE_FRAME_IDS,
   WORLD_FINAL_FRAME_IDS,
   catalogHasNoPlaceholders,
   finalSourcePath,
@@ -34,6 +36,7 @@ import {
   isFinalSprite,
   isSpriteId,
   textureSize,
+  tileFrameForCell,
 } from './catalog';
 
 function pngSize(abs: string): { w: number; h: number } {
@@ -77,12 +80,14 @@ describe('art catalog (issue #32 / #33 / #34 acceptance)', () => {
       originalH: 16,
       final: true,
     });
-    expect(getSpriteDef('tile_floor')).toMatchObject({
-      originalW: 52,
-      originalH: 52,
-      pivot: { x: 0, y: 0 },
-      final: true,
-    });
+    for (const id of TILE_FRAME_IDS) {
+      expect(getSpriteDef(id), id).toMatchObject({
+        originalW: 52,
+        originalH: 52,
+        pivot: { x: 0, y: 0 },
+        final: true,
+      });
+    }
   });
 
   it('AC: no placeholders remain — every catalog sprite is final', () => {
@@ -122,7 +127,7 @@ describe('art catalog (issue #32 / #33 / #34 acceptance)', () => {
       w: 116,
       h: 64,
     });
-    expect(textureSize(getSpriteDef('tile_floor'))).toEqual({
+    expect(textureSize(getSpriteDef('tile_01'))).toEqual({
       w: 208,
       h: 208,
     });
@@ -193,12 +198,25 @@ describe('art catalog (issue #32 / #33 / #34 acceptance)', () => {
     }
   });
 
-  it('maps floor tiles to WORLD.tile (50px)', () => {
+  it('draws ground tiles at the 52px Flash art size, not the 50px grid', () => {
     expect(WORLD.tile).toBe(50);
-    expect(gameDrawSize(getSpriteDef('tile_floor'))).toEqual({
-      w: 50,
-      h: 50,
-    });
+    expect(TILE_ART_SIZE).toBe(52);
+    for (const id of TILE_FRAME_IDS) {
+      expect(gameDrawSize(getSpriteDef(id)), id).toEqual({
+        w: TILE_ART_SIZE,
+        h: TILE_ART_SIZE,
+      });
+    }
+  });
+
+  it('maps Flash map cell frames 1..10 to the tileset, 0 to a blank cell', () => {
+    expect(TILE_FRAME_IDS).toHaveLength(10);
+    expect(tileFrameForCell(0)).toBeNull();
+    expect(tileFrameForCell(1)).toBe('tile_01');
+    expect(tileFrameForCell(10)).toBe('tile_10');
+    // Out-of-range cells leave a hole rather than throwing mid-render.
+    expect(tileFrameForCell(11)).toBeNull();
+    expect(tileFrameForCell(-1)).toBeNull();
   });
 
   it('maps heli looks 0/1 to distinct final frames (#20/#34)', () => {

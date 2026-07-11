@@ -11,9 +11,12 @@ documented stubs:
 
 Source tree (gitignored): reference/ha2-source/gfx/
   Pull from https://github.com/iopred/heliattack/tree/main/ha2/assets
-  Floor tile prefers assets/new/Floor.png (copied into gfx/Floor.png).
+  Ground tiles come from gfx/tiles/ — the assets tree only ships the tile fills
+  (Floor.png, FloorEdge.png, …), so run `npm run art:extract-tiles` first to
+  pull the composed `tiles` MovieClip frames out of the original SWF.
 
-Usage: python3 scripts/art/import-original-flash.py
+Usage: python3 scripts/art/extract-swf-tiles.py   # ground tileset
+       python3 scripts/art/import-original-flash.py
 Then:  npm run art:pack
 """
 
@@ -163,9 +166,12 @@ def main() -> None:
         ("powerrail.png", "powerrail.png"),
         ("powergrapple.png", "powergrapple.png"),
         ("powershouldercannon.png", "powershouldercannon.png"),
-        ("Floor.png", "Floor.png"),
         ("bg.png", "bg.png"),
         ("title.png", "title.png"),
+    ]
+    # Ground tileset — `tiles` MovieClip frames 2..11 (see extract-swf-tiles.py).
+    world_map += [
+        (f"tiles/tile_{n:02d}.png", f"tile_{n:02d}.png") for n in range(1, 11)
     ]
     heli_src = load_rgba("heli.png")
     for src_name, dest_name in world_map:

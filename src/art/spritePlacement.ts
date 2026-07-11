@@ -3,6 +3,8 @@
  * Keeps Phaser scenes free of placement math.
  */
 
+import { TILE_ART_SIZE } from '../config/art';
+import { WORLD } from '../config/constants';
 import type { SpriteDef, SpritePivot } from './catalog';
 import { gameDrawSize } from './catalog';
 
@@ -52,6 +54,34 @@ export function placeOnCenter(
     displayH: display.h,
     originX: pivot.x,
     originY: pivot.y,
+  };
+}
+
+/**
+ * Half the difference between the tile art and the collision grid — Flash
+ * `drawMap` draws each tile at `x * tileWidth - 1`, centring the 52×52 art on
+ * the 50×50 cell. The 1px bleed on every side is what keeps neighbouring tiles
+ * seamless when the canvas is scaled to a non-integer factor.
+ */
+export const TILE_ART_OFFSET = (WORLD.tile - TILE_ART_SIZE) / 2;
+
+/**
+ * Placement for a ground tile at grid (col, row), relative to the arena origin.
+ * Tiles pivot top-left, so the origin offset applies directly to the position.
+ */
+export function tilePlacement(
+  col: number,
+  row: number,
+  arenaOriginX: number,
+  arenaOriginY: number,
+): SpritePlacement {
+  return {
+    x: arenaOriginX + col * WORLD.tile + TILE_ART_OFFSET,
+    y: arenaOriginY + row * WORLD.tile + TILE_ART_OFFSET,
+    displayW: TILE_ART_SIZE,
+    displayH: TILE_ART_SIZE,
+    originX: 0,
+    originY: 0,
   };
 }
 

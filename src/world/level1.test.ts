@@ -13,7 +13,13 @@ import {
   isLevelSolid,
 } from './level1';
 import { resolveAabbAgainstTiles } from './tileResolve';
-import { TILE_EMPTY, TILE_SOLID } from './tileMap';
+import {
+  TILE_EMPTY,
+  TILE_FRAME_NONE,
+  TILE_SOLID,
+  getTileFrame,
+} from './tileMap';
+import { TILE_FRAME_IDS, tileFrameForCell } from '../art/catalog';
 import { Player } from '../player/player';
 
 describe('createLevel1 — original HA2 map1 layout (#41)', () => {
@@ -72,6 +78,54 @@ describe('createLevel1 — original HA2 map1 layout (#41)', () => {
       );
     }
     expect(map.cells[LEVEL1_SPAWN_ROW]![LEVEL1_SPAWN_COL]).toBe(TILE_EMPTY);
+  });
+
+  it('carries the decompiled tileset frame of every cell (map1 slot [1])', () => {
+    // Empty cells (incl. the spawn marker) draw nothing.
+    expect(map.frames[0]!.every((frame) => frame === TILE_FRAME_NONE)).toBe(
+      true,
+    );
+    expect(map.frames[LEVEL1_SPAWN_ROW]![LEVEL1_SPAWN_COL]).toBe(
+      TILE_FRAME_NONE,
+    );
+
+    // Ground row 14 verbatim: grass caps, buried dirt under the ledges, and
+    // the bush pairs (5 / 6) that flank each ledge base.
+    expect(map.frames[14]).toEqual([
+      1, 1, 1, 1, 1, 5, 2, 6, 1, 1, 1, 1, 1, 1, 1, 5, 2, 2, 2, 6, 1, 1, 1, 5, 2,
+      6, 1, 1, 1, 1, 1, 1, 5, 2, 2,
+    ]);
+
+    // Ledge tops: left end cap (3), grass (1), right end cap (4).
+    expect([5, 6, 7].map((col) => map.frames[13]![col])).toEqual([3, 1, 4]);
+    // The right-hand ledge ends in the rocky overhang corner (8).
+    expect(map.frames[12]![26]).toBe(8);
+    expect(map.frames[11]![34]).toBe(3);
+
+    // Every solid cell draws something; no solid cell is left blank.
+    for (let row = 0; row < map.height; row += 1) {
+      for (let col = 0; col < map.width; col += 1) {
+        if (isLevelSolid(map, col, row)) {
+          expect(getTileFrame(map, col, row), `${col},${row}`).toBeGreaterThan(
+            0,
+          );
+        }
+      }
+    }
+  });
+
+  it('resolves every level frame to a real tileset sprite', () => {
+    for (let row = 0; row < map.height; row += 1) {
+      for (let col = 0; col < map.width; col += 1) {
+        const frame = getTileFrame(map, col, row);
+        const sprite = tileFrameForCell(frame);
+        if (frame === TILE_FRAME_NONE) {
+          expect(sprite).toBeNull();
+        } else {
+          expect(sprite, `${col},${row}`).toBe(TILE_FRAME_IDS[frame - 1]);
+        }
+      }
+    }
   });
 
   it('places the player spawn at original tile-center X on the spawn column', () => {

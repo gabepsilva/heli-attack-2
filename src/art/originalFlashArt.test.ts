@@ -103,7 +103,10 @@ describe('original Flash art swap (issue #95 acceptance)', () => {
     expect(FLASH_ORIGINAL_SOURCES.powershouldercannon).toBe(
       'powershouldercannon.png',
     );
-    expect(FLASH_ORIGINAL_SOURCES.tile_floor).toBe('new/Floor.png');
+    // Ground tiles are extracted from the SWF `tiles` MovieClip — the assets
+    // tree only ships the fills (Floor.png, FloorEdge.png, …).
+    expect(FLASH_ORIGINAL_SOURCES.tile_01).toBe('tiles/tile_01.png');
+    expect(FLASH_ORIGINAL_SOURCES.tile_10).toBe('tiles/tile_10.png');
     expect(Object.keys(FLASH_ORIGINAL_SOURCES).sort()).toEqual(
       SPRITE_DEFS.map((d) => d.id).sort(),
     );
@@ -139,7 +142,7 @@ describe('original Flash art swap (issue #95 acceptance)', () => {
     expect(getSpriteDef('player_idle').pivot).toEqual({ x: 0.5, y: 1 });
     expect(getSpriteDef('weapon_machinegun').pivot).toEqual({ x: 0.2, y: 0.5 });
     expect(getSpriteDef('heli').pivot).toEqual({ x: 0.5, y: 0.5 });
-    expect(getSpriteDef('tile_floor').pivot).toEqual({ x: 0, y: 0 });
+    expect(getSpriteDef('tile_01').pivot).toEqual({ x: 0, y: 0 });
     expect(gameDrawSize(getSpriteDef('player_idle'))).toEqual({
       w: 48,
       h: 48,
@@ -184,7 +187,16 @@ describe('original Flash art swap (issue #95 acceptance)', () => {
           scale: ART_PLAYER_FINAL_SCALE,
         },
         { id: 'heli', flash: 'heli.png', scale: ART_WORLD_FINAL_SCALE },
-        { id: 'tile_floor', flash: 'Floor.png', scale: ART_WORLD_FINAL_SCALE },
+        {
+          id: 'tile_01',
+          flash: 'tiles/tile_01.png',
+          scale: ART_WORLD_FINAL_SCALE,
+        },
+        {
+          id: 'tile_04',
+          flash: 'tiles/tile_04.png',
+          scale: ART_WORLD_FINAL_SCALE,
+        },
         {
           id: 'weapon_machinegun',
           flash: 'machineGun.png',

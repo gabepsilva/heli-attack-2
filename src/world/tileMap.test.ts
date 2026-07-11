@@ -3,9 +3,11 @@ import { WORLD } from '../config/constants';
 import { hitCheck } from './hitCheck';
 import {
   TILE_EMPTY,
+  TILE_FRAME_NONE,
   TILE_SOLID,
   createTileMap,
   getTile,
+  getTileFrame,
   isSolidTile,
 } from './tileMap';
 
@@ -38,6 +40,52 @@ describe('tileMap', () => {
     expect(getTile(map, 1, 0)).toBe(TILE_SOLID);
     expect(isSolidTile(map, -1, 0)).toBe(true);
     expect(isSolidTile(map, 0, 0)).toBe(false);
+  });
+
+  it('carries a visual frame grid alongside collision (Flash cell [1] slot)', () => {
+    const map = createTileMap(
+      [
+        [0, 1],
+        [1, 1],
+      ],
+      WORLD.tile,
+      [
+        [0, 3],
+        [1, 4],
+      ],
+    );
+    expect(map.frames).toEqual([
+      [0, 3],
+      [1, 4],
+    ]);
+    expect(getTileFrame(map, 1, 0)).toBe(3);
+    expect(getTileFrame(map, 0, 1)).toBe(1);
+  });
+
+  it('defaults collision-only maps to the plain-ground frame', () => {
+    const map = createTileMap([
+      [TILE_EMPTY, TILE_SOLID],
+      [TILE_SOLID, TILE_SOLID],
+    ]);
+    expect(map.frames).toEqual([
+      [TILE_FRAME_NONE, 1],
+      [1, 1],
+    ]);
+  });
+
+  it('reads out-of-bounds cells as blank so the renderer draws nothing', () => {
+    const map = createTileMap([[TILE_SOLID]]);
+    expect(getTileFrame(map, -1, 0)).toBe(TILE_FRAME_NONE);
+    expect(getTileFrame(map, 0, 1)).toBe(TILE_FRAME_NONE);
+  });
+
+  it('rejects a frame grid that does not match the collision grid', () => {
+    expect(() => createTileMap([[0, 1]], WORLD.tile, [[0], [1]])).toThrow(
+      /frame grid/,
+    );
+    expect(() => createTileMap([[0, 1]], WORLD.tile, [[0]])).toThrow(
+      /frame grid/,
+    );
   });
 });
 

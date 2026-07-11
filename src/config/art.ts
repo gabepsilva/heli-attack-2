@@ -58,6 +58,14 @@ export const TITLE_IMAGE_PATH = 'art/title.png';
 export const TITLE_ORIGINAL_W = BG_ORIGINAL_W;
 export const TITLE_ORIGINAL_H = BG_ORIGINAL_H;
 
+/**
+ * Ground tile art is 52×52 while the collision grid is 50×50 (`WORLD.tile`).
+ * Flash `drawMap` exploits that: it draws each tile at `col * 50 - 1`, so the
+ * oversized art overlaps its neighbours by 1px per side and no seam can open up
+ * between tiles at fractional canvas scales. See `tilePlacement`.
+ */
+export const TILE_ART_SIZE = 52;
+
 /** Max atlas edge length (power-of-two friendly ceiling for the packer). */
 export const ATLAS_MAX_SIZE = 4096;
 

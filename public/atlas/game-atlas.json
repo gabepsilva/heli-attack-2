@@ -312,7 +312,7 @@
         "y": 1
       }
     },
-    "tile_floor": {
+    "tile_01": {
       "frame": {
         "x": 1674,
         "y": 748,
@@ -336,9 +336,225 @@
         "y": 0
       }
     },
-    "enemy_guy": {
+    "tile_02": {
       "frame": {
         "x": 1884,
+        "y": 748,
+        "w": 208,
+        "h": 208
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 208,
+        "h": 208
+      },
+      "sourceSize": {
+        "w": 208,
+        "h": 208
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "tile_03": {
+      "frame": {
+        "x": 2094,
+        "y": 748,
+        "w": 208,
+        "h": 208
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 208,
+        "h": 208
+      },
+      "sourceSize": {
+        "w": 208,
+        "h": 208
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "tile_04": {
+      "frame": {
+        "x": 2304,
+        "y": 748,
+        "w": 208,
+        "h": 208
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 208,
+        "h": 208
+      },
+      "sourceSize": {
+        "w": 208,
+        "h": 208
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "tile_05": {
+      "frame": {
+        "x": 2514,
+        "y": 748,
+        "w": 208,
+        "h": 208
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 208,
+        "h": 208
+      },
+      "sourceSize": {
+        "w": 208,
+        "h": 208
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "tile_06": {
+      "frame": {
+        "x": 2724,
+        "y": 748,
+        "w": 208,
+        "h": 208
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 208,
+        "h": 208
+      },
+      "sourceSize": {
+        "w": 208,
+        "h": 208
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "tile_07": {
+      "frame": {
+        "x": 2934,
+        "y": 748,
+        "w": 208,
+        "h": 208
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 208,
+        "h": 208
+      },
+      "sourceSize": {
+        "w": 208,
+        "h": 208
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "tile_08": {
+      "frame": {
+        "x": 3144,
+        "y": 748,
+        "w": 208,
+        "h": 208
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 208,
+        "h": 208
+      },
+      "sourceSize": {
+        "w": 208,
+        "h": 208
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "tile_09": {
+      "frame": {
+        "x": 3354,
+        "y": 748,
+        "w": 208,
+        "h": 208
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 208,
+        "h": 208
+      },
+      "sourceSize": {
+        "w": 208,
+        "h": 208
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "tile_10": {
+      "frame": {
+        "x": 3564,
+        "y": 748,
+        "w": 208,
+        "h": 208
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 208,
+        "h": 208
+      },
+      "sourceSize": {
+        "w": 208,
+        "h": 208
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "enemy_guy": {
+      "frame": {
+        "x": 3774,
         "y": 748,
         "w": 100,
         "h": 192
@@ -362,7 +578,7 @@
     },
     "flame": {
       "frame": {
-        "x": 1986,
+        "x": 3876,
         "y": 748,
         "w": 168,
         "h": 168
@@ -386,342 +602,6 @@
     },
     "powerup": {
       "frame": {
-        "x": 2156,
-        "y": 748,
-        "w": 132,
-        "h": 128
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 132,
-        "h": 128
-      },
-      "sourceSize": {
-        "w": 132,
-        "h": 128
-      },
-      "pivot": {
-        "x": 0.5,
-        "y": 0.5
-      }
-    },
-    "powerhealth": {
-      "frame": {
-        "x": 2290,
-        "y": 748,
-        "w": 132,
-        "h": 128
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 132,
-        "h": 128
-      },
-      "sourceSize": {
-        "w": 132,
-        "h": 128
-      },
-      "pivot": {
-        "x": 0.5,
-        "y": 0.5
-      }
-    },
-    "powermachinegun": {
-      "frame": {
-        "x": 2424,
-        "y": 748,
-        "w": 132,
-        "h": 128
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 132,
-        "h": 128
-      },
-      "sourceSize": {
-        "w": 132,
-        "h": 128
-      },
-      "pivot": {
-        "x": 0.5,
-        "y": 0.5
-      }
-    },
-    "poweruzi": {
-      "frame": {
-        "x": 2558,
-        "y": 748,
-        "w": 132,
-        "h": 128
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 132,
-        "h": 128
-      },
-      "sourceSize": {
-        "w": 132,
-        "h": 128
-      },
-      "pivot": {
-        "x": 0.5,
-        "y": 0.5
-      }
-    },
-    "powershotgun": {
-      "frame": {
-        "x": 2692,
-        "y": 748,
-        "w": 132,
-        "h": 128
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 132,
-        "h": 128
-      },
-      "sourceSize": {
-        "w": 132,
-        "h": 128
-      },
-      "pivot": {
-        "x": 0.5,
-        "y": 0.5
-      }
-    },
-    "powershotgunrocket": {
-      "frame": {
-        "x": 2826,
-        "y": 748,
-        "w": 132,
-        "h": 128
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 132,
-        "h": 128
-      },
-      "sourceSize": {
-        "w": 132,
-        "h": 128
-      },
-      "pivot": {
-        "x": 0.5,
-        "y": 0.5
-      }
-    },
-    "powergen": {
-      "frame": {
-        "x": 2960,
-        "y": 748,
-        "w": 132,
-        "h": 128
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 132,
-        "h": 128
-      },
-      "sourceSize": {
-        "w": 132,
-        "h": 128
-      },
-      "pivot": {
-        "x": 0.5,
-        "y": 0.5
-      }
-    },
-    "powerrpg": {
-      "frame": {
-        "x": 3094,
-        "y": 748,
-        "w": 132,
-        "h": 128
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 132,
-        "h": 128
-      },
-      "sourceSize": {
-        "w": 132,
-        "h": 128
-      },
-      "pivot": {
-        "x": 0.5,
-        "y": 0.5
-      }
-    },
-    "powerrocketlauncher": {
-      "frame": {
-        "x": 3228,
-        "y": 748,
-        "w": 132,
-        "h": 128
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 132,
-        "h": 128
-      },
-      "sourceSize": {
-        "w": 132,
-        "h": 128
-      },
-      "pivot": {
-        "x": 0.5,
-        "y": 0.5
-      }
-    },
-    "powerseeker": {
-      "frame": {
-        "x": 3362,
-        "y": 748,
-        "w": 132,
-        "h": 128
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 132,
-        "h": 128
-      },
-      "sourceSize": {
-        "w": 132,
-        "h": 128
-      },
-      "pivot": {
-        "x": 0.5,
-        "y": 0.5
-      }
-    },
-    "powerflamethrower": {
-      "frame": {
-        "x": 3496,
-        "y": 748,
-        "w": 132,
-        "h": 128
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 132,
-        "h": 128
-      },
-      "sourceSize": {
-        "w": 132,
-        "h": 128
-      },
-      "pivot": {
-        "x": 0.5,
-        "y": 0.5
-      }
-    },
-    "powermine": {
-      "frame": {
-        "x": 3630,
-        "y": 748,
-        "w": 132,
-        "h": 128
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 132,
-        "h": 128
-      },
-      "sourceSize": {
-        "w": 132,
-        "h": 128
-      },
-      "pivot": {
-        "x": 0.5,
-        "y": 0.5
-      }
-    },
-    "powerabomb": {
-      "frame": {
-        "x": 3764,
-        "y": 748,
-        "w": 132,
-        "h": 128
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 132,
-        "h": 128
-      },
-      "sourceSize": {
-        "w": 132,
-        "h": 128
-      },
-      "pivot": {
-        "x": 0.5,
-        "y": 0.5
-      }
-    },
-    "powerrail": {
-      "frame": {
-        "x": 3898,
-        "y": 748,
-        "w": 132,
-        "h": 128
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 132,
-        "h": 128
-      },
-      "sourceSize": {
-        "w": 132,
-        "h": 128
-      },
-      "pivot": {
-        "x": 0.5,
-        "y": 0.5
-      }
-    },
-    "powergrapple": {
-      "frame": {
         "x": 2,
         "y": 1142,
         "w": 132,
@@ -744,7 +624,7 @@
         "y": 0.5
       }
     },
-    "powershouldercannon": {
+    "powerhealth": {
       "frame": {
         "x": 136,
         "y": 1142,
@@ -768,9 +648,345 @@
         "y": 0.5
       }
     },
-    "rail": {
+    "powermachinegun": {
       "frame": {
         "x": 270,
+        "y": 1142,
+        "w": 132,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 132,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 132,
+        "h": 128
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "poweruzi": {
+      "frame": {
+        "x": 404,
+        "y": 1142,
+        "w": 132,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 132,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 132,
+        "h": 128
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "powershotgun": {
+      "frame": {
+        "x": 538,
+        "y": 1142,
+        "w": 132,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 132,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 132,
+        "h": 128
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "powershotgunrocket": {
+      "frame": {
+        "x": 672,
+        "y": 1142,
+        "w": 132,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 132,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 132,
+        "h": 128
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "powergen": {
+      "frame": {
+        "x": 806,
+        "y": 1142,
+        "w": 132,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 132,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 132,
+        "h": 128
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "powerrpg": {
+      "frame": {
+        "x": 940,
+        "y": 1142,
+        "w": 132,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 132,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 132,
+        "h": 128
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "powerrocketlauncher": {
+      "frame": {
+        "x": 1074,
+        "y": 1142,
+        "w": 132,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 132,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 132,
+        "h": 128
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "powerseeker": {
+      "frame": {
+        "x": 1208,
+        "y": 1142,
+        "w": 132,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 132,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 132,
+        "h": 128
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "powerflamethrower": {
+      "frame": {
+        "x": 1342,
+        "y": 1142,
+        "w": 132,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 132,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 132,
+        "h": 128
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "powermine": {
+      "frame": {
+        "x": 1476,
+        "y": 1142,
+        "w": 132,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 132,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 132,
+        "h": 128
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "powerabomb": {
+      "frame": {
+        "x": 1610,
+        "y": 1142,
+        "w": 132,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 132,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 132,
+        "h": 128
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "powerrail": {
+      "frame": {
+        "x": 1744,
+        "y": 1142,
+        "w": 132,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 132,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 132,
+        "h": 128
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "powergrapple": {
+      "frame": {
+        "x": 1878,
+        "y": 1142,
+        "w": 132,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 132,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 132,
+        "h": 128
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "powershouldercannon": {
+      "frame": {
+        "x": 2012,
+        "y": 1142,
+        "w": 132,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 132,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 132,
+        "h": 128
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "rail": {
+      "frame": {
+        "x": 2146,
         "y": 1142,
         "w": 228,
         "h": 124
@@ -794,7 +1010,7 @@
     },
     "blood": {
       "frame": {
-        "x": 500,
+        "x": 2376,
         "y": 1142,
         "w": 120,
         "h": 120
@@ -818,7 +1034,7 @@
     },
     "abombbullet": {
       "frame": {
-        "x": 622,
+        "x": 2498,
         "y": 1142,
         "w": 144,
         "h": 116
@@ -842,7 +1058,7 @@
     },
     "smoke": {
       "frame": {
-        "x": 768,
+        "x": 2644,
         "y": 1142,
         "w": 112,
         "h": 108
@@ -866,7 +1082,7 @@
     },
     "grapplebullet": {
       "frame": {
-        "x": 882,
+        "x": 2758,
         "y": 1142,
         "w": 84,
         "h": 84
@@ -890,7 +1106,7 @@
     },
     "mine": {
       "frame": {
-        "x": 968,
+        "x": 2844,
         "y": 1142,
         "w": 84,
         "h": 76
@@ -914,7 +1130,7 @@
     },
     "weapon_machinegun": {
       "frame": {
-        "x": 1054,
+        "x": 2930,
         "y": 1142,
         "w": 116,
         "h": 64
@@ -938,7 +1154,7 @@
     },
     "muzzle_flash": {
       "frame": {
-        "x": 1172,
+        "x": 3048,
         "y": 1142,
         "w": 64,
         "h": 64
@@ -962,7 +1178,7 @@
     },
     "seekerbullet": {
       "frame": {
-        "x": 1238,
+        "x": 3114,
         "y": 1142,
         "w": 92,
         "h": 60
@@ -986,7 +1202,7 @@
     },
     "rocket": {
       "frame": {
-        "x": 1332,
+        "x": 3208,
         "y": 1142,
         "w": 84,
         "h": 60
@@ -1010,7 +1226,7 @@
     },
     "rpg": {
       "frame": {
-        "x": 1418,
+        "x": 3294,
         "y": 1142,
         "w": 88,
         "h": 52
@@ -1034,7 +1250,7 @@
     },
     "shotgunrocketbullet": {
       "frame": {
-        "x": 1508,
+        "x": 3384,
         "y": 1142,
         "w": 68,
         "h": 48
@@ -1058,7 +1274,7 @@
     },
     "minebullet": {
       "frame": {
-        "x": 1578,
+        "x": 3454,
         "y": 1142,
         "w": 80,
         "h": 44
@@ -1082,7 +1298,7 @@
     },
     "grenade": {
       "frame": {
-        "x": 1660,
+        "x": 3536,
         "y": 1142,
         "w": 76,
         "h": 44
@@ -1106,7 +1322,7 @@
     },
     "bullet_player": {
       "frame": {
-        "x": 1738,
+        "x": 3614,
         "y": 1142,
         "w": 40,
         "h": 36
@@ -1130,7 +1346,7 @@
     },
     "bullet_enemy": {
       "frame": {
-        "x": 1780,
+        "x": 3656,
         "y": 1142,
         "w": 40,
         "h": 36

@@ -467,12 +467,93 @@ export const SPRITE_DEFS = [
     final: true,
   },
   {
-    id: 'tile_floor',
-    sourceFile: 'Floor.png',
+    id: 'tile_01',
+    sourceFile: 'tile_01.png',
     originalW: 52,
     originalH: 52,
     pivot: { x: 0, y: 0 },
-    role: 'Solid floor tile (temp Flash assets/new/Floor.png; maps to WORLD.tile)',
+    role: 'Ground surface — grass cap on exposed dirt',
+    final: true,
+  },
+  {
+    id: 'tile_02',
+    sourceFile: 'tile_02.png',
+    originalW: 52,
+    originalH: 52,
+    pivot: { x: 0, y: 0 },
+    role: 'Buried dirt — no grass (a tile sits on top)',
+    final: true,
+  },
+  {
+    id: 'tile_03',
+    sourceFile: 'tile_03.png',
+    originalW: 52,
+    originalH: 52,
+    pivot: { x: 0, y: 0 },
+    role: 'Left end cap — grass cap + rocky left edge',
+    final: true,
+  },
+  {
+    id: 'tile_04',
+    sourceFile: 'tile_04.png',
+    originalW: 52,
+    originalH: 52,
+    pivot: { x: 0, y: 0 },
+    role: 'Right end cap — grass cap + rocky right edge (mirrors tile_03)',
+    final: true,
+  },
+  {
+    id: 'tile_05',
+    sourceFile: 'tile_05.png',
+    originalW: 52,
+    originalH: 52,
+    pivot: { x: 0, y: 0 },
+    role: 'Bush at the left side of a ledge base',
+    final: true,
+  },
+  {
+    id: 'tile_06',
+    sourceFile: 'tile_06.png',
+    originalW: 52,
+    originalH: 52,
+    pivot: { x: 0, y: 0 },
+    role: 'Bush at the right side of a ledge base (mirrors tile_05)',
+    final: true,
+  },
+  {
+    id: 'tile_07',
+    sourceFile: 'tile_07.png',
+    originalW: 52,
+    originalH: 52,
+    pivot: { x: 0, y: 0 },
+    role: 'Rocky overhang corner — grass cap, open right edge + underside',
+    final: true,
+  },
+  {
+    id: 'tile_08',
+    sourceFile: 'tile_08.png',
+    originalW: 52,
+    originalH: 52,
+    pivot: { x: 0, y: 0 },
+    role: 'Rocky overhang corner — Flash frame 9, same art as tile_07',
+    final: true,
+  },
+  {
+    id: 'tile_09',
+    sourceFile: 'tile_09.png',
+    originalW: 52,
+    originalH: 52,
+    pivot: { x: 0, y: 0 },
+    role: 'Buried dirt variant (tileset frame 10; unused by map1)',
+    final: true,
+  },
+  {
+    id: 'tile_10',
+    sourceFile: 'tile_10.png',
+    originalW: 52,
+    originalH: 52,
+    pivot: { x: 0, y: 0 },
+    role: 'Bush at a ledge base — Flash frame 11, same art as tile_06',
     final: true,
   },
 ];
@@ -562,6 +643,7 @@ export function renderArtSpecMarkdown(
 ) {
   const PLAYER = { spriteW: 48, spriteH: 48, boxW: 10, boxH: 42 };
   const WORLD = { tile: 50 };
+  const TILE_ART_SIZE = 52;
   const GAME_WIDTH = 1920;
   const GAME_HEIGHT = 1080;
   const ATLAS_KEY = 'game-atlas';
@@ -570,8 +652,8 @@ export function renderArtSpecMarkdown(
     if (def.id.startsWith('player_')) {
       return { w: PLAYER.spriteW, h: PLAYER.spriteH };
     }
-    if (def.id === 'tile_floor') {
-      return { w: WORLD.tile, h: WORLD.tile };
+    if (def.id.startsWith('tile_')) {
+      return { w: TILE_ART_SIZE, h: TILE_ART_SIZE };
     }
     if (def.id === 'explosion') {
       return { w: 120, h: 120 };
@@ -609,7 +691,8 @@ export function renderArtSpecMarkdown(
 | Sim / Flash units | 1 game px = 1 original Flash px |
 | Player sprite box (spec) | **${PLAYER.spriteW}×${PLAYER.spriteH}** |
 | Player collision box | **${PLAYER.boxW}×${PLAYER.boxH}** (top-left origin) |
-| Tile size | **${WORLD.tile}×${WORLD.tile}** |
+| Tile size (collision grid) | **${WORLD.tile}×${WORLD.tile}** |
+| Tile art | **${TILE_ART_SIZE}×${TILE_ART_SIZE}**, drawn at \`col × ${WORLD.tile} − 1\` (Flash \`drawMap\` 1px overlap) |
 | Legacy placeholder upscale | **${placeholderScale}×** (retired after #34) |
 | Player final scale | **${playerScale}×** Flash original size (committed under \`art/player/\`) |
 | World final scale | **${worldScale}×** Flash original size (committed under \`art/world/\`) |

@@ -11,7 +11,8 @@
 | Sim / Flash units | 1 game px = 1 original Flash px |
 | Player sprite box (spec) | **48×48** |
 | Player collision box | **10×42** (top-left origin) |
-| Tile size | **50×50** |
+| Tile size (collision grid) | **50×50** |
+| Tile art | **52×52**, drawn at `col × 50 − 1` (Flash `drawMap` 1px overlap) |
 | Legacy placeholder upscale | **4×** (retired after #34) |
 | Player final scale | **8×** Flash original size (committed under `art/player/`) |
 | World final scale | **4×** Flash original size (committed under `art/world/`) |
@@ -111,7 +112,16 @@ origin  = (pivot.x, pivot.y)   // usually (0.5, 1)
 | `powerrail` | `powerrail.png` | 33×32 | 132×128 (final) | 33×32 | (0.5, 0.5) | HUD weapon crate cgun 11 RailGun (Flash powerrail.png) |
 | `powergrapple` | `powergrapple.png` | 33×32 | 132×128 (final) | 33×32 | (0.5, 0.5) | HUD weapon crate cgun 12 GrappleCannon (Flash powergrapple.png) |
 | `powershouldercannon` | `powershouldercannon.png` | 33×32 | 132×128 (final) | 33×32 | (0.5, 0.5) | HUD weapon crate cgun 13 ShoulderCannon (Flash powershouldercannon.png) |
-| `tile_floor` | `Floor.png` | 52×52 | 208×208 (final) | 50×50 | (0, 0) | Solid floor tile (temp Flash assets/new/Floor.png; maps to WORLD.tile) |
+| `tile_01` | `tile_01.png` | 52×52 | 208×208 (final) | 52×52 | (0, 0) | Ground surface — grass cap on exposed dirt |
+| `tile_02` | `tile_02.png` | 52×52 | 208×208 (final) | 52×52 | (0, 0) | Buried dirt — no grass (a tile sits on top) |
+| `tile_03` | `tile_03.png` | 52×52 | 208×208 (final) | 52×52 | (0, 0) | Left end cap — grass cap + rocky left edge |
+| `tile_04` | `tile_04.png` | 52×52 | 208×208 (final) | 52×52 | (0, 0) | Right end cap — grass cap + rocky right edge (mirrors tile_03) |
+| `tile_05` | `tile_05.png` | 52×52 | 208×208 (final) | 52×52 | (0, 0) | Bush at the left side of a ledge base |
+| `tile_06` | `tile_06.png` | 52×52 | 208×208 (final) | 52×52 | (0, 0) | Bush at the right side of a ledge base (mirrors tile_05) |
+| `tile_07` | `tile_07.png` | 52×52 | 208×208 (final) | 52×52 | (0, 0) | Rocky overhang corner — grass cap, open right edge + underside |
+| `tile_08` | `tile_08.png` | 52×52 | 208×208 (final) | 52×52 | (0, 0) | Rocky overhang corner — Flash frame 9, same art as tile_07 |
+| `tile_09` | `tile_09.png` | 52×52 | 208×208 (final) | 52×52 | (0, 0) | Buried dirt variant (tileset frame 10; unused by map1) |
+| `tile_10` | `tile_10.png` | 52×52 | 208×208 (final) | 52×52 | (0, 0) | Bush at a ledge base — Flash frame 11, same art as tile_06 |
 
 ## Adding a new sprite
 

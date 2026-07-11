@@ -12,6 +12,7 @@ import {
   BG_IMAGE_PATH,
   BG_ORIGINAL_H,
   BG_ORIGINAL_W,
+  TILE_ART_SIZE,
   TITLE_IMAGE_PATH,
   TITLE_ORIGINAL_H,
   TITLE_ORIGINAL_W,
@@ -49,7 +50,8 @@ export function renderArtSpecMarkdown(): string {
 | Sim / Flash units | 1 game px = 1 original Flash px |
 | Player sprite box (spec) | **${PLAYER.spriteW}×${PLAYER.spriteH}** |
 | Player collision box | **${PLAYER.boxW}×${PLAYER.boxH}** (top-left origin) |
-| Tile size | **${WORLD.tile}×${WORLD.tile}** |
+| Tile size (collision grid) | **${WORLD.tile}×${WORLD.tile}** |
+| Tile art | **${TILE_ART_SIZE}×${TILE_ART_SIZE}**, drawn at \`col × ${WORLD.tile} − 1\` (Flash \`drawMap\` 1px overlap) |
 | Legacy placeholder upscale | **${ART_PLACEHOLDER_SCALE}×** (retired after #34) |
 | Player final scale | **${ART_PLAYER_FINAL_SCALE}×** Flash original size (committed under \`${ART_PLAYER_FINAL_DIR}/\`) |
 | World final scale | **${ART_WORLD_FINAL_SCALE}×** Flash original size (committed under \`${ART_WORLD_FINAL_DIR}/\`) |

@@ -2,13 +2,16 @@
 """
 Generate final 1080p-native world sprites for issue #34.
 
-Redraws helis (+strafe variant), weapons, projectiles, VFX, powerups, tiles,
+Redraws helis (+strafe variant), weapons, projectiles, VFX, powerups,
 muzzle flash, explosion, and background — MIT-licensed silhouettes inspired by
 the Flash art bible (proportions only, not GPL pixel copies). Style matches
 art/player/ (warm desert / military palette).
 
 Outputs under art/world/ at ART_WORLD_FINAL_SCALE (4×) of Flash original sizes
 in src/art/catalog.ts. Background is a separate full-bleed plate.
+
+Ground tiles are NOT generated here — the shipped tileset is the original Flash
+`tiles` MovieClip (scripts/art/extract-swf-tiles.py).
 
 Usage: python3 scripts/art/generate-world-final.py
 """
@@ -46,9 +49,6 @@ SMOKE_C = (90, 90, 95, 180)
 BLOOD_C = (160, 30, 40, 220)
 CRATE = (180, 140, 70, 255)
 CRATE_DK = (120, 90, 40, 255)
-TILE = (70, 95, 120, 255)
-TILE_HI = (95, 125, 150, 255)
-TILE_DK = (45, 65, 85, 255)
 GUN = (70, 75, 80, 255)
 GUN_HI = (120, 125, 130, 255)
 BULLET_Y = (255, 220, 90, 255)
@@ -312,22 +312,6 @@ def make_powerup() -> None:
     save(img, "powerup.png")
 
 
-def make_tile_floor() -> None:
-    img = blank(52, 52)
-    draw = ImageDraw.Draw(img)
-    rect(draw, 1, 1, 51, 51, TILE, radius=1)
-    # Panel grooves
-    for i in range(1, 4):
-        y = 1 + i * 12.5
-        line(draw, 2, y, 50, y, TILE_DK, 0.5)
-    for i in range(1, 4):
-        x = 1 + i * 12.5
-        line(draw, x, 2, x, 50, TILE_DK, 0.5)
-    # Highlight corner
-    rect(draw, 2, 2, 14, 14, TILE_HI, outline=None, radius=0.5)
-    save(img, "Floor.png")
-
-
 def make_muzzle_flash() -> None:
     # Compact flash — drawn larger via displaySize in-scene.
     img = blank(16, 16)
@@ -438,7 +422,6 @@ def main() -> None:
     make_smoke()
     make_blood()
     make_powerup()
-    make_tile_floor()
     make_muzzle_flash()
     make_explosion()
     make_bg()
