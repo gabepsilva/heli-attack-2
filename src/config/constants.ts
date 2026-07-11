@@ -129,28 +129,43 @@ export const HELI = {
   onScreenFramesRand: 100,
   /**
    * Flash `gotoAndStop(random(2)+1)` — two visual frames / looks (#20).
+   * Motion is identical for both looks (Flash visual-only); look only picks art.
    */
   lookCount: 2,
   /**
-   * Hover (look 0): soft player track — Flash on-screen `dx/200`, `dy/100`.
+   * Flash camera size in world px (`spw`/`sph` from `sw=450`, `sh=320`,
+   * tile 50 → stw=9, sth=7). Chase drift / hover height are relative to the
+   * camera, not the map; retune here if camera zoom ever lands.
    */
-  hoverAccelXDiv: 200,
-  hoverAccelYDiv: 100,
-  /** Hover X retarget period (Flash `xt++%75 == 1`). */
-  hoverDriftPeriod: 75,
-  /** Hover Y retarget period (Flash `yt++%40 == 1`). */
-  hoverVertPeriod: 40,
+  viewW: 450,
+  viewH: 350,
   /**
-   * Strafe (look 1): snappier lateral sweeps — distinguishable from hover (#20).
-   * Wider X chase, more frequent retarget, slightly softer vertical.
+   * On-screen chase accel — Flash `dx/200`, `dy/100` (both looks).
    */
-  strafeAccelXDiv: 80,
-  strafeAccelYDiv: 120,
-  strafeDriftPeriod: 40,
-  strafeVertPeriod: 55,
+  chaseAccelXDiv: 200,
+  chaseAccelYDiv: 100,
+  /** X retarget period (Flash `xt++%75 == 1`). */
+  chaseDriftPeriod: 75,
+  /** Y retarget period (Flash `yt++%40 == 1`). */
+  chaseVertPeriod: 40,
+  /**
+   * Chase hover height jitter — Flash
+   * `ty = player._y - sph/2 - (-2 + random(4)) * 10`.
+   */
+  chaseVertJitterMin: -2,
+  chaseVertJitterRange: 4,
+  chaseVertJitterStep: 10,
+  /**
+   * Hyper-jump chase — Flash
+   * `ty = min(mapH - sph/2 - 100, player._y + 50 + random(50))`: dive below the
+   * player, but stay clear of the floor.
+   */
+  hjumpDropBelowPlayer: 50,
+  hjumpDropRand: 50,
+  hjumpFloorMargin: 100,
   /**
    * Flash off-screen / leaving accel: `dx/100`, `dy/20` when outside the
-   * viewport or after the onscreen timer expires.
+   * viewport or after the onscreen timer expires (`onScreen < 0`).
    */
   exitAccelXDiv: 100,
   exitAccelYDiv: 20,
@@ -160,8 +175,13 @@ export const HELI = {
   exitGotoRange: 10,
   exitLeftMax: 4,
   exitRightMax: 8,
-  /** How far past the arena edge exit targets sit (sprite widths). */
-  exitMarginMul: 2,
+  /**
+   * How far past the arena the exit targets sit, in camera widths / heights
+   * (Flash `camLeft - 2*spw`, `camLeft + arenaW + spw`, `camTop - sph`).
+   */
+  exitViewMulLeft: 2,
+  exitViewMulRight: 1,
+  exitViewMulTop: 1,
   /** Placeholder boom VFX lifetime (sim frames). */
   explosionDurationFrames: 20,
   /**
@@ -185,12 +205,6 @@ export const HELI = {
   /** Muzzle distance from heli center along the barrel (px). */
   muzzleOffset: 40,
 } as const;
-
-/**
- * Scene tints for the two Flash heli looks (#20). Look 0 = hover (warm),
- * look 1 = strafe (cool) so the behaviors read as distinct on screen.
- */
-export const HELI_LOOK_TINT = [0xf4a261, 0x4cc9f0] as const;
 
 /**
  * Replacement spawn treadmill + difficulty ramp (#19 / #109).

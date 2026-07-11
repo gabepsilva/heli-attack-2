@@ -308,6 +308,8 @@ describe('SimSession', () => {
     heli.yspeed = 0;
     heli.tx = heli.x;
     heli.ty = heli.y;
+    heli.onScreen = 10_000;
+    heli.repositioning = false;
     expect(heli.health).toBe(300);
     expect(heli.active).toBe(true);
 
@@ -324,6 +326,8 @@ describe('SimSession', () => {
       heli.yspeed = 0;
       heli.tx = heli.x;
       heli.ty = heli.y;
+      heli.onScreen = 10_000;
+      heli.repositioning = false;
       session.update(1000 / 30);
     }
 
@@ -346,6 +350,8 @@ describe('SimSession', () => {
     heli.yspeed = 0;
     heli.tx = heli.x;
     heli.ty = heli.y;
+    heli.onScreen = 10_000;
+    heli.repositioning = false;
 
     const hit = {
       x: heli.x - HELI.spriteW / 2 + 22,
@@ -361,6 +367,8 @@ describe('SimSession', () => {
       heli.yspeed = 0;
       heli.tx = heli.x;
       heli.ty = heli.y;
+      heli.onScreen = 10_000;
+      heli.repositioning = false;
       session.update(1000 / 30);
       if (heli.hitFlashRemaining > 0) {
         sawFlash = true;
@@ -685,6 +693,8 @@ describe('SimSession', () => {
     heli.yspeed = 0;
     heli.tx = heli.x;
     heli.ty = heli.y;
+    heli.onScreen = 10_000;
+    heli.repositioning = false;
     const hit = {
       x: heli.x - HELI.spriteW / 2 + 22,
       y: heli.y - HELI.spriteH / 2 + 2,
@@ -699,6 +709,8 @@ describe('SimSession', () => {
       heli.yspeed = 0;
       heli.tx = heli.x;
       heli.ty = heli.y;
+      heli.onScreen = 10_000;
+      heli.repositioning = false;
       session.update(1000 / 30);
     }
 

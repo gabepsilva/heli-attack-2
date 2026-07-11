@@ -171,6 +171,8 @@ describe('heli spawn treadmill (issue #19 / #109)', () => {
     heli.yspeed = 0;
     heli.tx = heli.x;
     heli.ty = heli.y;
+    heli.onScreen = 10_000;
+    heli.repositioning = false;
 
     const hit = {
       x: heli.x - HELI.spriteW / 2 + 22,
@@ -185,6 +187,8 @@ describe('heli spawn treadmill (issue #19 / #109)', () => {
       heli.yspeed = 0;
       heli.tx = heli.x;
       heli.ty = heli.y;
+      heli.onScreen = 10_000;
+      heli.repositioning = false;
       session.update(1000 / 30);
       // Mid-game: living count stays exactly 1 (never empty, never multi).
       expect(activeHeliCount(session.helicopters)).toBe(1);

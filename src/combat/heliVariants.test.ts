@@ -1,21 +1,21 @@
 /**
- * Heli variants & behavior polish — unit tests for issue #20 acceptance criteria.
+ * Heli variants & Flash `heliFrame` motion parity — unit tests for #20.
  *
- * AC: Two behavior types are distinguishable in play
+ * AC: Two looks (visual) — motion is identical (Flash gotoAndStop visual-only)
  * AC: Helis reposition rather than sitting still
  *
- * Spec / Flash values: `gotoAndStop(random(2)+1)`, `onscreen = 150+random(100)`,
- * exit `goto = random(10)` (<4 left, <8 right, else top), on-screen accel
- * `dx/200` `dy/100`, off-screen / leaving `dx/100` `dy/20`.
+ * Spec / Flash: `onscreen = 150+random(100)`, exit `goto = random(10)`,
+ * on-screen accel `dx/200` `dy/100`, off-view / `onScreen<0` `dx/100` `dy/20`,
+ * view `spw=450` `sph=350`.
  */
 
 import { describe, expect, it } from 'vitest';
-import { HELI, HELI_LOOK_TINT } from '../config/constants';
+import { HELI } from '../config/constants';
 import { LEVEL1_HEIGHT_PX, LEVEL1_WIDTH_PX } from '../world/level1';
 import {
-  behaviorForLook,
   createHelicopter,
   createSpawnRng,
+  isHeliInView,
   isHeliOffArena,
   pickHeliExitPath,
   spawnHelicopter,
@@ -30,6 +30,7 @@ function stepMany(
   rng = createSpawnRng(1),
   playerX = LEVEL1_WIDTH_PX / 2,
   playerY = 400,
+  playerHjump = false,
 ): void {
   for (let i = 0; i < frames; i += 1) {
     stepHelicopter(
@@ -40,41 +41,36 @@ function stepMany(
       LEVEL1_WIDTH_PX,
       LEVEL1_HEIGHT_PX,
       rng,
+      playerHjump,
     );
   }
 }
 
-describe('heli variants & behavior (issue #20)', () => {
-  it('locks Flash look count, onscreen timer, and accel divisors to exact values', () => {
+describe('heli variants & Flash motion parity (issue #20)', () => {
+  it('locks Flash look count, view size, onscreen timer, and accel divisors', () => {
     expect(HELI.lookCount).toBe(2);
+    expect(HELI.viewW).toBe(450);
+    expect(HELI.viewH).toBe(350);
     expect(HELI.onScreenFramesMin).toBe(150);
     expect(HELI.onScreenFramesRand).toBe(100);
-    expect(HELI.hoverAccelXDiv).toBe(200);
-    expect(HELI.hoverAccelYDiv).toBe(100);
-    expect(HELI.hoverDriftPeriod).toBe(75);
-    expect(HELI.hoverVertPeriod).toBe(40);
-    expect(HELI.strafeAccelXDiv).toBe(80);
-    expect(HELI.strafeAccelYDiv).toBe(120);
+    expect(HELI.chaseAccelXDiv).toBe(200);
+    expect(HELI.chaseAccelYDiv).toBe(100);
+    expect(HELI.chaseDriftPeriod).toBe(75);
+    expect(HELI.chaseVertPeriod).toBe(40);
+    expect(HELI.chaseVertJitterMin).toBe(-2);
+    expect(HELI.chaseVertJitterRange).toBe(4);
+    expect(HELI.chaseVertJitterStep).toBe(10);
+    expect(HELI.hjumpDropBelowPlayer).toBe(50);
+    expect(HELI.hjumpDropRand).toBe(50);
+    expect(HELI.hjumpFloorMargin).toBe(100);
     expect(HELI.exitAccelXDiv).toBe(100);
     expect(HELI.exitAccelYDiv).toBe(20);
     expect(HELI.exitGotoRange).toBe(10);
     expect(HELI.exitLeftMax).toBe(4);
     expect(HELI.exitRightMax).toBe(8);
-    expect(HELI_LOOK_TINT).toHaveLength(2);
-    expect(HELI_LOOK_TINT[0]).not.toBe(HELI_LOOK_TINT[1]);
-  });
-
-  it('maps look 0→hover and look 1→strafe (AC: two distinguishable behaviors)', () => {
-    expect(behaviorForLook(0)).toBe('hover');
-    expect(behaviorForLook(1)).toBe('strafe');
-
-    const hover = createHelicopter(400, 200, HELI.hp, createSpawnRng(1), 0);
-    const strafe = createHelicopter(400, 200, HELI.hp, createSpawnRng(1), 1);
-    expect(hover.look).toBe(0);
-    expect(hover.behavior).toBe('hover');
-    expect(strafe.look).toBe(1);
-    expect(strafe.behavior).toBe('strafe');
-    expect(hover.behavior).not.toBe(strafe.behavior);
+    expect(HELI.exitViewMulLeft).toBe(2);
+    expect(HELI.exitViewMulRight).toBe(1);
+    expect(HELI.exitViewMulTop).toBe(1);
   });
 
   it('spawns with Flash onscreen = 150+random(100) and a look in {0,1}', () => {
@@ -94,7 +90,6 @@ describe('heli variants & behavior (issue #20)', () => {
         HELI.onScreenFramesMin + HELI.onScreenFramesRand,
       );
       expect(heli.look === 0 || heli.look === 1).toBe(true);
-      expect(heli.behavior).toBe(behaviorForLook(heli.look));
       expect(heli.repositioning).toBe(false);
     }
     expect(seenLooks.has(0)).toBe(true);
@@ -103,7 +98,6 @@ describe('heli variants & behavior (issue #20)', () => {
   });
 
   it('pickHeliExitPath matches Flash goto buckets (<4 left, <8 right, else top)', () => {
-    // Deterministic: walk every goto value via a stub rng sequence.
     const sequence = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
     let i = 0;
     const rng = {
@@ -121,35 +115,116 @@ describe('heli variants & behavior (issue #20)', () => {
     expect(paths.slice(8, 10).every((p) => p === 'top')).toBe(true);
   });
 
-  it('hover and strafe produce distinguishable lateral motion (AC)', () => {
-    const hover = createHelicopter(
+  it('look 0 and look 1 share identical motion under the same seed timeline', () => {
+    const look0 = createHelicopter(
       LEVEL1_WIDTH_PX / 2,
       150,
       HELI.hp,
       createSpawnRng(3),
       0,
     );
-    const strafe = createHelicopter(
+    const look1 = createHelicopter(
       LEVEL1_WIDTH_PX / 2,
       150,
       HELI.hp,
       createSpawnRng(3),
       1,
     );
-    // Keep them on-screen long enough to sample drift (don't expire yet).
-    hover.onScreen = 10_000;
-    strafe.onScreen = 10_000;
+    look0.onScreen = 10_000;
+    look1.onScreen = 10_000;
 
     const playerX = LEVEL1_WIDTH_PX / 2;
-    stepMany(hover, 200, createSpawnRng(9), playerX);
-    stepMany(strafe, 200, createSpawnRng(9), playerX);
+    stepMany(look0, 200, createSpawnRng(9), playerX);
+    stepMany(look1, 200, createSpawnRng(9), playerX);
 
-    // Spec: strafe is snappier laterally and retargets more often.
-    expect(HELI.strafeAccelXDiv).toBeLessThan(HELI.hoverAccelXDiv);
-    expect(HELI.strafeDriftPeriod).toBeLessThan(HELI.hoverDriftPeriod);
-    // Same player / seed timeline → positions diverge (distinct behaviors).
-    expect(Math.abs(strafe.x - hover.x)).toBeGreaterThan(20);
-    expect(strafe.behavior).not.toBe(hover.behavior);
+    expect(look0.x).toBeCloseTo(look1.x, 5);
+    expect(look0.y).toBeCloseTo(look1.y, 5);
+    expect(look0.xspeed).toBeCloseTo(look1.xspeed, 5);
+    expect(look0.yspeed).toBeCloseTo(look1.yspeed, 5);
+  });
+
+  it('uses Flash xdif formula against player._x (left edge)', () => {
+    const rng = createSpawnRng(11);
+    const heli = createHelicopter(400, 200, HELI.hp, rng, 0);
+    heli.onScreen = 10_000;
+    heli.stepAccum = 0;
+    heli.frameCounter = 0;
+    const playerX = 300;
+
+    // First move frame: frameCounter becomes 1 → xt%75 == 1 retarget.
+    stepHelicopter(
+      heli,
+      1,
+      playerX,
+      400,
+      LEVEL1_WIDTH_PX,
+      LEVEL1_HEIGHT_PX,
+      rng,
+    );
+
+    const span = Math.floor(HELI.viewW - HELI.spriteW / 2);
+    expect(heli.xDrift).toBeGreaterThanOrEqual(-HELI.viewW / 2 + HELI.spriteW / 2);
+    expect(heli.xDrift).toBeLessThanOrEqual(
+      -HELI.viewW / 2 + (span - 1) + HELI.spriteW / 2,
+    );
+    const halfW = HELI.spriteW / 2;
+    const expectedTx = Math.max(
+      halfW,
+      Math.min(LEVEL1_WIDTH_PX - halfW, playerX + heli.xDrift),
+    );
+    expect(heli.tx).toBe(expectedTx);
+  });
+
+  it('sets Flash hjump ty every tick while hyper-jumping', () => {
+    const draws = [0.1, 0.5, 0.9];
+    let i = 0;
+    const rng = {
+      next(): number {
+        return draws[i++ % draws.length]!;
+      },
+    };
+    const heli = createHelicopter(400, 200, HELI.hp, createSpawnRng(1), 0);
+    heli.onScreen = 10_000;
+    const playerY = 500;
+
+    stepHelicopter(
+      heli,
+      0.5, // no discrete move — hjump ty still updates every frame
+      400,
+      playerY,
+      LEVEL1_WIDTH_PX,
+      LEVEL1_HEIGHT_PX,
+      rng,
+      true,
+    );
+
+    // randomInt(rng, 50) with next=0.1 → floor(5) = 5
+    expect(heli.ty).toBe(
+      Math.min(LEVEL1_HEIGHT_PX - HELI.viewH / 2 - 100, playerY + 50 + 5),
+    );
+  });
+
+  it('does not decrement onScreen while off-arena (Flash camera-visible only)', () => {
+    const heli = createHelicopter(
+      -HELI.spriteW * 2,
+      100,
+      HELI.hp,
+      createSpawnRng(2),
+      0,
+    );
+    heli.onScreen = 200;
+    expect(isHeliInView(heli, LEVEL1_WIDTH_PX, LEVEL1_HEIGHT_PX)).toBe(false);
+
+    stepHelicopter(
+      heli,
+      1,
+      LEVEL1_WIDTH_PX / 2,
+      400,
+      LEVEL1_WIDTH_PX,
+      LEVEL1_HEIGHT_PX,
+      createSpawnRng(2),
+    );
+    expect(heli.onScreen).toBe(200);
   });
 
   it('repositions after onscreen timer instead of sitting still (AC)', () => {
@@ -160,13 +235,11 @@ describe('heli variants & behavior (issue #20)', () => {
     const startY = heli.y;
     const health = heli.health;
 
-    // Burn the timer → enter reposition (Flash onScreen<=0).
     stepMany(heli, 6, rng);
     expect(heli.repositioning).toBe(true);
     expect(heli.exitPath).not.toBeNull();
     expect(['left', 'right', 'top']).toContain(heli.exitPath);
 
-    // Keep flying until off-arena respawn (Flash addEnemy(health)).
     let respawned = false;
     for (let i = 0; i < 600; i += 1) {
       stepHelicopter(
@@ -179,11 +252,9 @@ describe('heli variants & behavior (issue #20)', () => {
         rng,
       );
       if (!heli.repositioning && heli.onScreen >= HELI.onScreenFramesMin) {
-        // Fresh spawn after exit — health preserved, not a kill.
         expect(heli.health).toBe(health);
         expect(heli.active).toBe(true);
         expect(heli.exitPath).toBeNull();
-        // New approach from an edge/top (varied path).
         const offLeft = heli.x < 0 || heli.x > LEVEL1_WIDTH_PX;
         const offTop = heli.y < 0;
         expect(offLeft || offTop).toBe(true);
@@ -192,11 +263,10 @@ describe('heli variants & behavior (issue #20)', () => {
       }
     }
     expect(respawned).toBe(true);
-    // Must have moved away from the idle hover point during the exit.
     expect(Math.hypot(heli.x - startX, heli.y - startY)).toBeGreaterThan(50);
   });
 
-  it('uses exit accel while off-arena / repositioning (Flash dx/100, dy/20)', () => {
+  it('uses exit accel while off-arena / onScreen<0 (Flash dx/100, dy/20)', () => {
     const heli = createHelicopter(
       -HELI.spriteW,
       100,
@@ -214,7 +284,6 @@ describe('heli variants & behavior (issue #20)', () => {
 
     const dxBefore = heli.tx - heli.x;
     const dyBefore = heli.ty - heli.y;
-    // Partial timestep: apply accel without a discrete move/friction tick.
     stepHelicopter(
       heli,
       0.5,
@@ -226,13 +295,12 @@ describe('heli variants & behavior (issue #20)', () => {
     );
     expect(heli.xspeed).toBeCloseTo(dxBefore / HELI.exitAccelXDiv, 5);
     expect(heli.yspeed).toBeCloseTo(dyBefore / HELI.exitAccelYDiv, 5);
-    // Stronger than on-screen hover accel would have been.
     expect(Math.abs(dxBefore / HELI.exitAccelXDiv)).toBeGreaterThan(
-      Math.abs(dxBefore / HELI.hoverAccelXDiv),
+      Math.abs(dxBefore / HELI.chaseAccelXDiv),
     );
   });
 
-  it('does not count reposition respawn as sitting still — exit targets leave the arena', () => {
+  it('exit targets leave the arena using Flash view-relative offsets', () => {
     const heli = createHelicopter(400, 200, HELI.hp, createSpawnRng(5), 1);
     heli.onScreen = 0;
     stepHelicopter(
@@ -246,11 +314,13 @@ describe('heli variants & behavior (issue #20)', () => {
     );
     expect(heli.repositioning).toBe(true);
     if (heli.exitPath === 'left') {
-      expect(heli.tx).toBeLessThan(0);
+      expect(heli.tx).toBe(-HELI.exitViewMulLeft * HELI.viewW);
     } else if (heli.exitPath === 'right') {
-      expect(heli.tx).toBeGreaterThan(LEVEL1_WIDTH_PX);
+      expect(heli.tx).toBe(
+        LEVEL1_WIDTH_PX + HELI.exitViewMulRight * HELI.viewW,
+      );
     } else {
-      expect(heli.ty).toBeLessThan(0);
+      expect(heli.ty).toBe(-HELI.exitViewMulTop * HELI.viewH);
     }
   });
 });

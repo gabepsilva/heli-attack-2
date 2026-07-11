@@ -428,11 +428,12 @@ export class SimSession {
       const moved = stepHelicopter(
         heli,
         this.timeScale.timeStep,
-        playerCenterX,
+        playerBody.x, // Flash player._x (left edge) for chase tx
         playerBody.y,
         LEVEL1_WIDTH_PX,
         LEVEL1_HEIGHT_PX,
         this.spawnRng,
+        this.player.boostState.hjump,
       );
       if (this.playerHealth.alive) {
         stepHeliCombat(

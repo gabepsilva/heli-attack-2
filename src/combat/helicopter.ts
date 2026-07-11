@@ -2,8 +2,8 @@
  * Helicopter enemy — plain sim matching HA2 `addEnemy` / `heliFrame` essentials.
  * Phaser only draws; hit tests use the baked alpha mask ({@link bulletHitsHeli}).
  * Enemy fire (#18): aimed gun + speed-7 bullets with ±5° spread.
- * Variants (#20): two looks/behaviors (hover vs strafe), Flash onscreen
- * reposition timer, and off-screen approach / exit paths.
+ * Variants (#20): two looks (visual only — Flash `gotoAndStop`); shared
+ * `heliFrame` motion, onscreen reposition timer, and off-screen approach / exit.
  */
 
 import { ENEMY_BULLET, HELI, WORLD } from '../config/constants';
@@ -14,10 +14,10 @@ import { stepSpecialBullet } from './specialProjectile';
 import type { AabbBody } from '../world/aabbBody';
 import type { TileMap } from '../world/tileMap';
 
-/** Flash look 0 → hover; look 1 → strafe (#20). */
-export type HeliBehavior = 'hover' | 'strafe';
-
-/** Flash `gotoAndStop(random(2)+1)` frames, zero-indexed. */
+/**
+ * Flash `gotoAndStop(random(2)+1)` frames, zero-indexed. Purely visual — both
+ * looks fly the same `heliFrame` motion, so nothing in the sim branches on it.
+ */
 export type HeliLook = 0 | 1;
 
 /** Flash exit pick when `onscreen` expires: left / right / top. */
@@ -41,6 +41,7 @@ export type Helicopter = {
   stepAccum: number;
   /** Drift offset from player X (Flash `xdif`). */
   xDrift: number;
+  /** Move-frame counter for xt/yt retarget periods (Flash `xt` / `yt`). */
   frameCounter: number;
   /**
    * Sim frames of hit flash remaining (Flash white tint when
@@ -53,8 +54,6 @@ export type Helicopter = {
   shootCounter: number;
   /** Visual frame index (Flash `gotoAndStop(random(2)+1)` → 0|1). */
   look: HeliLook;
-  /** Motion profile paired with look (#20). */
-  behavior: HeliBehavior;
   /** True while flying off-arena after the onscreen timer (Flash `onScreen<=0`). */
   repositioning: boolean;
   /** Exit destination while repositioning (Flash `goto`). */
@@ -105,13 +104,8 @@ function randomInt(rng: SpawnRng, maxExclusive: number): number {
   return Math.floor(rng.next() * maxExclusive);
 }
 
-function pseudoRand(seed: number): number {
-  return ((seed * 1103515245 + 12345) >>> 0) / 0x1_0000_0000;
-}
-
-/** Map Flash look index to behavior (#20: look 0 hover, look 1 strafe). */
-export function behaviorForLook(look: HeliLook): HeliBehavior {
-  return look === 0 ? 'hover' : 'strafe';
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
 }
 
 /**
@@ -147,6 +141,36 @@ export function isHeliOffArena(
     heli.y < -marginY ||
     heli.y > arenaH + marginY
   );
+}
+
+/**
+ * Flash camera visibility — the sprite box overlaps the view, grown by one tile.
+ * The camera is fixed over the whole arena, so "in view" means "in the arena".
+ * Gates `onscreen--` so the timer does not tick down while still approaching.
+ */
+export function isHeliInView(
+  heli: Readonly<{ x: number; y: number }>,
+  arenaW: number,
+  arenaH: number,
+  margin: number = WORLD.tile,
+): boolean {
+  const halfW = HELI.spriteW / 2;
+  const halfH = HELI.spriteH / 2;
+  return (
+    heli.x + halfW >= -margin &&
+    heli.x - halfW <= arenaW + margin &&
+    heli.y + halfH >= -margin &&
+    heli.y - halfH <= arenaH + margin
+  );
+}
+
+/**
+ * Flash exit-accel gate: `onscreen < 0`, or the heli center has left the camera
+ * on the left / top / right (`_y < camTop || _x < camLeft || _x > camLeft+spw`).
+ * Note Flash has no bottom test here — a heli under the floor still eases in.
+ */
+function usesExitAccel(heli: Helicopter, arenaW: number): boolean {
+  return heli.onScreen < 0 || heli.y < 0 || heli.x < 0 || heli.x > arenaW;
 }
 
 /**
@@ -209,7 +233,6 @@ export function createHelicopter(
     gunRotationDeg: 0,
     shootCounter: 0,
     look: resolvedLook,
-    behavior: behaviorForLook(resolvedLook),
     repositioning: false,
     exitPath: null,
   };
@@ -257,91 +280,107 @@ export function isHeliFlashing(heli: Helicopter): boolean {
   return heli.active && heli.hitFlashRemaining > 0;
 }
 
-function beginReposition(
-  heli: Helicopter,
-  arenaW: number,
-  rng: SpawnRng,
-): void {
-  heli.repositioning = true;
-  heli.exitPath = pickHeliExitPath(rng);
-  const margin = HELI.spriteW * HELI.exitMarginMul;
+/**
+ * Width of the Flash `xdif` draw window: `random(spw - width/2)`.
+ * Both terms are compile-time constants, so the span is too.
+ */
+const X_DRIFT_SPAN = Math.max(1, Math.floor(HELI.viewW - HELI.spriteW / 2));
+
+/** Everything a motion tick reads about the world, so helpers take one arg. */
+type HeliStepContext = {
+  /** Flash `player._x` — the player's left edge, not its center. */
+  playerX: number;
+  playerY: number;
+  /** Flash `player.hjump` — the heli dives below a hyper-jumping player. */
+  playerHjump: boolean;
+  arenaW: number;
+  arenaH: number;
+  rng: SpawnRng;
+  /** True on a discrete move frame (Flash `move` after `stepc`). */
+  move: boolean;
+};
+
+/**
+ * Flash exit targets, with the fixed camera sitting over the whole arena:
+ * left `camLeft - 2*spw`, right `camLeft + arenaW + spw`, top `camTop - sph`.
+ */
+function applyExitTargets(heli: Helicopter, arenaW: number): void {
   if (heli.exitPath === 'left') {
-    heli.tx = -margin;
+    heli.tx = -HELI.exitViewMulLeft * HELI.viewW;
   } else if (heli.exitPath === 'right') {
-    heli.tx = arenaW + margin;
-  } else {
-    heli.ty = -HELI.spriteH * HELI.exitMarginMul;
+    heli.tx = arenaW + HELI.exitViewMulRight * HELI.viewW;
+  } else if (heli.exitPath === 'top') {
+    heli.ty = -HELI.exitViewMulTop * HELI.viewH;
   }
 }
 
-function updateOnScreenTargets(
-  heli: Helicopter,
-  playerCenterX: number,
-  playerY: number,
-  arenaW: number,
-  arenaH: number,
-): void {
-  const halfW = HELI.spriteW / 2;
-  if (heli.behavior === 'hover') {
-    if (heli.frameCounter % HELI.hoverDriftPeriod === 1) {
-      const r = pseudoRand(heli.frameCounter);
-      heli.xDrift = -arenaW / 4 + r * (arenaW / 2);
-    }
-    heli.tx = playerCenterX + heli.xDrift;
-    heli.tx = Math.max(halfW, Math.min(arenaW - halfW, heli.tx));
-    if (heli.frameCounter % HELI.hoverVertPeriod === 1) {
-      const r = pseudoRand(heli.frameCounter + 17);
-      heli.ty = playerY - arenaH / 4 + (Math.floor(r * 5) - 2) * 10;
-    }
-  } else {
-    // Strafe: full-width lateral sweeps, retarget more often (#20).
-    if (heli.frameCounter % HELI.strafeDriftPeriod === 1) {
-      const r = pseudoRand(heli.frameCounter);
-      heli.xDrift = -arenaW / 2 + r * arenaW;
-    }
-    heli.tx = playerCenterX + heli.xDrift;
-    heli.tx = Math.max(halfW, Math.min(arenaW - halfW, heli.tx));
-    if (heli.frameCounter % HELI.strafeVertPeriod === 1) {
-      const r = pseudoRand(heli.frameCounter + 31);
-      heli.ty = playerY - arenaH / 3 + (Math.floor(r * 7) - 3) * 12;
-    }
-  }
-  heli.ty = Math.min(arenaH - WORLD.tile * 2, heli.ty);
-}
-
-function accelDivisors(
-  heli: Helicopter,
-  arenaW: number,
-  arenaH: number,
-): { xDiv: number; yDiv: number } {
-  const leaving =
-    heli.repositioning ||
-    heli.onScreen < 0 ||
-    isHeliOffArena(heli, arenaW, arenaH);
-  if (leaving) {
-    return { xDiv: HELI.exitAccelXDiv, yDiv: HELI.exitAccelYDiv };
-  }
-  if (heli.behavior === 'strafe') {
-    return { xDiv: HELI.strafeAccelXDiv, yDiv: HELI.strafeAccelYDiv };
-  }
-  return { xDiv: HELI.hoverAccelXDiv, yDiv: HELI.hoverAccelYDiv };
+/** Flash `onscreen <= 0`: pick an exit and aim at it. Targets then stay put. */
+function beginReposition(heli: Helicopter, ctx: HeliStepContext): void {
+  heli.repositioning = true;
+  heli.exitPath = pickHeliExitPath(ctx.rng);
+  applyExitTargets(heli, ctx.arenaW);
 }
 
 /**
- * One sim tick of hover/strafe / reposition (Flash `heliFrame` motion).
- * Tracks the player while on-screen; when {@link Helicopter.onScreen} expires,
- * flies an exit path and respawns with the same health (Flash `addEnemy(health)`).
+ * Flash on-screen chase: `tx = player._x + xdif` with a periodic `xdif` redraw,
+ * `ty` at hover height on its own period, or diving below a hyper-jumping
+ * player. Only `hjump` retargets every frame; the rest are move-frame only.
+ */
+function updateChaseTargets(heli: Helicopter, ctx: HeliStepContext): void {
+  const halfW = HELI.spriteW / 2;
+
+  // Flash: xdif = -spw/2 + random(spw - width/2) + width/2
+  if (ctx.move && heli.frameCounter % HELI.chaseDriftPeriod === 1) {
+    heli.xDrift =
+      -HELI.viewW / 2 + randomInt(ctx.rng, X_DRIFT_SPAN) + halfW;
+  }
+  heli.tx = clamp(ctx.playerX + heli.xDrift, halfW, ctx.arenaW - halfW);
+
+  if (ctx.playerHjump) {
+    // Flash: ty = min(mapH - sph/2 - 100, player._y + 50 + random(50))
+    heli.ty = Math.min(
+      ctx.arenaH - HELI.viewH / 2 - HELI.hjumpFloorMargin,
+      ctx.playerY +
+        HELI.hjumpDropBelowPlayer +
+        randomInt(ctx.rng, HELI.hjumpDropRand),
+    );
+  } else if (ctx.move && heli.frameCounter % HELI.chaseVertPeriod === 1) {
+    // Flash: ty = player._y - sph/2 - (-2 + random(4)) * 10
+    const jitter =
+      HELI.chaseVertJitterMin + randomInt(ctx.rng, HELI.chaseVertJitterRange);
+    heli.ty =
+      ctx.playerY - HELI.viewH / 2 - jitter * HELI.chaseVertJitterStep;
+  }
+}
+
+/** Flash `dx/100, dy/20` once off-view or past the timer, else `dx/200, dy/100`. */
+function accelDivisors(
+  heli: Helicopter,
+  arenaW: number,
+): { xDiv: number; yDiv: number } {
+  return usesExitAccel(heli, arenaW)
+    ? { xDiv: HELI.exitAccelXDiv, yDiv: HELI.exitAccelYDiv }
+    : { xDiv: HELI.chaseAccelXDiv, yDiv: HELI.chaseAccelYDiv };
+}
+
+/**
+ * One sim tick of Flash `heliFrame` motion (shared by both looks — the look
+ * only picks art). Chases the player while on-screen; when
+ * {@link Helicopter.onScreen} expires, flies an exit path and respawns with the
+ * same health (Flash `addEnemy(health)`).
+ * `playerX` is Flash `player._x` (left edge), not the player center.
  * Returns true on a discrete move frame (Flash `move` after `stepc`) — used
  * by {@link tryHeliFire} so fire cadence matches the original.
  */
 export function stepHelicopter(
   heli: Helicopter,
   timeStep: number,
-  playerCenterX: number,
+  playerX: number,
   playerY: number,
   arenaW: number,
   arenaH: number,
   rng: SpawnRng = createSpawnRng(),
+  playerHjump = false,
 ): boolean {
   if (!heli.active) {
     return false;
@@ -353,28 +392,38 @@ export function stepHelicopter(
   }
 
   heli.stepAccum += timeStep;
-  let move = 0;
-  if (heli.stepAccum >= 1) {
-    move = 1;
-    heli.stepAccum -= 1;
-  }
-
+  const move = heli.stepAccum >= 1;
   if (move) {
+    heli.stepAccum -= 1;
     heli.frameCounter += 1;
-    if (heli.repositioning || heli.onScreen <= 0) {
-      if (!heli.repositioning) {
-        beginReposition(heli, arenaW, rng);
-      }
-    } else {
-      updateOnScreenTargets(heli, playerCenterX, playerY, arenaW, arenaH);
-    }
   }
 
-  const { xDiv, yDiv } = accelDivisors(heli, arenaW, arenaH);
-  const dx = heli.tx - heli.x;
-  const dy = heli.ty - heli.y;
-  heli.xspeed += dx / xDiv;
-  heli.yspeed += dy / yDiv;
+  const ctx: HeliStepContext = {
+    playerX,
+    playerY,
+    playerHjump,
+    arenaW,
+    arenaH,
+    rng,
+    move,
+  };
+
+  if (heli.onScreen <= 0) {
+    if (!heli.repositioning) {
+      beginReposition(heli, ctx);
+    }
+    // Flash: once far enough off-screen during exit, replace via addEnemy(health).
+    if (isHeliOffArena(heli, arenaW, arenaH)) {
+      respawnHelicopterKeepingHealth(heli, arenaW, arenaH, rng);
+      return move;
+    }
+  } else {
+    updateChaseTargets(heli, ctx);
+  }
+
+  const { xDiv, yDiv } = accelDivisors(heli, arenaW);
+  heli.xspeed += (heli.tx - heli.x) / xDiv;
+  heli.yspeed += (heli.ty - heli.y) / yDiv;
 
   if (move) {
     const r = Math.floor((heli.xspeed / 20) * 15);
@@ -387,17 +436,13 @@ export function stepHelicopter(
   if (move) {
     heli.xspeed *= 0.9 * timeStep;
     heli.yspeed *= 0.9 * timeStep;
-    if (!heli.repositioning) {
+    // Flash: onscreen-- only while camera-visible (incl. during the exit run).
+    if (isHeliInView(heli, arenaW, arenaH)) {
       heli.onScreen -= 1;
     }
   }
 
-  // Flash: once far enough off-screen during exit, replace via addEnemy(health).
-  if (heli.repositioning && isHeliOffArena(heli, arenaW, arenaH)) {
-    respawnHelicopterKeepingHealth(heli, arenaW, arenaH, rng);
-  }
-
-  return move === 1;
+  return move;
 }
 
 /**
