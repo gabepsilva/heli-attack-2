@@ -3,6 +3,8 @@ import {
   gameDrawSize,
   getSpriteDef,
   heliFrameForLook,
+  powerupCrateFrame,
+  projectileFrameForWeapon,
   type SpriteId,
 } from '../art/catalog';
 import {
@@ -24,6 +26,7 @@ import {
   playerAnimMoving,
   selectPlayerAnimFrame,
 } from '../player/playerAnim';
+import { PLAYER_PARACHUTE } from '../player/parachuteIntro';
 import {
   GAME_FLOW,
   GUN,
@@ -81,28 +84,39 @@ import { PerfMonitor } from '../tooling/perfMonitor';
 import { buildHudSnapshot } from '../ui/hud';
 import { GameHud } from '../ui/gameHud';
 import { getMountedTouchControlsHud } from '../ui/touchControlsHud';
-import { DEBUG_BOX_SIZE } from '../world/debugBox';
 import {
   LEVEL1_HEIGHT_PX,
   LEVEL1_WIDTH_PX,
   isLevelSolid,
 } from '../world/level1';
 
-const BOX_COLOR = 0xe09f3e;
-const BOX_DRAG_COLOR = 0xf4a261;
 const PLAYER_HITBOX_STROKE = 0xd8f3dc;
-const POWERUP_HEALTH_COLOR = 0x7dcfb6;
-const POWERUP_WEAPON_COLOR = 0xffe066;
-const POWERUP_STATE_COLOR = 0xc77dff;
 const POWERUP_CHUTE_COLOR = 0xf8f9fa;
+
+/** Flash `gfx.chute` canopy drawn above the player during `heroStart`. */
+const PLAYER_CHUTE = {
+  canopyW: 56,
+  canopyH: 22,
+  /** Y offset from the body top — the canopy floats above the hang pose. */
+  offsetY: -10,
+  alpha: 0.9,
+  depth: 15,
+  /** Floor so the freshly-deployed canopy is visible rather than a dot. */
+  minScale: 0.05,
+  /** Height leads width as the canopy fills out. */
+  bulge: 0.15,
+} as const;
 const HELI_HIT_FRAME = 'heli_hit';
-const POWERUP_FRAME = 'powerup';
 const WEAPON_FRAME = 'weapon_machinegun';
 const BULLET_PLAYER_FRAME = 'bullet_player';
 const BULLET_ENEMY_FRAME = 'bullet_enemy';
 const MUZZLE_FRAME = 'muzzle_flash';
 const EXPLOSION_FRAME = 'explosion';
 const TILE_FRAME = 'tile_floor';
+/** Planted FireMine body — replaces the lobbed projectile frame on contact. */
+const MINE_PLANTED_FRAME = 'mine';
+/** Crate frame every powerup sprite is built with; swapped per pickup kind. */
+const POWERUP_FRAME = 'powerup';
 
 /**
  * Thin Phaser shell: banks render deltas into a 30 Hz fixed sim, draws the
@@ -110,10 +124,10 @@ const TILE_FRAME = 'tile_floor';
  * player (←/→ walk, ↑ jump, ↓ duck, Ctrl boost, Shift bullet-time, mouse aim,
  * hold-to-fire, weapon switch via 1–0 / Q–E (#14), pooled bullets) rendered
  * from the packed atlas with final hi-res player animations (#32/#33), shootable
- * heli variants with hit flash / death boom (#12/#13/#20/#34), parachuting
- * powerup crates (#21), full in-game HUD (#23), menu/pause/game-over session
- * loop (#24), and a draggable debug box. Game logic lives in plain modules
- * under src/.
+ * heli variants with hit flash / death boom (#12/#13/#20/#34), player spawn
+ * parachute (`heroStart`), parachuting powerup crates (#21), full in-game HUD
+ * (#23), and menu/pause/game-over session loop (#24). Game logic lives in plain
+ * modules under src/.
  *
  * Input (#29/#30/#31): keyboard/mouse, on-screen touch, and gamepad feed the
  * intent layer; gameplay reads {@link applyPlayerIntent} output on the session
@@ -174,9 +188,10 @@ export class GameScene extends Phaser.Scene {
     queueWeaponFromWheelDelta(this.intentActions, event.deltaY);
   };
 
-  private boxRect!: Phaser.GameObjects.Rectangle;
   private playerSprite!: Phaser.GameObjects.Image;
   private playerHitbox!: Phaser.GameObjects.Rectangle;
+  /** Flash `gfx.chute` — scales open/closed during `heroStart`. */
+  private playerChute!: Phaser.GameObjects.Ellipse;
   /** Flash nested walk-cycle phase (0..walk.length-1). */
   private playerWalkPhase = 0;
   private playerAnimFrame: SpriteId = 'player_idle';
@@ -275,7 +290,6 @@ export class GameScene extends Phaser.Scene {
     });
     this.hurtFlash = new HurtFlash({ scene: this });
     this.gameHud = new GameHud(this);
-    this.createDebugBoxVisual();
     this.setupGameAudio();
 
     // Bind gameplay keys from DEFAULT_KEY_BINDINGS — single source of truth (#29).
@@ -307,7 +321,7 @@ export class GameScene extends Phaser.Scene {
       .text(
         40,
         GAME_HEIGHT - 60,
-        '←/→ walk · ↑ jump · Ctrl boost · Shift slow-mo · ↓ duck · mouse/pad aim · hold fire/RT · 1–0 / Q–E / wheel / LB–RB weapons · -/= timeStep · drag box · End debug · F fullscreen · P/Esc pause',
+        '←/→ walk · ↑ jump · Ctrl boost · Shift slow-mo · ↓ duck · mouse/pad aim · hold fire/RT · 1–0 / Q–E / wheel / LB–RB weapons · -/= timeStep · End debug · F fullscreen · P/Esc pause',
         {
           fontFamily: 'monospace',
           fontSize: '20px',
@@ -446,8 +460,7 @@ export class GameScene extends Phaser.Scene {
     // Keyboard/mouse (+ touch #30 + gamepad #31) → intent → session.
     // Never raw keys / touches / pad APIs in gameplay.
     const pointer = this.input.activePointer;
-    const allowFire =
-      this.flow.phase === 'playing' && !this.session.debugBox.dragging;
+    const allowFire = this.flow.phase === 'playing';
     const touchHud = getMountedTouchControlsHud();
     const touchMode = touchHud?.isVisible() ?? false;
     // In touch mode, ignore canvas pointer fire/aim — sticks own those slots.
@@ -662,7 +675,6 @@ export class GameScene extends Phaser.Scene {
     this.syncPowerupVisuals();
     this.syncGameHud();
     this.syncPlayerCombatFx();
-    this.syncBoxVisual();
   }
 
   private drawArena(): void {
@@ -700,6 +712,7 @@ export class GameScene extends Phaser.Scene {
         health.alive &&
         (isPlayerHurtFlashing(health) || health.iFramesRemaining > 0),
       dead: !health.alive || this.flow.phase === 'dying',
+      parachuting: pl.parachuting,
       walkPhase: this.playerWalkPhase,
     });
   }
@@ -731,6 +744,19 @@ export class GameScene extends Phaser.Scene {
       )
       .setStrokeStyle(1, PLAYER_HITBOX_STROKE, 0.7)
       .setFillStyle(0x000000, 0);
+
+    // Flash `gfx.chute` — white canopy above the hang pose.
+    this.playerChute = this.add
+      .ellipse(
+        this.arenaOriginX + body.x + body.w / 2,
+        this.arenaOriginY + body.y + PLAYER_CHUTE.offsetY,
+        PLAYER_CHUTE.canopyW,
+        PLAYER_CHUTE.canopyH,
+        POWERUP_CHUTE_COLOR,
+        PLAYER_CHUTE.alpha,
+      )
+      .setDepth(PLAYER_CHUTE.depth)
+      .setVisible(false);
   }
 
   private syncPlayerVisual(): void {
@@ -755,6 +781,26 @@ export class GameScene extends Phaser.Scene {
       this.arenaOriginY + body.y + body.h / 2,
     );
     this.playerHitbox.setSize(body.w, body.h);
+
+    const chute = this.session.player.parachute;
+    const chuteOpen = chute.active && chute.chuteScale > 0;
+    this.playerChute.setVisible(chuteOpen);
+    if (chuteOpen) {
+      // Flash `_xscale` is 0..100; the canopy bulges taller than it is wide as
+      // it opens, so height leads width slightly and clamps at full size.
+      const openness = Math.max(
+        PLAYER_CHUTE.minScale,
+        chute.chuteScale / PLAYER_PARACHUTE.chuteScaleMax,
+      );
+      this.playerChute.setScale(
+        openness,
+        Math.min(1, openness + PLAYER_CHUTE.bulge),
+      );
+      this.playerChute.setPosition(
+        this.arenaOriginX + body.x + body.w / 2,
+        this.arenaOriginY + body.y + PLAYER_CHUTE.offsetY,
+      );
+    }
   }
 
   private createGunVisual(): void {
@@ -790,7 +836,9 @@ export class GameScene extends Phaser.Scene {
     const player = this.session.player;
     const pivot = player.gunPivot;
     const aim = player.gunAim;
+    const showGun = !player.parachuting && this.session.playerHealth.alive;
 
+    this.gunSprite.setVisible(showGun);
     this.gunSprite.setPosition(
       this.arenaOriginX + pivot.x,
       this.arenaOriginY + pivot.y,
@@ -806,8 +854,7 @@ export class GameScene extends Phaser.Scene {
     );
     this.muzzleSprite.setAngle(aim.rotationDeg);
     // Brief flash while reloadTime is still near zero after a shot.
-    const firing =
-      this.session.playerHealth.alive && this.session.weapon.reloadTime < 3;
+    const firing = showGun && this.session.weapon.reloadTime < 3;
     this.muzzleSprite.setVisible(firing);
   }
 
@@ -847,12 +894,27 @@ export class GameScene extends Phaser.Scene {
         sprite.setVisible(false);
         continue;
       }
+      // Planted FireMines swap to the mine body (Flash keeps frame 10 + pillar)
+      // and sit upright; everything else keeps its weapon frame and follows
+      // its velocity vector.
+      const planted = bullet.behavior === 'mine' && bullet.mineActive >= 1;
+      const frame = planted
+        ? MINE_PLANTED_FRAME
+        : projectileFrameForWeapon(bullet.weaponIndex);
+      if (sprite.frame.name !== frame) {
+        const def = getSpriteDef(frame);
+        sprite.setTexture(ATLAS_KEY, frame);
+        sprite.setOrigin(def.pivot.x, def.pivot.y);
+        sprite.setDisplaySize(def.originalW, def.originalH);
+      }
       sprite.setVisible(true);
       sprite.setPosition(
         this.arenaOriginX + bullet.x,
         this.arenaOriginY + bullet.y,
       );
-      sprite.setAngle((Math.atan2(bullet.vy, bullet.vx) * 180) / Math.PI);
+      sprite.setAngle(
+        planted ? 0 : (Math.atan2(bullet.vy, bullet.vx) * 180) / Math.PI,
+      );
     }
   }
 
@@ -1007,13 +1069,12 @@ export class GameScene extends Phaser.Scene {
         .setVisible(false);
       const crate = this.add
         .image(0, 0, ATLAS_KEY, POWERUP_FRAME)
-        .setDisplaySize(POWERUP_DROP.crateW, POWERUP_DROP.crateH)
-        .setTint(POWERUP_WEAPON_COLOR);
+        .setDisplaySize(POWERUP_DROP.crateW, POWERUP_DROP.crateH);
       const container = this.add
         .container(0, 0, [chute, crate])
         .setVisible(false)
         .setDepth(12);
-      // Stash chute/crate for sync tint + chute scale.
+      // Stash chute/crate for sync frame + chute scale.
       container.setData('chute', chute);
       container.setData('crate', crate);
       this.powerupSprites.push(container);
@@ -1031,13 +1092,11 @@ export class GameScene extends Phaser.Scene {
       }
       const chute = container.getData('chute') as Phaser.GameObjects.Ellipse;
       const crate = container.getData('crate') as Phaser.GameObjects.Image;
-      const tint =
-        pickup.kind === 'health'
-          ? POWERUP_HEALTH_COLOR
-          : pickup.kind === 'state'
-            ? POWERUP_STATE_COLOR
-            : POWERUP_WEAPON_COLOR;
-      crate.setTint(tint);
+      const frame = powerupCrateFrame(pickup.kind, pickup.weaponIndex);
+      if (crate.frame.name !== frame) {
+        crate.setTexture(ATLAS_KEY, frame);
+        crate.setDisplaySize(POWERUP_DROP.crateW, POWERUP_DROP.crateH);
+      }
       const chuteOpen = pickup.chuteScale > 0 && !pickup.stopped;
       chute.setVisible(chuteOpen);
       if (chuteOpen) {
@@ -1050,80 +1109,5 @@ export class GameScene extends Phaser.Scene {
         this.arenaOriginY + pickup.y,
       );
     }
-  }
-
-  private createDebugBoxVisual(): void {
-    const b = this.session.debugBox.body;
-    this.boxRect = this.add
-      .rectangle(
-        this.arenaOriginX + b.x + b.w / 2,
-        this.arenaOriginY + b.y + b.h / 2,
-        DEBUG_BOX_SIZE,
-        DEBUG_BOX_SIZE,
-        BOX_COLOR,
-      )
-      .setStrokeStyle(2, 0xffd166)
-      .setInteractive({ draggable: true, useHandCursor: true });
-
-    this.input.setDraggable(this.boxRect);
-
-    this.input.on(
-      'dragstart',
-      (
-        _pointer: Phaser.Input.Pointer,
-        gameObject: Phaser.GameObjects.GameObject,
-      ) => {
-        if (gameObject !== this.boxRect) {
-          return;
-        }
-        this.session.debugBox.dragging = true;
-        this.boxRect.setFillStyle(BOX_DRAG_COLOR);
-      },
-    );
-
-    this.input.on(
-      'drag',
-      (
-        _pointer: Phaser.Input.Pointer,
-        gameObject: Phaser.GameObjects.GameObject,
-        dragX: number,
-        dragY: number,
-      ) => {
-        if (gameObject !== this.boxRect) {
-          return;
-        }
-        this.boxRect.setPosition(dragX, dragY);
-        // Convert visual center → body top-left in arena space.
-        this.session.debugBox.placeAt(
-          dragX - this.arenaOriginX - b.w / 2,
-          dragY - this.arenaOriginY - b.h / 2,
-        );
-      },
-    );
-
-    this.input.on(
-      'dragend',
-      (
-        _pointer: Phaser.Input.Pointer,
-        gameObject: Phaser.GameObjects.GameObject,
-      ) => {
-        if (gameObject !== this.boxRect) {
-          return;
-        }
-        this.session.debugBox.dragging = false;
-        this.boxRect.setFillStyle(BOX_COLOR);
-      },
-    );
-  }
-
-  private syncBoxVisual(): void {
-    if (this.session.debugBox.dragging) {
-      return;
-    }
-    const b = this.session.debugBox.body;
-    this.boxRect.setPosition(
-      this.arenaOriginX + b.x + b.w / 2,
-      this.arenaOriginY + b.y + b.h / 2,
-    );
   }
 }

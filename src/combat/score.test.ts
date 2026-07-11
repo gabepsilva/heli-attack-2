@@ -41,13 +41,10 @@ function fireHit(
   damage = BULLET.defaultDamage,
 ) {
   const p = hitWorld(heli);
-  const slot = pool.acquire(
-    p.x - BULLET.defaultSpeed,
-    p.y,
-    0,
-    BULLET.defaultSpeed,
+  const slot = pool.acquire(p.x - BULLET.defaultSpeed, p.y, 0, {
+    speed: BULLET.defaultSpeed,
     damage,
-  );
+  });
   expect(slot).not.toBeNull();
 }
 

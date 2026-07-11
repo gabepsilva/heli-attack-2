@@ -54,6 +54,11 @@ export type Bullet = {
    * leave puffs every N frames matching Flash `!(r%N)`.
    */
   smokeTrailInterval: number;
+  /**
+   * Arsenal slot that spawned this projectile — drives atlas frame selection
+   * (Flash `bullet.gotoAndStop(frame)` per weapon).
+   */
+  weaponIndex: number;
 };
 
 /** Axis-aligned cull region in arena/world space. */
@@ -86,6 +91,7 @@ export function createInactiveBullet(index: number): Bullet {
     grappleAttachedAge: 0,
     hasHit: false,
     smokeTrailInterval: 0,
+    weaponIndex: 0,
   };
 }
 
@@ -128,6 +134,27 @@ export function isOutsideCullBounds(
 }
 
 /**
+ * Optional spawn attributes. Position and aim stay positional (every caller
+ * supplies them); everything else is named so adjacent `number` fields cannot
+ * be transposed silently, and so a new attribute is an added key rather than
+ * an eleventh positional argument.
+ */
+export type BulletSpawnOptions = {
+  /** Muzzle speed in px/frame. */
+  speed?: number;
+  /** Damage applied on contact (already multiplied by any powerup). */
+  damage?: number;
+  /** Lifetime in sim frames before the slot recycles. */
+  maxLifetime?: number;
+  /** Motion/impact rules (ballistic, flame, mine, rail, …). */
+  behavior?: BulletBehavior;
+  /** Smoke-puff cadence in sim frames (0 = none). Issue #35. */
+  smokeTrailInterval?: number;
+  /** Arsenal slot that fired it — drives atlas frame selection. */
+  weaponIndex?: number;
+};
+
+/**
  * Write spawn fields onto an existing slot (no allocation).
  * Velocity matches Flash `speed * cos/sin(rot)`.
  */
@@ -136,12 +163,16 @@ export function activateBullet(
   x: number,
   y: number,
   rotationDeg: number,
-  speed: number = BULLET.defaultSpeed,
-  damage: number = BULLET.defaultDamage,
-  maxLifetime: number = BULLET.maxLifetimeFrames,
-  behavior: BulletBehavior = 'ballistic',
-  smokeTrailInterval: number = 0,
+  options: BulletSpawnOptions = {},
 ): void {
+  const {
+    speed = BULLET.defaultSpeed,
+    damage = BULLET.defaultDamage,
+    maxLifetime = BULLET.maxLifetimeFrames,
+    behavior = 'ballistic',
+    smokeTrailInterval = 0,
+    weaponIndex = 0,
+  } = options;
   const { vx, vy } = velocityFromRotation(speed, rotationDeg);
   bullet.active = true;
   bullet.x = x;
@@ -161,6 +192,7 @@ export function activateBullet(
   bullet.grappleAttachedAge = 0;
   bullet.hasHit = false;
   bullet.smokeTrailInterval = smokeTrailInterval;
+  bullet.weaponIndex = weaponIndex;
 }
 
 /**
@@ -245,11 +277,7 @@ export class BulletPool {
     x: number,
     y: number,
     rotationDeg: number,
-    speed: number = BULLET.defaultSpeed,
-    damage: number = BULLET.defaultDamage,
-    maxLifetime: number = BULLET.maxLifetimeFrames,
-    behavior: BulletBehavior = 'ballistic',
-    smokeTrailInterval: number = 0,
+    options: BulletSpawnOptions = {},
   ): Bullet | null {
     if (this.freeTop <= 0) {
       return null;
@@ -257,17 +285,7 @@ export class BulletPool {
     this.freeTop -= 1;
     const index = this.freeStack[this.freeTop]!;
     const bullet = this.slots[index]!;
-    activateBullet(
-      bullet,
-      x,
-      y,
-      rotationDeg,
-      speed,
-      damage,
-      maxLifetime,
-      behavior,
-      smokeTrailInterval,
-    );
+    activateBullet(bullet, x, y, rotationDeg, options);
     this._activeCount += 1;
     this._acquireCount += 1;
     return bullet;

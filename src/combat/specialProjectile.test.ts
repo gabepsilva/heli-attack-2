@@ -145,7 +145,7 @@ describe('special-behavior weapons (issue #16)', () => {
   it('FlameThrower spawn uses Flash ±10° jitter and flame behavior', () => {
     expect(FLAME_SPREAD_HALF_DEG).toBe(10);
     // random(20) → 10 → aim offset 0.
-    const spawns = planFlameFire(10, 20, 90, 8, 2, midRandom);
+    const spawns = planFlameFire(10, 20, 90, 8, 2, 8, midRandom);
     expect(spawns).toEqual([
       {
         x: 10,
@@ -155,10 +155,11 @@ describe('special-behavior weapons (issue #16)', () => {
         damage: 2,
         behavior: 'flame',
         maxLifetime: SPECIAL_PROJECTILE.flameLifetimeFrames,
+        weaponIndex: 8,
       },
     ]);
 
-    const jittered = planFlameFire(0, 0, 0, 8, 2, () => 0);
+    const jittered = planFlameFire(0, 0, 0, 8, 2, 8, () => 0);
     expect(jittered[0]!.rotationDeg).toBe(-FLAME_SPREAD_HALF_DEG);
   });
 
@@ -168,16 +169,12 @@ describe('special-behavior weapons (issue #16)', () => {
     const hitY = heli.y - HELI_SPRITE_HALF_H + 2;
 
     const bullet = createInactiveBullet(0);
-    activateBullet(
-      bullet,
-      hitX,
-      hitY,
-      0,
-      WEAPONS[8].speed,
-      WEAPONS[8].damage,
-      SPECIAL_PROJECTILE.flameLifetimeFrames,
-      'flame',
-    );
+    activateBullet(bullet, hitX, hitY, 0, {
+      speed: WEAPONS[8].speed,
+      damage: WEAPONS[8].damage,
+      maxLifetime: SPECIAL_PROJECTILE.flameLifetimeFrames,
+      behavior: 'flame',
+    });
     // Hold the particle on the opaque pixel so DoT is measurable (stream
     // motion is covered by the hold-to-fire reload test above).
     bullet.vx = 0;
@@ -206,7 +203,12 @@ describe('special-behavior weapons (issue #16)', () => {
     const heli = createHelicopter(400, 100, 300);
     const bullet = createInactiveBullet(0);
     // Fired upward (−90°) while target is to the right → must yaw toward 0°.
-    activateBullet(bullet, 100, 100, -90, WEAPONS[7].speed, 100, 300, 'seeker');
+    activateBullet(bullet, 100, 100, -90, {
+      speed: WEAPONS[7].speed,
+      damage: 100,
+      maxLifetime: 300,
+      behavior: 'seeker',
+    });
 
     const bounds = arenaCullBounds(2000, 2000);
     const nearest = findNearestHeli(bullet.x, bullet.y, [heli]);
@@ -266,16 +268,12 @@ describe('special-behavior weapons (issue #16)', () => {
     const hitY = heli.y - HELI_SPRITE_HALF_H + 2;
 
     const bullet = createInactiveBullet(0);
-    activateBullet(
-      bullet,
-      50,
-      hitY,
-      0,
-      WEAPONS[11].speed,
-      WEAPONS[11].damage,
-      SPECIAL_PROJECTILE.railLingerFrames,
-      'rail',
-    );
+    activateBullet(bullet, 50, hitY, 0, {
+      speed: WEAPONS[11].speed,
+      damage: WEAPONS[11].damage,
+      maxLifetime: SPECIAL_PROJECTILE.railLingerFrames,
+      behavior: 'rail',
+    });
 
     expect(WEAPONS[11].speed).toBe(20);
     expect(WEAPONS[11].damage).toBe(150);
@@ -296,7 +294,12 @@ describe('special-behavior weapons (issue #16)', () => {
     const map = solidFloorMap();
     // Floor is row 4 → y in [200, 250). Drop a mine above the open cell.
     const bullet = createInactiveBullet(0);
-    activateBullet(bullet, 125, 60, 90, 3, 5, 300, 'mine');
+    activateBullet(bullet, 125, 60, 90, {
+      speed: 3,
+      damage: 5,
+      maxLifetime: 300,
+      behavior: 'mine',
+    });
     // Aim straight down so it falls onto the floor.
     const { vx, vy } = velocityFromRotation(3, 90);
     bullet.vx = vx;
@@ -352,15 +355,12 @@ describe('special-behavior weapons (issue #16)', () => {
     const pool = new BulletPool(4);
     const heli = createHelicopter(600, 100, 300);
     const hitY = heli.y - HELI_SPRITE_HALF_H + 2;
-    const b = pool.acquire(
-      40,
-      hitY,
-      0,
-      20,
-      150,
-      SPECIAL_PROJECTILE.railLingerFrames,
-      'rail',
-    );
+    const b = pool.acquire(40, hitY, 0, {
+      speed: 20,
+      damage: 150,
+      maxLifetime: SPECIAL_PROJECTILE.railLingerFrames,
+      behavior: 'rail',
+    });
     expect(b).not.toBeNull();
 
     const bounds = arenaCullBounds(2000, 2000);

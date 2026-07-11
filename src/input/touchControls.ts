@@ -34,7 +34,7 @@ export type TouchControlSample = {
   /** Edge: cycle to next owned weapon. */
   nextWeapon: boolean;
   /**
-   * When false, fire is forced off (not playing, debug-box drag, etc.).
+   * When false, fire is forced off (not playing, etc.).
    * Aim / movement still update.
    */
   allowFire: boolean;

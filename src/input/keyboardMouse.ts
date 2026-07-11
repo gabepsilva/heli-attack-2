@@ -217,7 +217,7 @@ export type KeyboardMouseSample = {
   pointer: PointerSample;
   actions: IntentActionBuffer;
   /**
-   * When false, fire is forced off (not playing, debug-box drag, etc.).
+   * When false, fire is forced off (not playing, etc.).
    * Aim / movement still update so the gun tracks the cursor.
    */
   allowFire: boolean;

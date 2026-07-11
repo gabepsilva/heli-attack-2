@@ -92,7 +92,7 @@ describe('Player (gravity, jump, duck — issue #6)', () => {
     expect(player.body.y).toBe(PLAYER_SPAWN.y);
     // Original map1 spawn: tile-center of col 0 → body left = 25 - 5 = 20.
     expect(PLAYER_SPAWN.x).toBe(20);
-    expect(PLAYER_SPAWN.y).toBe(200);
+    expect(PLAYER_SPAWN.y).toBe(-50);
   });
 
   it('applies gravity +1/frame² and clamps terminal fall at 50', () => {

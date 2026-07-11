@@ -19,7 +19,8 @@ import {
 } from '../combat/weaponInventory';
 import { PLAYER_SPAWN } from '../player/player';
 import { accuracyPercent } from './highScores';
-import { DEBUG_BOX_SPAWN, SimSession } from './simSession';
+import { SimSession } from './simSession';
+import { createCombatSession, enterCombat } from './simSessionFixture';
 
 /** Opt-in full arsenal for tests that exercise non-MG weapons (#92). */
 function grantTestArsenal(session: SimSession): void {
@@ -27,14 +28,32 @@ function grantTestArsenal(session: SimSession): void {
 }
 
 describe('SimSession', () => {
-  it('reset restores a fresh run after timeStep / motion mutations (scene switch)', () => {
+  it('starts in heroStart parachute mode with no heli until the chute collapses', () => {
     const session = new SimSession();
+    expect(session.player.parachuting).toBe(true);
+    expect(session.player.body.y).toBe(PLAYER_SPAWN.y);
+    expect(session.helicopters).toHaveLength(0);
+
+    session.fireHeld = true;
+    session.update(1000 / 30);
+    expect(session.weapon.shots).toBe(0);
+    expect(session.helicopters).toHaveLength(0);
+    expect(session.player.parachute.chuteScale).toBeGreaterThan(0);
+
+    for (let i = 0; i < 200 && session.player.parachuting; i += 1) {
+      session.update(1000 / 30);
+    }
+    expect(session.player.parachuting).toBe(false);
+    expect(session.helicopters).toHaveLength(1);
+  });
+
+  it('reset restores a fresh run after timeStep / motion mutations (scene switch)', () => {
+    const session = createCombatSession();
 
     session.timeScale.setTimeStep(0.5);
     session.accumulator.advance(SIM_DT / 2);
     session.update(1000 / 30); // one sim tick — idle bullet-time eases 0.5 → 0.6
     expect(session.timeScale.timeStep).toBeCloseTo(0.6, 10);
-    expect(session.debugBox.body.vy).toBeGreaterThan(0);
     expect(session.player.body.vy).toBeGreaterThan(0);
     expect(session.simTickCount).toBeGreaterThan(0);
     expect(session.accumulator.leftoverSeconds).toBeCloseTo(SIM_DT / 2);
@@ -47,8 +66,6 @@ describe('SimSession', () => {
       boost: false,
     };
     session.player.placeAt(400, 50);
-    session.debugBox.placeAt(400, 50);
-    session.debugBox.dragging = true;
     session.fireHeld = true;
     session.bulletTimeHeld = true;
     session.bulletTime.meter = 10;
@@ -63,6 +80,8 @@ describe('SimSession', () => {
     expect(session.bulletTimeHeld).toBe(false);
     expect(session.player.body.x).toBe(PLAYER_SPAWN.x);
     expect(session.player.body.y).toBe(PLAYER_SPAWN.y);
+    expect(session.player.parachuting).toBe(true);
+    expect(session.helicopters).toHaveLength(0);
     expect(session.player.body.vx).toBe(0);
     expect(session.player.body.vy).toBe(0);
     expect(session.player.input).toEqual({
@@ -78,11 +97,6 @@ describe('SimSession', () => {
     expect(session.weapon.shots).toBe(0);
     expect(session.weapon.reloadTime).toBe(Number.POSITIVE_INFINITY);
     expect(session.weapon.bullets).toBe(Number.POSITIVE_INFINITY);
-    expect(session.debugBox.body.x).toBe(DEBUG_BOX_SPAWN.x);
-    expect(session.debugBox.body.y).toBe(DEBUG_BOX_SPAWN.y);
-    expect(session.debugBox.body.vx).toBe(0);
-    expect(session.debugBox.body.vy).toBe(0);
-    expect(session.debugBox.dragging).toBe(false);
     expect(session.simTickCount).toBe(0);
     expect(session.ticksThisSecond).toBe(0);
     expect(session.secondTimerMs).toBe(0);
@@ -95,7 +109,7 @@ describe('SimSession', () => {
   });
 
   it('steps the player walk curve through the fixed sim (ramp to cap, decay to 0)', () => {
-    const session = new SimSession();
+    const session = createCombatSession();
     // Settle onto the floor.
     for (let i = 0; i < 40; i += 1) {
       session.update(1000 / 30);
@@ -134,7 +148,7 @@ describe('SimSession', () => {
   });
 
   it('ignores NaN deltas so the HUD rate timer cannot freeze', () => {
-    const session = new SimSession();
+    const session = createCombatSession();
     for (let i = 0; i < 30; i += 1) {
       session.update(1000 / 30);
     }
@@ -150,7 +164,7 @@ describe('SimSession', () => {
   });
 
   it('converts Phaser delta ms → seconds and steps at ~30 Hz for 60 Hz frames', () => {
-    const session = new SimSession();
+    const session = createCombatSession();
     const frames = 60;
     const deltaMs = 1000 / 60;
 
@@ -165,7 +179,7 @@ describe('SimSession', () => {
   });
 
   it('updates displayedSimRate after ~1s of wall time', () => {
-    const session = new SimSession();
+    const session = createCombatSession();
     for (let i = 0; i < 30; i += 1) {
       session.update(1000 / 30);
     }
@@ -174,8 +188,8 @@ describe('SimSession', () => {
     expect(session.secondTimerMs).toBe(0);
   });
 
-  it('steps the debug box under gravity scaled by the live timeStep', () => {
-    const session = new SimSession();
+  it('steps the player under gravity scaled by the live timeStep', () => {
+    const session = createCombatSession();
     // Hold bullet-time 5 frames: 1 → 0.5 (Flash −0.1/frame ease).
     session.bulletTimeHeld = true;
     for (let i = 0; i < 5; i += 1) {
@@ -183,17 +197,21 @@ describe('SimSession', () => {
     }
     expect(session.timeScale.timeStep).toBeCloseTo(0.5, 10);
 
-    const y0 = session.debugBox.body.y;
-    const vy0 = session.debugBox.body.vy;
+    // Lift off the ground so the next tick is free-fall (no tile resolve).
+    session.player.placeAt(session.player.body.x, 50);
+    const y0 = session.player.body.y;
+    const vy0 = session.player.body.vy;
     session.update(1000 / 30); // eases to 0.4, then steps with that scale
 
     expect(session.timeScale.timeStep).toBeCloseTo(0.4, 10);
-    expect(session.debugBox.body.vy).toBe(vy0 + WORLD.gravity);
-    expect(session.debugBox.body.y).toBe(y0 + (vy0 + WORLD.gravity) * 0.4);
+    // Player gravity is `vy += gravity * timeStep` (#90), then resolve scales
+    // displacement by the same timeStep.
+    expect(session.player.body.vy).toBe(vy0 + WORLD.gravity * 0.4);
+    expect(session.player.body.y).toBe(y0 + (vy0 + WORLD.gravity * 0.4) * 0.4);
   });
 
   it('owns the original 35×15 level of 50px tiles (not the test arena)', () => {
-    const session = new SimSession();
+    const session = createCombatSession();
     expect(session.map.tileSize).toBe(50);
     expect(session.map.width).toBe(35);
     expect(session.map.height).toBe(15);
@@ -202,7 +220,7 @@ describe('SimSession', () => {
   });
 
   it('streams MachineGun at reload cadence while fireHeld (issue #11)', () => {
-    const session = new SimSession();
+    const session = createCombatSession();
     const slotsRef = session.bullets.slots;
     expect(session.bullets.capacity).toBe(BULLET.poolCapacity);
     expect(WEAPONS[0].reload).toBe(5);
@@ -226,7 +244,7 @@ describe('SimSession', () => {
   });
 
   it('does not spawn while fireHeld is false even when reload-ready', () => {
-    const session = new SimSession();
+    const session = createCombatSession();
     expect(session.weapon.reloadTime).toBe(Number.POSITIVE_INFINITY);
 
     session.fireHeld = false;
@@ -239,7 +257,7 @@ describe('SimSession', () => {
   });
 
   it('tryFire spawns at the current muzzle with MachineGun speed/damage', () => {
-    const session = new SimSession();
+    const session = createCombatSession();
     session.player.gunAim = { rotationDeg: 0, flipY: false };
     session.player.muzzle = { x: 150, y: 250 };
 
@@ -253,7 +271,7 @@ describe('SimSession', () => {
   });
 
   it('reuses pool slots across many held-fire shots without growing capacity', () => {
-    const session = new SimSession();
+    const session = createCombatSession();
     const capacity = session.bullets.capacity;
     const slotsRef = session.bullets.slots;
 
@@ -281,7 +299,7 @@ describe('SimSession', () => {
   });
 
   it('spawns a heli on reset and kills it after 30 held-fire hits (issue #12)', () => {
-    const session = new SimSession();
+    const session = createCombatSession();
     expect(session.helicopters).toHaveLength(1);
     const heli = session.helicopters[0]!;
     heli.x = 900;
@@ -318,7 +336,7 @@ describe('SimSession', () => {
   });
 
   it('increments score by damage per hit and resets score (issue #13)', () => {
-    const session = new SimSession();
+    const session = createCombatSession();
     expect(session.score.value).toBe(0);
 
     const heli = session.helicopters[0]!;
@@ -362,7 +380,7 @@ describe('SimSession', () => {
   });
 
   it('new game / reset starts with MachineGun only — no pre-granted ammo (#92)', () => {
-    const session = new SimSession();
+    const session = createCombatSession();
     expect(session.inventory.activeIndex).toBe(0);
     expect(session.weapon.type).toBe(0);
     expect(session.weapon.bullets).toBe(Number.POSITIVE_INFINITY);
@@ -384,7 +402,7 @@ describe('SimSession', () => {
   });
 
   it('switches weapons instantly and keeps per-slot ammo/reload (issue #14)', () => {
-    const session = new SimSession();
+    const session = createCombatSession();
     grantTestArsenal(session);
     expect(session.inventory.slots).toHaveLength(14);
     expect(session.inventory.activeIndex).toBe(0);
@@ -432,7 +450,7 @@ describe('SimSession', () => {
   });
 
   it('Shotgun spawns a five-pellet spread; RPG is slower than GrenadeLauncher (#15)', () => {
-    const session = new SimSession();
+    const session = createCombatSession();
     grantTestArsenal(session);
     // Aim straight +X so gunAim settles near 0° (player.step overwrites gunAim).
     session.player.mouse = {
@@ -483,7 +501,7 @@ describe('SimSession', () => {
   });
 
   it('special weapons: flame streams DoT, seeker homes, rail hitscan (#16)', () => {
-    const session = new SimSession();
+    const session = createCombatSession();
     grantTestArsenal(session);
     session.player.mouse = {
       x: session.player.gunPivot.x + 400,
@@ -550,7 +568,7 @@ describe('SimSession', () => {
   });
 
   it('heavy weapons: A-Bomb blast, Grapple pull, Shoulder rail (#17)', () => {
-    const session = new SimSession();
+    const session = createCombatSession();
     session.player.mouse = {
       x: session.player.gunPivot.x + 400,
       y: session.player.gunPivot.y,
@@ -601,7 +619,7 @@ describe('SimSession', () => {
   });
 
   it('bullet-time: hold eases to 0.2×, release eases to 1×, player slows with world (#42)', () => {
-    const session = new SimSession();
+    const session = createCombatSession();
     expect(session.bulletTime.meter).toBe(BULLET_TIME.maxFrames);
 
     // Settle on the floor so walk displacement is horizontal-only.
@@ -643,7 +661,7 @@ describe('SimSession', () => {
   });
 
   it('bullet-time: meter ends slow-mo at 0; heli kill refills ⅓ max (#42)', () => {
-    const session = new SimSession();
+    const session = createCombatSession();
     session.bulletTime.meter = 2;
     session.bulletTimeHeld = true;
     session.update(1000 / 30);
@@ -689,7 +707,7 @@ describe('SimSession', () => {
   });
 
   it('TimeRift forces bullet-time slow-mo without draining the meter (#42)', () => {
-    const session = new SimSession();
+    const session = createCombatSession();
     session.playerPowerup.powerupOn = POWERUP.TimeRift;
     session.playerPowerup.powerupTime = 500;
     session.bulletTimeHeld = false;
@@ -728,7 +746,7 @@ describe('SimSession', () => {
   });
 
   it('accuracy counts projectiles spawned and first contact only (#25 Lead #78)', () => {
-    const session = new SimSession();
+    const session = createCombatSession();
     grantTestArsenal(session);
     session.player.mouse = {
       x: session.player.gunPivot.x + 400,
@@ -768,6 +786,7 @@ describe('SimSession', () => {
 
     // Flame DoT: many damage ticks, but only one accuracy hit per projectile.
     session.reset();
+    enterCombat(session);
     grantTestArsenal(session);
     session.player.mouse = {
       x: session.player.gunPivot.x + 400,
@@ -799,7 +818,7 @@ describe('SimSession', () => {
   });
 
   it('queues Flash-accurate SFX events for fire / hyper-jump / hurt / heliboom (issue #27)', () => {
-    const session = new SimSession();
+    const session = createCombatSession();
 
     // Weapon fire → MachineGun uses `gun`.
     session.player.gunAim = { rotationDeg: 0, flipY: false };
@@ -828,16 +847,18 @@ describe('SimSession', () => {
 
     // Hurt when an enemy bullet connects.
     session.reset();
+    enterCombat(session);
     const px = session.player.body.x + session.player.body.w / 2;
     const py = session.player.body.y + session.player.body.h / 2;
     // Spawn on the player with zero travel so the post-motion hit still lands.
-    const eb = session.enemyBullets.acquire(px, py, 0, 0);
+    const eb = session.enemyBullets.acquire(px, py, 0, { speed: 0 });
     expect(eb).not.toBeNull();
     session.update(1000 / 30);
     expect(session.drainAudioEvents()).toContainEqual({ type: 'hurt' });
 
     // Heli kill → heliboom.
     session.reset();
+    enterCombat(session);
     const heli = session.helicopters[0]!;
     heli.health = 1;
     heli.x = session.player.muzzle.x + 40;
@@ -859,7 +880,7 @@ describe('SimSession', () => {
   });
 
   it('queues powerup pickup VO events with the rolled collect payload (issue #27)', () => {
-    const session = new SimSession();
+    const session = createCombatSession();
     session.playerHealth.health = 50;
     session.playerHealth.lastHealth = 50;
     session.powerups.push({
@@ -881,7 +902,7 @@ describe('SimSession', () => {
   });
 
   it('queues distinct kill / impact / muzzle particle FX (issue #35)', () => {
-    const session = new SimSession();
+    const session = createCombatSession();
 
     // Muzzle flash on fire.
     session.player.gunAim = { rotationDeg: 30, flipY: false };
@@ -901,6 +922,7 @@ describe('SimSession', () => {
 
     // Non-fatal impact (heli survives).
     session.reset();
+    enterCombat(session);
     const heli = session.helicopters[0]!;
     heli.health = HELI.hp;
     heli.x = session.player.muzzle.x + 40;
@@ -934,6 +956,7 @@ describe('SimSession', () => {
 
     // Kill → explosion + debris(3) + smoke — not a lone impact.
     session.reset();
+    enterCombat(session);
     const victim = session.helicopters[0]!;
     victim.health = 1;
     victim.x = session.player.muzzle.x + 40;
@@ -962,12 +985,12 @@ describe('SimSession', () => {
   });
 
   it('queues blood FX on hurt and keeps the particle queue capacity fixed (#35)', () => {
-    const session = new SimSession();
+    const session = createCombatSession();
     expect(session.particleFx.capacity).toBe(128);
 
     const px = session.player.body.x + session.player.body.w / 2;
     const py = session.player.body.y + session.player.body.h / 2;
-    const eb = session.enemyBullets.acquire(px, py, 0, 0);
+    const eb = session.enemyBullets.acquire(px, py, 0, { speed: 0 });
     expect(eb).not.toBeNull();
     session.update(1000 / 30);
     const blood = session.drainParticleFx().filter((e) => e.kind === 'blood');
@@ -988,7 +1011,7 @@ describe('SimSession', () => {
   });
 
   it('tags rocket projectiles with Flash smoke-trail intervals (#35)', () => {
-    const session = new SimSession();
+    const session = createCombatSession();
     grantTestArsenal(session);
     expect(selectWeaponByDigitKey(session.inventory, 7)).toBe(true); // RocketLauncher
     session.player.gunAim = { rotationDeg: 0, flipY: false };
@@ -999,6 +1022,7 @@ describe('SimSession', () => {
     expect(rocket!.smokeTrailInterval).toBe(2);
 
     session.reset();
+    enterCombat(session);
     grantTestArsenal(session);
     expect(selectWeaponByDigitKey(session.inventory, 4)).toBe(true); // ShotgunRockets
     session.player.gunAim = { rotationDeg: 0, flipY: false };
@@ -1013,10 +1037,12 @@ describe('SimSession', () => {
   });
 
   it('queues a hurt-flash cue when the player takes damage', () => {
-    const session = new SimSession();
+    const session = createCombatSession();
     const px = session.player.body.x + session.player.body.w / 2;
     const py = session.player.body.y + session.player.body.h / 2;
-    expect(session.enemyBullets.acquire(px, py, 0, 0)).not.toBeNull();
+    expect(
+      session.enemyBullets.acquire(px, py, 0, { speed: 0 }),
+    ).not.toBeNull();
     expect(session.drainHurtFlash()).toBe(false);
     session.update(1000 / 30);
     expect(session.drainHurtFlash()).toBe(true);
@@ -1024,7 +1050,9 @@ describe('SimSession', () => {
     expect(ENEMY_BULLET.damage).toBe(10);
 
     // reset clears a pending hurt-flash cue.
-    expect(session.enemyBullets.acquire(px, py, 0, 0)).not.toBeNull();
+    expect(
+      session.enemyBullets.acquire(px, py, 0, { speed: 0 }),
+    ).not.toBeNull();
     session.update(1000 / 30);
     // May be empty if i-frames still active from the previous hurt.
     session.reset();

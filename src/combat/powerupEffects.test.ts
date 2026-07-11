@@ -37,7 +37,7 @@ import {
   selectWeapon,
   selectWeaponByDigitKey,
 } from './weaponInventory';
-import { SimSession } from '../core/simSession';
+import { createCombatSession } from '../core/simSessionFixture';
 import { createSpawnRng, createHelicopter, stepHeliGunAim } from './helicopter';
 import { EnemyBulletPool, stepEnemyBulletsVsPlayer } from './enemyBullet';
 import { createAabbBody } from '../world/aabbBody';
@@ -57,7 +57,7 @@ describe('powerup effects (issue #22)', () => {
     expect(weaponDamageMultiplier(0)).toBe(1);
     expect(weaponDamageMultiplier(POWERUP.Invulnerability)).toBe(1);
 
-    const session = new SimSession();
+    const session = createCombatSession();
     session.playerPowerup.powerupOn = POWERUP.TriDamage;
     session.playerPowerup.powerupTime = POWERUP_FRAMES;
     session.fireHeld = true;
@@ -88,7 +88,7 @@ describe('powerup effects (issue #22)', () => {
     const pool = new EnemyBulletPool(4);
     const bounds = { minX: -100, minY: -100, maxX: 2000, maxY: 2000 };
     // speed 0 so motion does not leave the hitbox before the overlap test.
-    pool.acquire(105, 220, 0, 0, 10);
+    pool.acquire(105, 220, 0, { speed: 0, damage: 10 });
 
     stepEnemyBulletsVsPlayer(
       pool,
@@ -105,7 +105,7 @@ describe('powerup effects (issue #22)', () => {
 
     // Without the powerup, same setup deals damage.
     const health2 = createPlayerHealth();
-    pool.acquire(105, 220, 0, 0, 10);
+    pool.acquire(105, 220, 0, { speed: 0, damage: 10 });
     stepEnemyBulletsVsPlayer(pool, body, health2, bounds, 1);
     expect(health2.health).toBe(90);
   });
@@ -160,7 +160,7 @@ describe('powerup effects (issue #22)', () => {
     expect(playerTimeStepForPowerup(0.2, POWERUP.TimeRift)).toBe(1);
     expect(playerTimeStepForPowerup(0.2, 0)).toBe(0.2);
 
-    const session = new SimSession();
+    const session = createCombatSession();
     session.playerPowerup.powerupOn = POWERUP.TimeRift;
     session.playerPowerup.powerupTime = POWERUP_FRAMES;
     session.bulletTimeHeld = false;
@@ -207,7 +207,7 @@ describe('powerup effects (issue #22)', () => {
     }
     expect(vy).toBe(-32);
 
-    const session = new SimSession();
+    const session = createCombatSession();
     session.playerPowerup.powerupOn = POWERUP.Jetpack;
     session.playerPowerup.powerupTime = POWERUP_FRAMES;
     // Place high in open air so tile collision does not cancel ascent.
@@ -263,7 +263,7 @@ describe('powerup effects (issue #22)', () => {
   });
 
   it('SimSession expires Jetpack and restores PredatorMode weapon', () => {
-    const session = new SimSession();
+    const session = createCombatSession();
     session.playerPowerup.powerupOn = POWERUP.PredatorMode;
     session.playerPowerup.powerupTime = 2;
     session.update(1000 / 30);

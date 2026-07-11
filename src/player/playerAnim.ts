@@ -27,6 +27,8 @@ export type PlayerAnimInput = Readonly<{
   hurt: boolean;
   /** Death / dying (`!alive` or flow dying). */
   dead: boolean;
+  /** Flash `heroStart` parachute drop — uses jump hang pose (gfx frame 6). */
+  parachuting?: boolean;
   /**
    * Walk-cycle phase into {@link PLAYER_ANIM_FRAMES.walk}.
    * Flash advances the nested walk clip one frame per `move` tick.
@@ -56,10 +58,11 @@ export function advanceWalkPhase(
  * Priority (death / hurt first, then Flash order: duck → jump/jump2 → walk → idle):
  * 1. dead → `player_death`
  * 2. hurt → `player_hurt`
- * 3. ducking → `player_duck`
- * 4. jump + jump2 → `player_jump2`; jump → `player_jump`
- * 5. moving → walk cycle frame
- * 6. else → `player_idle`
+ * 3. parachuting → `player_jump` (Flash `heroStart` gotoAndStop(6) hang pose)
+ * 4. ducking → `player_duck`
+ * 5. jump + jump2 → `player_jump2`; jump → `player_jump`
+ * 6. moving → walk cycle frame
+ * 7. else → `player_idle`
  */
 export function selectPlayerAnimFrame(input: PlayerAnimInput): SpriteId {
   if (input.dead) {
@@ -67,6 +70,9 @@ export function selectPlayerAnimFrame(input: PlayerAnimInput): SpriteId {
   }
   if (input.hurt) {
     return PLAYER_ANIM_FRAMES.hurt;
+  }
+  if (input.parachuting) {
+    return PLAYER_ANIM_FRAMES.jump;
   }
   if (input.ducking) {
     return PLAYER_ANIM_FRAMES.duck;

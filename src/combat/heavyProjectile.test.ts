@@ -169,7 +169,12 @@ describe('heavy / signature weapons (issue #17)', () => {
 
     const bullet = createInactiveBullet(0);
     // Aim into the right solid wall (col 5).
-    activateBullet(bullet, 200, 125, 0, WEAPONS[10].speed, 300, 300, 'abomb');
+    activateBullet(bullet, 200, 125, 0, {
+      speed: WEAPONS[10].speed,
+      damage: 300,
+      maxLifetime: 300,
+      behavior: 'abomb',
+    });
     const bounds = arenaCullBounds(2000, 2000);
 
     let detonated = false;
@@ -242,7 +247,12 @@ describe('heavy / signature weapons (issue #17)', () => {
 
     const bullet = createInactiveBullet(0);
     // Fire right toward the solid wall.
-    activateBullet(bullet, 200, 125, 0, WEAPONS[12].speed, 300, 300, 'grapple');
+    activateBullet(bullet, 200, 125, 0, {
+      speed: WEAPONS[12].speed,
+      damage: 300,
+      maxLifetime: 300,
+      behavior: 'grapple',
+    });
     const bounds = arenaCullBounds(2000, 2000);
 
     let attached = false;
@@ -282,7 +292,12 @@ describe('heavy / signature weapons (issue #17)', () => {
     const player = createAabbBody(50, 80, 10, 42);
 
     const bullet = createInactiveBullet(0);
-    activateBullet(bullet, hitX, hitY, 0, 20, 300, 300, 'grapple');
+    activateBullet(bullet, hitX, hitY, 0, {
+      speed: 20,
+      damage: 300,
+      maxLifetime: 300,
+      behavior: 'grapple',
+    });
     bullet.vx = 0;
     bullet.vy = 0;
 
@@ -315,7 +330,12 @@ describe('heavy / signature weapons (issue #17)', () => {
     const hitY = heli.y - HELI_SPRITE_HALF_H + 2;
 
     const bullet = createInactiveBullet(0);
-    activateBullet(bullet, hitX - 50, hitY, 0, 20, 300, 3, 'rail');
+    activateBullet(bullet, hitX - 50, hitY, 0, {
+      speed: 20,
+      damage: 300,
+      maxLifetime: 3,
+      behavior: 'rail',
+    });
     const bounds = arenaCullBounds(2000, 2000);
 
     const cull = stepRailBullet(bullet, [heli], 1, bounds);

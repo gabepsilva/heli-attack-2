@@ -36,13 +36,10 @@ function fireHit(
 ) {
   const p = hitWorld(heli);
   // Flash tests after motion — spawn one step before the opaque pixel along +X.
-  const slot = pool.acquire(
-    p.x - BULLET.defaultSpeed,
-    p.y,
-    0,
-    BULLET.defaultSpeed,
+  const slot = pool.acquire(p.x - BULLET.defaultSpeed, p.y, 0, {
+    speed: BULLET.defaultSpeed,
     damage,
-  );
+  });
   expect(slot).not.toBeNull();
 }
 

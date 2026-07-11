@@ -545,13 +545,10 @@ export function stepHeliCombat(
   if (!shot) {
     return null;
   }
-  enemyBullets.acquire(
-    shot.x,
-    shot.y,
-    shot.rotationDeg,
-    shot.speed,
-    shot.damage,
-  );
+  enemyBullets.acquire(shot.x, shot.y, shot.rotationDeg, {
+    speed: shot.speed,
+    damage: shot.damage,
+  });
   return shot;
 }
 

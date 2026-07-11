@@ -39,16 +39,16 @@ export const LEVEL1_HEIGHT_PX = LEVEL1_ROWS * WORLD.tile;
 
 /**
  * Decompiled spawn marker was `map[13][0] == 32`. Original places the hero at
- * tile-center X and drops from `y = -50`; we spawn at the same X, above the
- * floor so gravity settles the player onto row 14.
+ * tile-center X and drops from `y = -50` on a parachute (`heroStart`).
  */
 export const LEVEL1_SPAWN_COL = 0;
 export const LEVEL1_SPAWN_ROW = 13;
 
-/** Player body top-left matching original tile-center X on the spawn column. */
+/** Player body top-left matching original tile-center X + parachute spawn Y. */
 export const LEVEL1_PLAYER_SPAWN = {
   x: LEVEL1_SPAWN_COL * WORLD.tile + WORLD.tile / 2 - PLAYER.boxW / 2,
-  y: 200,
+  /** Flash `player._y = -50`. */
+  y: -50,
 } as const;
 
 /**

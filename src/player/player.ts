@@ -25,6 +25,13 @@ import {
   resetJumpOnLand,
   type JumpState,
 } from './jumpPhysics';
+import {
+  beginParachuteIntro,
+  completeParachuteIntro,
+  createParachuteIntroState,
+  stepParachuteIntro,
+  type ParachuteIntroState,
+} from './parachuteIntro';
 import { applyHorizontalWalk } from './walkPhysics';
 
 /** Default spawn on the original level (see {@link LEVEL1_PLAYER_SPAWN}). */
@@ -44,14 +51,18 @@ export type PlayerInput = {
 };
 
 /**
- * Controllable player: walk + gravity + variable jump + double-jump + charged
- * hyper-jump + duck + AABB resolve + mouse gun aim.
+ * Controllable player: spawn parachute (`heroStart`) + walk + gravity +
+ * variable jump + double-jump + charged hyper-jump + duck + AABB resolve +
+ * mouse gun aim.
  * Plain module — the intent layer owns keyboard/mouse → {@link input} / mouse.
  */
 export class Player {
   readonly body: AabbBody;
   readonly jumpState: JumpState;
   readonly boostState: BoostState;
+
+  /** Flash `heroStart` parachute drop — inactive until {@link beginParachute}. */
+  readonly parachute: ParachuteIntroState = createParachuteIntroState();
 
   /** True while the duck hitbox is active (after the last duck tick). */
   ducking = false;
@@ -93,7 +104,11 @@ export class Player {
     this.syncGunPose(0);
   }
 
-  /** Teleport and clear velocity / jump / boost / duck / aim (scene reset). */
+  /**
+   * Teleport and clear velocity / jump / boost / duck / aim (scene reset).
+   * Deliberately leaves the parachute alone — a teleport is not a mode change.
+   * Callers that want a fresh drop follow up with {@link beginParachute}.
+   */
   placeAt(x: number, y: number): void {
     this.body.x = x;
     this.body.y = y;
@@ -112,6 +127,21 @@ export class Player {
     this.syncGunPose(0);
   }
 
+  /** Start the Flash `heroStart` parachute drop (run start). */
+  beginParachute(): void {
+    beginParachuteIntro(this.parachute);
+  }
+
+  /** Skip / finish the spawn drop and hand control straight to `heroAction`. */
+  endParachute(): void {
+    completeParachuteIntro(this.parachute);
+  }
+
+  /** True while the spawn parachute owns movement (no walk / fire yet). */
+  get parachuting(): boolean {
+    return this.parachute.active;
+  }
+
   /**
    * Set true for one {@link step} when a charged hyper-jump fires (SFX #27).
    * Cleared at the start of each step.
@@ -128,6 +158,14 @@ export class Player {
    */
   step(map: TileMap, timeStep: number, powerupOn: number = 0): void {
     this.hyperJumpFired = false;
+
+    // Flash `heroStart` — chute owns motion until it collapses near ground.
+    if (this.parachute.active) {
+      stepParachuteIntro(this.parachute, this.body, map, timeStep);
+      this.syncGunPose(timeStep);
+      return;
+    }
+
     this.ducking = applyDuckHitbox(this.body, this.input.duck, this.ducking);
 
     this.body.vx = applyHorizontalWalk(this.body.vx, {

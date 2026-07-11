@@ -18,13 +18,13 @@ import {
   POWERUP_DROP,
   WEAPONS,
 } from '../config/constants';
-import { SimSession } from '../core/simSession';
 import { LEVEL1_HEIGHT_PX, LEVEL1_WIDTH_PX } from '../world/level1';
 import {
   createHelicopter,
   createSpawnRng,
   damageHelicopter,
 } from './helicopter';
+import { createCombatSession } from '../core/simSessionFixture';
 import {
   activeHeliCount,
   createHeliSpawnState,
@@ -160,7 +160,7 @@ describe('heli spawn treadmill (issue #19 / #109)', () => {
   });
 
   it('SimSession never leaves the sky empty after a kill mid-game', () => {
-    const session = new SimSession();
+    const session = createCombatSession();
     expect(session.helicopters).toHaveLength(1);
     expect(session.heliSpawn.kills).toBe(0);
 
@@ -198,7 +198,7 @@ describe('heli spawn treadmill (issue #19 / #109)', () => {
   });
 
   it('SimSession stays at 1 concurrent after many kills (AC #109)', () => {
-    const session = new SimSession();
+    const session = createCombatSession();
     const rng = session.spawnRng;
 
     for (let k = 0; k < 9; k += 1) {

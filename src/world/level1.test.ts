@@ -82,7 +82,7 @@ describe('createLevel1 — original HA2 map1 layout (#41)', () => {
       LEVEL1_SPAWN_COL * WORLD.tile + WORLD.tile / 2 - PLAYER.boxW / 2,
     );
     expect(LEVEL1_PLAYER_SPAWN.x).toBe(20);
-    expect(LEVEL1_PLAYER_SPAWN.y).toBe(200);
+    expect(LEVEL1_PLAYER_SPAWN.y).toBe(-50);
   });
 
   it('isLevelSolid mirrors TILE_SOLID cells for placeholder rendering', () => {
@@ -117,7 +117,8 @@ describe('createLevel1 — original HA2 map1 layout (#41)', () => {
   });
 
   it('lets the player walk on the ground after spawning (movement AC)', () => {
-    const player = new Player(LEVEL1_PLAYER_SPAWN.x, LEVEL1_PLAYER_SPAWN.y);
+    // In-bounds drop (parachute intro is covered separately); settle then walk.
+    const player = new Player(LEVEL1_PLAYER_SPAWN.x, 200);
     for (let i = 0; i < 120; i += 1) {
       player.step(map, 1);
     }

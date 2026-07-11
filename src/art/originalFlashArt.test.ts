@@ -65,10 +65,22 @@ describe('original Flash art swap (issue #95 acceptance)', () => {
     expect(FLASH_ORIGINAL_SOURCES.weapon_machinegun).toBe('machineGun.png');
     expect(FLASH_ORIGINAL_SOURCES.grenade).toBe('grenade.png');
     expect(FLASH_ORIGINAL_SOURCES.rocket).toBe('Rocket.png');
+    expect(FLASH_ORIGINAL_SOURCES.shotgunrocketbullet).toBe(
+      'shotgunrocketbullet.png',
+    );
+    expect(FLASH_ORIGINAL_SOURCES.rpg).toBe('rpg.png');
+    expect(FLASH_ORIGINAL_SOURCES.seekerbullet).toBe('seekerbullet.png');
+    expect(FLASH_ORIGINAL_SOURCES.flame).toBe('flame.png');
+    expect(FLASH_ORIGINAL_SOURCES.minebullet).toBe('minebullet.png');
+    expect(FLASH_ORIGINAL_SOURCES.mine).toBe('mine.png');
+    expect(FLASH_ORIGINAL_SOURCES.abombbullet).toBe('abombbullet.png');
+    expect(FLASH_ORIGINAL_SOURCES.rail).toBe('rail.png');
+    expect(FLASH_ORIGINAL_SOURCES.grapplebullet).toBe('grapplebullet.png');
     expect(FLASH_ORIGINAL_SOURCES.smoke).toBe('smoke.png');
     expect(FLASH_ORIGINAL_SOURCES.blood).toBe('blood.png');
     expect(FLASH_ORIGINAL_SOURCES.explosion).toBe('bigboom.png');
     expect(FLASH_ORIGINAL_SOURCES.powerup).toBe('powerup.png');
+    expect(FLASH_ORIGINAL_SOURCES.powerhealth).toBe('powerhealth.png');
     expect(FLASH_ORIGINAL_SOURCES.powermachinegun).toBe('powermachinegun.png');
     expect(FLASH_ORIGINAL_SOURCES.poweruzi).toBe('old/poweruzi.png');
     expect(FLASH_ORIGINAL_SOURCES.powershotgun).toBe('powershotgun.png');

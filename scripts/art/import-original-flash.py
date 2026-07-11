@@ -63,6 +63,14 @@ def write_scaled(src: Image.Image, dest: Path, scale: int) -> None:
     print(f"  {dest.relative_to(ROOT)} ← {src.size} ×{scale} → {out.size}")
 
 
+def apply_alpha_mask(rgb_src: Image.Image, alpha_src: Image.Image) -> Image.Image:
+    """Copy alpha from alpha_src onto rgb_src RGB (Flash heli_hit is opaque black)."""
+    assert rgb_src.size == alpha_src.size, (rgb_src.size, alpha_src.size)
+    r, g, b, _ = rgb_src.split()
+    _, _, _, a = alpha_src.split()
+    return Image.merge("RGBA", (r, g, b, a))
+
+
 def make_muzzle_stub() -> Image.Image:
     """Tiny generated muzzle flash — no original Flash file (#95)."""
     im = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
@@ -126,9 +134,20 @@ def main() -> None:
         ("machineGun.png", "machineGun.png"),
         ("grenade.png", "grenade.png"),
         ("Rocket.png", "Rocket.png"),
+        # Per-weapon projectile frames (Flash `bullet.gotoAndStop(frame)`).
+        ("shotgunrocketbullet.png", "shotgunrocketbullet.png"),
+        ("rpg.png", "rpg.png"),
+        ("seekerbullet.png", "seekerbullet.png"),
+        ("flame.png", "flame.png"),
+        ("minebullet.png", "minebullet.png"),
+        ("mine.png", "mine.png"),
+        ("abombbullet.png", "abombbullet.png"),
+        ("rail.png", "rail.png"),
+        ("grapplebullet.png", "grapplebullet.png"),
         ("smoke.png", "smoke.png"),
         ("blood.png", "blood.png"),
         ("powerup.png", "powerup.png"),
+        ("powerhealth.png", "powerhealth.png"),  # health crate (white + red cross)
         # HUD / drop weapon crate icons — Flash `HUD.weapon` frames (#105).
         ("powermachinegun.png", "powermachinegun.png"),
         ("poweruzi.png", "poweruzi.png"),  # AkimboMac10 (iopred old/)
@@ -148,8 +167,13 @@ def main() -> None:
         ("bg.png", "bg.png"),
         ("title.png", "title.png"),
     ]
+    heli_src = load_rgba("heli.png")
     for src_name, dest_name in world_map:
-        write_scaled(load_rgba(src_name), WORLD_OUT / dest_name, WORLD_SCALE)
+        src = load_rgba(src_name)
+        # Flash heli_hit.png is RGB on opaque black — borrow heli silhouette alpha.
+        if dest_name == "heli_hit.png":
+            src = apply_alpha_mask(src, heli_src)
+        write_scaled(src, WORLD_OUT / dest_name, WORLD_SCALE)
 
     # Explosion: catalog stores half Flash bigboom, then × world scale.
     boom = load_rgba("bigboom.png")
@@ -158,7 +182,7 @@ def main() -> None:
 
     write_scaled(make_muzzle_stub(), WORLD_OUT / "muzzle_flash.png", WORLD_SCALE)
 
-    bake_heli_hit_mask(load_rgba("heli.png"))
+    bake_heli_hit_mask(heli_src)
     print("Done. Run: npm run art:pack")
 
 

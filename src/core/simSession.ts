@@ -15,7 +15,6 @@ import {
 import {
   createHeliExplosion,
   createSpawnRng,
-  spawnHelicopter,
   stepBulletsVsHelis,
   stepHeliCombat,
   stepHeliExplosion,
@@ -79,8 +78,7 @@ import {
 import { ParticleFxQueue } from '../fx/particleQueue';
 import { shouldEmitSmokeTrail } from '../fx/smokeTrail';
 import { PLAYER_SPAWN, Player } from '../player/player';
-import { BULLET, HELI, POWERUP } from '../config/constants';
-import { DebugBox } from '../world/debugBox';
+import { POWERUP } from '../config/constants';
 import {
   LEVEL1_HEIGHT_PX,
   LEVEL1_WIDTH_PX,
@@ -88,17 +86,14 @@ import {
 } from '../world/level1';
 import type { TileMap } from '../world/tileMap';
 
-/** Spawn point above open ground near the left side of level 1. */
-export const DEBUG_BOX_SPAWN = { x: 200, y: 200 } as const;
-
 /**
  * Per-run sim state for GameScene: fixed-step accumulator, timeStep, HUD
  * counters, original level map, player, bullet pool, weapon inventory (#14),
  * helicopter combat (#12/#13), enemy return fire + player health (#18),
  * replacement spawn treadmill + difficulty ramp (#19), parachuting powerup
  * drops (#21), timed state powerup effects (#22), manual bullet-time meter
- * (#42), event-driven SFX cues (#27), pooled particle FX cues (#35),
- * player-hurt flash cue, and the debug box.
+ * (#42), event-driven SFX cues (#27), pooled particle FX cues (#35), and
+ * player-hurt flash cue.
  * Lives outside Phaser so scene restarts and the update loop are
  * unit-testable (Phaser reuses the scene instance; only create() re-runs).
  *
@@ -162,9 +157,6 @@ export class SimSession {
     LEVEL1_HEIGHT_PX,
   );
 
-  /** Draggable/droppable AABB that collides with {@link map}. */
-  readonly debugBox = new DebugBox(DEBUG_BOX_SPAWN.x, DEBUG_BOX_SPAWN.y);
-
   /** Spawn RNG — fixed seed so tests and demos are reproducible. */
   readonly spawnRng = createSpawnRng(12);
 
@@ -172,9 +164,7 @@ export class SimSession {
   heliSpawn: HeliSpawnState = createHeliSpawnState();
 
   /** Active helicopter enemies in arena space (#12/#19). */
-  helicopters: Helicopter[] = [
-    spawnHelicopter(HELI.hp, LEVEL1_WIDTH_PX, LEVEL1_HEIGHT_PX, this.spawnRng),
-  ];
+  helicopters: Helicopter[] = [];
 
   /** Short-lived placeholder explosions after heli kills (#12/#13). */
   explosions: HeliExplosion[] = [];
@@ -237,6 +227,12 @@ export class SimSession {
     return getActiveWeapon(this.inventory);
   }
 
+  constructor() {
+    // A fresh session and a reset session must be indistinguishable — deriving
+    // one from the other is what keeps them from drifting apart.
+    this.reset();
+  }
+
   /** Clear all per-run state — call from GameScene.create() on every start. */
   reset(): void {
     this.accumulator.reset();
@@ -254,6 +250,7 @@ export class SimSession {
       boost: false,
     };
     this.player.placeAt(PLAYER_SPAWN.x, PLAYER_SPAWN.y);
+    this.player.beginParachute();
     this.bullets.reset();
     this.enemyBullets.reset();
     this.fireHeld = false;
@@ -261,14 +258,8 @@ export class SimSession {
     this.bulletTime = createBulletTimeState();
     this.inventory = createWeaponInventory();
     this.heliSpawn = createHeliSpawnState();
+    // Flash waits for `heroStart` chute collapse before `addEnemy(300)`.
     this.helicopters = [];
-    ensureHeliPopulation(
-      this.helicopters,
-      this.heliSpawn,
-      LEVEL1_WIDTH_PX,
-      LEVEL1_HEIGHT_PX,
-      this.spawnRng,
-    );
     this.explosions = [];
     this.score = createScoreState();
     this.runHits = 0;
@@ -282,8 +273,6 @@ export class SimSession {
     this.particleFx.reset();
     this.hurtFlashPending = false;
     this.jetpackSmokeCounter = 0;
-    this.debugBox.dragging = false;
-    this.debugBox.placeAt(DEBUG_BOX_SPAWN.x, DEBUG_BOX_SPAWN.y);
   }
 
   /**
@@ -363,16 +352,14 @@ export class SimSession {
     }
     let any = false;
     for (const spawn of spawns) {
-      const bullet = this.bullets.acquire(
-        spawn.x,
-        spawn.y,
-        spawn.rotationDeg,
-        spawn.speed,
-        spawn.damage * damageMult,
-        spawn.maxLifetime ?? BULLET.maxLifetimeFrames,
-        spawn.behavior,
-        spawn.smokeTrailInterval ?? 0,
-      );
+      const bullet = this.bullets.acquire(spawn.x, spawn.y, spawn.rotationDeg, {
+        speed: spawn.speed,
+        damage: spawn.damage * damageMult,
+        maxLifetime: spawn.maxLifetime,
+        behavior: spawn.behavior,
+        smokeTrailInterval: spawn.smokeTrailInterval,
+        weaponIndex: spawn.weaponIndex,
+      });
       if (bullet !== null) {
         any = true;
         this.runShots += 1;
@@ -410,6 +397,7 @@ export class SimSession {
     // Dead players stop moving / firing; helis still update so the scene reads.
     // TimeRift: player steps at full speed while the world stays slowed (#22).
     // Manual bullet-time slows the player with the world (no TimeRift override).
+    // Flash `heroStart`: no fire / walk until the chute collapses.
     if (this.playerHealth.alive) {
       const playerStep = playerTimeStepForPowerup(
         this.timeScale.timeStep,
@@ -419,10 +407,12 @@ export class SimSession {
       if (this.player.hyperJumpFired) {
         this.audioEvents.push({ type: 'hyperJump' });
       }
-      const def = getActiveWeaponDef(this.inventory);
-      if (stepWeaponFire(this.weapon, this.fireHeld, def)) {
-        this.tryFire();
-        fallbackIfActiveEmpty(this.inventory);
+      if (!this.player.parachuting) {
+        const def = getActiveWeaponDef(this.inventory);
+        if (stepWeaponFire(this.weapon, this.fireHeld, def)) {
+          this.tryFire();
+          fallbackIfActiveEmpty(this.inventory);
+        }
       }
     }
 
@@ -496,7 +486,11 @@ export class SimSession {
       playerBody,
     );
 
-    if (killsThisTick > 0) {
+    // Flash `addEnemy(300)` once the chute collapses, then 1:1 replacement on
+    // kill. Target concurrency only moves on a kill, so an idle tick has
+    // nothing to do — don't rescan the array 30× a second to learn that.
+    const skyNeedsRefill = killsThisTick > 0 || this.helicopters.length === 0;
+    if (!this.player.parachuting && skyNeedsRefill) {
       ensureHeliPopulation(
         this.helicopters,
         this.heliSpawn,
@@ -599,6 +593,5 @@ export class SimSession {
         this.explosions.splice(i, 1);
       }
     }
-    this.debugBox.step(this.map, this.timeScale.timeStep);
   }
 }

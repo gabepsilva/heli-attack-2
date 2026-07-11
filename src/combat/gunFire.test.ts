@@ -108,6 +108,7 @@ describe('projectile weapons / ballistic set (issue #15)', () => {
       rot,
       def.speed,
       def.damage,
+      1,
       midRandom,
     );
 
@@ -121,6 +122,7 @@ describe('projectile weapons / ballistic set (issue #15)', () => {
       speed: 8,
       damage: 9,
       behavior: 'ballistic',
+      weaponIndex: 1,
     });
     // Lead bullet: +speed along aim (cos0=1, sin0=0) → (108, 200).
     expect(spawns[1]).toEqual({
@@ -130,12 +132,13 @@ describe('projectile weapons / ballistic set (issue #15)', () => {
       speed: 8,
       damage: 9,
       behavior: 'ballistic',
+      weaponIndex: 1,
     });
   });
 
   it('Akimbo applies independent Flash ±8° jitter per stream', () => {
     // random sequence: 0 → rot-8; 15 → rot+7
-    const spawns = planAkimboFire(0, 0, 90, 8, 9, sequenceRandom([0, 15]));
+    const spawns = planAkimboFire(0, 0, 90, 8, 9, 1, sequenceRandom([0, 15]));
     expect(spawns[0]!.rotationDeg).toBe(90 - AKIMBO_SPREAD_HALF_DEG);
     expect(spawns[1]!.rotationDeg).toBe(90 - AKIMBO_SPREAD_HALF_DEG + 15);
   });
@@ -206,6 +209,7 @@ describe('projectile weapons / ballistic set (issue #15)', () => {
         damage: 100,
         behavior: 'ballistic',
         smokeTrailInterval: 2,
+        weaponIndex: 6,
       },
     ]);
     expect(projectileCountForWeapon(6)).toBe(1);

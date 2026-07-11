@@ -1,10 +1,6 @@
 import Phaser from 'phaser';
 import { TITLE_IMAGE_KEY } from '../config/art';
-import {
-  BOOT_BACKGROUND_COLOR,
-  GAME_HEIGHT,
-  GAME_WIDTH,
-} from '../config/game';
+import { BOOT_BACKGROUND_COLOR, GAME_HEIGHT, GAME_WIDTH } from '../config/game';
 import { SCENE_KEYS } from '../config/scenes';
 import { getGameAudio } from '../audio/gameAudio';
 import {

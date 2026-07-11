@@ -83,10 +83,20 @@ origin  = (pivot.x, pivot.y)   // usually (0.5, 1)
 | `muzzle_flash` | `muzzle_flash.png` | 16×16 | 64×64 (final) | 18×18 | (0.5, 0.5) | Weapon muzzle flash (generated stub — no Flash original) |
 | `grenade` | `grenade.png` | 19×11 | 76×44 (final) | 19×11 | (0.5, 0.5) | Grenade projectile (temp Flash grenade.png) |
 | `rocket` | `Rocket.png` | 21×15 | 84×60 (final) | 21×15 | (0.5, 0.5) | Rocket projectile (temp Flash Rocket.png) |
+| `shotgunrocketbullet` | `shotgunrocketbullet.png` | 17×12 | 68×48 (final) | 17×12 | (0.5, 0.5) | ShotgunRockets projectile (Flash shotgunrocketbullet.png / bullet frame 7) |
+| `rpg` | `rpg.png` | 22×13 | 88×52 (final) | 22×13 | (0.5, 0.5) | RPG projectile (Flash rpg.png / bullet frame 8) |
+| `seekerbullet` | `seekerbullet.png` | 23×15 | 92×60 (final) | 23×15 | (0.5, 0.5) | Seeker projectile (Flash seekerbullet.png / bullet frame 5) |
+| `flame` | `flame.png` | 42×42 | 168×168 (final) | 42×42 | (0.5, 0.5) | FlameThrower projectile (Flash flame.png / bullet frame 3) |
+| `minebullet` | `minebullet.png` | 20×11 | 80×44 (final) | 20×11 | (0.5, 0.5) | FireMines lobbed projectile (Flash minebullet.png / bullet frame 10) |
+| `mine` | `mine.png` | 21×19 | 84×76 (final) | 21×19 | (0.5, 0.5) | FireMines planted look (Flash mine.png) |
+| `abombbullet` | `abombbullet.png` | 36×29 | 144×116 (final) | 36×29 | (0.5, 0.5) | A-Bomb projectile (Flash abombbullet.png / bullet frame 6) |
+| `rail` | `rail.png` | 57×31 | 228×124 (final) | 57×31 | (0.5, 0.5) | RailGun / ShoulderCannon beam (Flash rail.png / bullet frames 9+11) |
+| `grapplebullet` | `grapplebullet.png` | 21×21 | 84×84 (final) | 21×21 | (0.5, 0.5) | GrappleCannon projectile (Flash grapplebullet.png / bullet frame 12) |
 | `smoke` | `smoke.png` | 28×27 | 112×108 (final) | 28×27 | (0.5, 0.5) | Smoke VFX (temp Flash smoke.png) |
 | `blood` | `blood.png` | 30×30 | 120×120 (final) | 30×30 | (0.5, 0.5) | Hit / blood VFX (temp Flash blood.png) |
 | `explosion` | `explosion.png` | 187×186 | 748×744 (final) | 120×120 | (0.5, 0.5) | Heli death explosion (temp Flash bigboom.png, half-res catalog) |
-| `powerup` | `powerup.png` | 33×32 | 132×128 (final) | 33×32 | (0.5, 0.5) | Powerup crate base (temp Flash powerup.png) |
+| `powerup` | `powerup.png` | 33×32 | 132×128 (final) | 33×32 | (0.5, 0.5) | State / mystery powerup crate (Flash powerup.png) |
+| `powerhealth` | `powerhealth.png` | 33×32 | 132×128 (final) | 33×32 | (0.5, 0.5) | Health crate (Flash powerhealth.png — white box + red cross) |
 | `powermachinegun` | `powermachinegun.png` | 33×32 | 132×128 (final) | 33×32 | (0.5, 0.5) | HUD weapon crate cgun 0 MachineGun (Flash powermachinegun.png) |
 | `poweruzi` | `poweruzi.png` | 33×32 | 132×128 (final) | 33×32 | (0.5, 0.5) | HUD weapon crate cgun 1 AkimboMac10 (Flash old/poweruzi.png) |
 | `powershotgun` | `powershotgun.png` | 33×32 | 132×128 (final) | 33×32 | (0.5, 0.5) | HUD weapon crate cgun 2 Shotgun (Flash powershotgun.png) |

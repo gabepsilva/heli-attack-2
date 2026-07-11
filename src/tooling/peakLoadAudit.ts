@@ -83,26 +83,20 @@ export function saturatePeakLoad(session: SimSession): void {
 /** Top up player/enemy bullet pools to capacity (no growth). */
 export function refillBulletPools(session: SimSession): void {
   while (session.bullets.activeCount < session.bullets.capacity) {
-    const got = session.bullets.acquire(
-      100,
-      100,
-      0,
-      BULLET.defaultSpeed,
-      BULLET.defaultDamage,
-    );
+    const got = session.bullets.acquire(100, 100, 0, {
+      speed: BULLET.defaultSpeed,
+      damage: BULLET.defaultDamage,
+    });
     if (!got) {
       break;
     }
   }
 
   while (session.enemyBullets.activeCount < session.enemyBullets.capacity) {
-    const got = session.enemyBullets.acquire(
-      200,
-      80,
-      90,
-      ENEMY_BULLET.speed,
-      ENEMY_BULLET.damage,
-    );
+    const got = session.enemyBullets.acquire(200, 80, 90, {
+      speed: ENEMY_BULLET.speed,
+      damage: ENEMY_BULLET.damage,
+    });
     if (!got) {
       break;
     }

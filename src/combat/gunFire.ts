@@ -36,6 +36,8 @@ export type ProjectileSpawn = Readonly<{
   maxLifetime?: number;
   /** Smoke trail cadence in sim frames (0 / omit = none). Issue #35. */
   smokeTrailInterval?: number;
+  /** Arsenal slot for atlas frame selection. */
+  weaponIndex: number;
 }>;
 
 /** Flash `random(n)` — integer in `[0, n)`. */
@@ -89,7 +91,15 @@ export function planWeaponFire(
 
   switch (weaponIndex) {
     case 1:
-      return planAkimboFire(x, y, rotationDeg, speed, damage, randomInt);
+      return planAkimboFire(
+        x,
+        y,
+        rotationDeg,
+        speed,
+        damage,
+        weaponIndex,
+        randomInt,
+      );
     case 2:
       return SHOTGUN_SPREAD_DEG.map((offset) => ({
         x,
@@ -98,6 +108,7 @@ export function planWeaponFire(
         speed,
         damage,
         behavior: 'ballistic' as const,
+        weaponIndex,
       }));
     case 3:
       return SHOTGUN_ROCKET_SPREAD_DEG.map((offset) => ({
@@ -108,9 +119,18 @@ export function planWeaponFire(
         damage,
         behavior: 'ballistic' as const,
         smokeTrailInterval,
+        weaponIndex,
       }));
     case 8:
-      return planFlameFire(x, y, rotationDeg, speed, damage, randomInt);
+      return planFlameFire(
+        x,
+        y,
+        rotationDeg,
+        speed,
+        damage,
+        weaponIndex,
+        randomInt,
+      );
     case 7:
     case 9:
     case 10:
@@ -130,6 +150,7 @@ export function planWeaponFire(
               ? SPECIAL_PROJECTILE.railLingerFrames
               : undefined,
           smokeTrailInterval,
+          weaponIndex,
         },
       ];
     case 0:
@@ -147,6 +168,7 @@ export function planWeaponFire(
           damage,
           behavior,
           smokeTrailInterval,
+          weaponIndex,
         },
       ];
   }
@@ -162,6 +184,7 @@ export function planFlameFire(
   rotationDeg: number,
   speed: number,
   damage: number,
+  weaponIndex: number,
   randomInt: RandomInt = flashRandomInt,
 ): ProjectileSpawn[] {
   const rot =
@@ -175,6 +198,7 @@ export function planFlameFire(
       damage,
       behavior: 'flame',
       maxLifetime: SPECIAL_PROJECTILE.flameLifetimeFrames,
+      weaponIndex,
     },
   ];
 }
@@ -190,6 +214,7 @@ export function planAkimboFire(
   rotationDeg: number,
   speed: number,
   damage: number,
+  weaponIndex: number,
   randomInt: RandomInt = flashRandomInt,
 ): ProjectileSpawn[] {
   const { vx, vy } = velocityFromRotation(speed, rotationDeg);
@@ -205,6 +230,7 @@ export function planAkimboFire(
       speed,
       damage,
       behavior: 'ballistic',
+      weaponIndex,
     },
     {
       x: x + vx,
@@ -213,6 +239,7 @@ export function planAkimboFire(
       speed,
       damage,
       behavior: 'ballistic',
+      weaponIndex,
     },
   ];
 }

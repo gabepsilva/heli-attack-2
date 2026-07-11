@@ -14,7 +14,9 @@ import {
 
 function keyEvent(
   key: string,
-  mods: Partial<Pick<KeyboardEvent, 'ctrlKey' | 'altKey' | 'metaKey' | 'repeat'>> = {},
+  mods: Partial<
+    Pick<KeyboardEvent, 'ctrlKey' | 'altKey' | 'metaKey' | 'repeat'>
+  > = {},
 ): KeyboardEvent {
   return {
     key,

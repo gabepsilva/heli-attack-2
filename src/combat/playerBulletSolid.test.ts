@@ -91,7 +91,10 @@ describe('player bullets vs solid tiles (issue #96)', () => {
     );
     // Fire straight down from empty cell (2,1) toward floor row 4.
     // World: col 2 → x=100..149 center 125; row 1 → y=50..99.
-    const shot = pool.acquire(125, 75, 90, WEAPONS[0].speed, WEAPONS[0].damage);
+    const shot = pool.acquire(125, 75, 90, {
+      speed: WEAPONS[0].speed,
+      damage: WEAPONS[0].damage,
+    });
     expect(shot).not.toBeNull();
     expect(shot!.behavior).toBe('ballistic');
     expect(shot!.speed).toBe(8);
@@ -118,14 +121,10 @@ describe('player bullets vs solid tiles (issue #96)', () => {
     const map = solidFloorMap();
     const bounds = arenaCullBounds(300, 300);
     const bullet = createInactiveBullet(0);
-    activateBullet(
-      bullet,
-      125,
-      175,
-      90,
-      BULLET.defaultSpeed,
-      BULLET.defaultDamage,
-    );
+    activateBullet(bullet, 125, 175, 90, {
+      speed: BULLET.defaultSpeed,
+      damage: BULLET.defaultDamage,
+    });
 
     // One step into the floor band (y=175+8=183 still air; keep stepping).
     let hitSolid = false;
@@ -155,7 +154,7 @@ describe('player bullets vs solid tiles (issue #96)', () => {
     const pool = new BulletPool(2);
     // One step past the right cull edge (maxX = arenaW + 50).
     const justInside = TEST_ARENA_WIDTH_PX + 50 - BULLET.defaultSpeed + 1;
-    pool.acquire(justInside, 100, 0, BULLET.defaultSpeed);
+    pool.acquire(justInside, 100, 0, { speed: BULLET.defaultSpeed });
     expect(pool.activeCount).toBe(1);
     expect(isOutsideCullBounds(justInside, 100, bounds)).toBe(false);
 
@@ -171,7 +170,7 @@ describe('player bullets vs solid tiles (issue #96)', () => {
       ],
       WORLD.tile,
     );
-    pool.acquire(justInside, 100, 0, BULLET.defaultSpeed);
+    pool.acquire(justInside, 100, 0, { speed: BULLET.defaultSpeed });
     stepBulletsVsHelis(pool, [], bounds, 1, undefined, empty);
     expect(pool.activeCount).toBe(0);
   });
@@ -187,7 +186,10 @@ describe('player bullets vs solid tiles (issue #96)', () => {
     const health = createPlayerHealth();
     const pool = new EnemyBulletPool(2);
     const bounds = enemyBulletArenaCullBounds(800, 600);
-    pool.acquire(100, 100, 90, ENEMY_BULLET.speed, ENEMY_BULLET.damage);
+    pool.acquire(100, 100, 90, {
+      speed: ENEMY_BULLET.speed,
+      damage: ENEMY_BULLET.damage,
+    });
 
     for (let i = 0; i < 80; i += 1) {
       stepEnemyBulletsVsPlayer(pool, body, health, bounds, 1, map);
@@ -200,16 +202,12 @@ describe('player bullets vs solid tiles (issue #96)', () => {
     const map = solidFloorMap();
     const bounds = arenaCullBounds(300, 300);
     const bullet = createInactiveBullet(0);
-    activateBullet(
-      bullet,
-      125,
-      100,
-      90,
-      WEAPONS[9].speed,
-      WEAPONS[9].damage,
-      300,
-      'mine',
-    );
+    activateBullet(bullet, 125, 100, 90, {
+      speed: WEAPONS[9].speed,
+      damage: WEAPONS[9].damage,
+      maxLifetime: 300,
+      behavior: 'mine',
+    });
     bullet.vy = 4;
 
     // Drive until planted on the floor — must remain active (not recycled).
@@ -236,7 +234,10 @@ describe('player bullets vs solid tiles (issue #96)', () => {
     // Known opaque local pixel from heliHit tests: (22, 2).
     const hitX = left + 22;
     const hitY = top + 2;
-    pool.acquire(hitX - BULLET.defaultSpeed, hitY, 0, BULLET.defaultSpeed, 10);
+    pool.acquire(hitX - BULLET.defaultSpeed, hitY, 0, {
+      speed: BULLET.defaultSpeed,
+      damage: 10,
+    });
 
     stepBulletsVsHelis(pool, [heli], bounds, 1, undefined, map);
     expect(pool.activeCount).toBe(0);

@@ -34,7 +34,13 @@ import {
   WEAPON_COUNT,
   WEAPONS,
 } from '../config/weapons';
-import { WEAPON_HUD_ICON_FRAMES, weaponHudIconFrame } from '../art/catalog';
+import {
+  WEAPON_HUD_ICON_FRAMES,
+  WEAPON_PROJECTILE_FRAMES,
+  powerupCrateFrame,
+  projectileFrameForWeapon,
+  weaponHudIconFrame,
+} from '../art/catalog';
 import {
   buildHudSnapshot,
   DEATH_AMMO_HUD,
@@ -363,6 +369,18 @@ describe('HUD weapon crate + ammo (issue #105 AC)', () => {
     // Out-of-range falls back to MachineGun crate (frame 1).
     expect(weaponHudIconFrame(-1)).toBe('powermachinegun');
     expect(weaponHudIconFrame(99)).toBe('powermachinegun');
+  });
+
+  it('maps world-drop crates and projectiles to Flash per-weapon assets', () => {
+    expect(powerupCrateFrame('health')).toBe('powerhealth');
+    expect(powerupCrateFrame('state')).toBe('powerup');
+    expect(powerupCrateFrame('weapon', 8)).toBe('powerflamethrower');
+    expect(WEAPON_PROJECTILE_FRAMES).toHaveLength(WEAPON_COUNT);
+    expect(projectileFrameForWeapon(0)).toBe('bullet_player');
+    expect(projectileFrameForWeapon(8)).toBe('flame');
+    expect(projectileFrameForWeapon(5)).toBe('rpg');
+    expect(projectileFrameForWeapon(11)).toBe('rail');
+    expect(projectileFrameForWeapon(13)).toBe('rail');
   });
 
   it('formats ammo exactly like Flash HUD.ammo (Infinite x / N x)', () => {

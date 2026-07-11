@@ -54,15 +54,28 @@ export function createInactiveEnemyBullet(index: number): EnemyBullet {
   };
 }
 
+/** Optional spawn attributes — mirrors {@link BulletSpawnOptions}. */
+export type EnemyBulletSpawnOptions = {
+  /** Muzzle speed in px/frame. */
+  speed?: number;
+  /** Damage applied to the player on contact. */
+  damage?: number;
+  /** Lifetime in sim frames before the slot recycles. */
+  maxLifetime?: number;
+};
+
 export function activateEnemyBullet(
   bullet: EnemyBullet,
   x: number,
   y: number,
   rotationDeg: number,
-  speed: number = ENEMY_BULLET.speed,
-  damage: number = ENEMY_BULLET.damage,
-  maxLifetime: number = ENEMY_BULLET.maxLifetimeFrames,
+  options: EnemyBulletSpawnOptions = {},
 ): void {
+  const {
+    speed = ENEMY_BULLET.speed,
+    damage = ENEMY_BULLET.damage,
+    maxLifetime = ENEMY_BULLET.maxLifetimeFrames,
+  } = options;
   const { vx, vy } = velocityFromRotation(speed, rotationDeg);
   bullet.active = true;
   bullet.x = x;
@@ -183,9 +196,7 @@ export class EnemyBulletPool {
     x: number,
     y: number,
     rotationDeg: number,
-    speed: number = ENEMY_BULLET.speed,
-    damage: number = ENEMY_BULLET.damage,
-    maxLifetime: number = ENEMY_BULLET.maxLifetimeFrames,
+    options: EnemyBulletSpawnOptions = {},
   ): EnemyBullet | null {
     if (this.freeTop <= 0) {
       return null;
@@ -193,7 +204,7 @@ export class EnemyBulletPool {
     this.freeTop -= 1;
     const index = this.freeStack[this.freeTop]!;
     const bullet = this.slots[index]!;
-    activateEnemyBullet(bullet, x, y, rotationDeg, speed, damage, maxLifetime);
+    activateEnemyBullet(bullet, x, y, rotationDeg, options);
     this._activeCount += 1;
     this._acquireCount += 1;
     return bullet;

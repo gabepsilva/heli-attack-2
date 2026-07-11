@@ -24,7 +24,7 @@ import {
   WEAPONS,
   WEAPON_PICKUP_AMMO,
 } from '../config/weapons';
-import { SimSession } from '../core/simSession';
+import { createCombatSession } from '../core/simSessionFixture';
 import { createAabbBody } from '../world/aabbBody';
 import { LEVEL1_HEIGHT_PX, LEVEL1_WIDTH_PX } from '../world/level1';
 import { createTileMap, TILE_EMPTY, TILE_SOLID } from '../world/tileMap';
@@ -400,8 +400,7 @@ describe('powerup drop & pickup (issues #21 / #91)', () => {
   });
 
   it('SimSession spawns a health crate on the 15th kill and collects on touch', () => {
-    const session = new SimSession();
-    session.reset();
+    const session = createCombatSession();
     expect(session.powerupDrop.nextHealth).toBe(15);
     expect(session.powerups).toHaveLength(0);
 
@@ -443,8 +442,7 @@ describe('powerup drop & pickup (issues #21 / #91)', () => {
   });
 
   it('SimSession kill path drops a crate every 3 kills and health at 15', () => {
-    const session = new SimSession();
-    session.reset();
+    const session = createCombatSession();
 
     for (let k = 0; k < 15; k += 1) {
       const victim = session.helicopters.find((h) => h.active);

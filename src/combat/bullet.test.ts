@@ -56,7 +56,7 @@ describe('bullet system (issue #10 — pooled projectiles)', () => {
 
   it('steps motion as Flash bulletFrame: pos += vel * timeStep', () => {
     const b = createInactiveBullet(0);
-    activateBullet(b, 100, 200, 0, 8, 10);
+    activateBullet(b, 100, 200, 0, { speed: 8, damage: 10 });
     expect(stepBullet(b, 1, arenaCullBounds(1200, 800))).toBe(false);
     expect(b.x).toBeCloseTo(108, 10);
     expect(b.y).toBeCloseTo(200, 10);
@@ -84,7 +84,7 @@ describe('bullet system (issue #10 — pooled projectiles)', () => {
 
   it('expires when age reaches maxLifetime', () => {
     const b = createInactiveBullet(0);
-    activateBullet(b, 100, 100, 0, 8, 10, 3);
+    activateBullet(b, 100, 100, 0, { speed: 8, damage: 10, maxLifetime: 3 });
     const bounds = arenaCullBounds(2000, 2000);
     expect(stepBullet(b, 1, bounds)).toBe(false);
     expect(stepBullet(b, 1, bounds)).toBe(false);
@@ -153,7 +153,7 @@ describe('bullet system (issue #10 — pooled projectiles)', () => {
 
     // Rapid fire: acquire every tick; bullets leave the small cull box quickly.
     for (let shot = 0; shot < 400; shot += 1) {
-      pool.acquire(200, 200, 0, BULLET.defaultSpeed);
+      pool.acquire(200, 200, 0, { speed: BULLET.defaultSpeed });
       pool.stepAll(1, bounds);
     }
 

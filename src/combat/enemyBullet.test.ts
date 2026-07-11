@@ -87,7 +87,10 @@ describe('enemy fire & player health (issue #18)', () => {
     const health = createPlayerHealth();
     const pool = new EnemyBulletPool(2);
     const bounds = enemyBulletArenaCullBounds(800, 600);
-    pool.acquire(105, 199, 90, ENEMY_BULLET.speed, ENEMY_BULLET.damage);
+    pool.acquire(105, 199, 90, {
+      speed: ENEMY_BULLET.speed,
+      damage: ENEMY_BULLET.damage,
+    });
 
     stepEnemyBulletsVsPlayer(pool, body, health, bounds, 1);
 
@@ -103,7 +106,10 @@ describe('enemy fire & player health (issue #18)', () => {
     const bounds = enemyBulletArenaCullBounds(800, 600);
 
     for (let i = 0; i < 10; i += 1) {
-      const b = pool.acquire(105, 220, 0, 0, ENEMY_BULLET.damage);
+      const b = pool.acquire(105, 220, 0, {
+        speed: 0,
+        damage: ENEMY_BULLET.damage,
+      });
       expect(b).not.toBeNull();
       b!.vx = 0;
       b!.vy = 0;
@@ -134,13 +140,10 @@ describe('enemy fire & player health (issue #18)', () => {
       heli.gunRotationDeg = 90;
       const shot = tryHeliFire(heli, true, zeroSpreadRng);
       if (shot) {
-        pool.acquire(
-          body.x + body.w / 2,
-          body.y - ENEMY_BULLET.speed,
-          90,
-          ENEMY_BULLET.speed,
-          ENEMY_BULLET.damage,
-        );
+        pool.acquire(body.x + body.w / 2, body.y - ENEMY_BULLET.speed, 90, {
+          speed: ENEMY_BULLET.speed,
+          damage: ENEMY_BULLET.damage,
+        });
       }
       const before = health.health;
       stepEnemyBulletsVsPlayer(pool, body, health, bounds, 1);
@@ -173,7 +176,10 @@ describe('enemy fire & player health (issue #18)', () => {
     const health = createPlayerHealth();
     const pool = new EnemyBulletPool(2);
     const bounds = enemyBulletArenaCullBounds(800, 600);
-    pool.acquire(100, 100, 90, ENEMY_BULLET.speed, ENEMY_BULLET.damage);
+    pool.acquire(100, 100, 90, {
+      speed: ENEMY_BULLET.speed,
+      damage: ENEMY_BULLET.damage,
+    });
 
     for (let i = 0; i < 80; i += 1) {
       stepEnemyBulletsVsPlayer(pool, body, health, bounds, 1, map);

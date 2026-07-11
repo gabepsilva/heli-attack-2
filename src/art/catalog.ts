@@ -216,6 +216,87 @@ export const SPRITE_DEFS = [
     final: true,
   },
   {
+    id: 'shotgunrocketbullet',
+    sourceFile: 'shotgunrocketbullet.png',
+    originalW: 17,
+    originalH: 12,
+    pivot: { x: 0.5, y: 0.5 },
+    role: 'ShotgunRockets projectile (Flash shotgunrocketbullet.png / bullet frame 7)',
+    final: true,
+  },
+  {
+    id: 'rpg',
+    sourceFile: 'rpg.png',
+    originalW: 22,
+    originalH: 13,
+    pivot: { x: 0.5, y: 0.5 },
+    role: 'RPG projectile (Flash rpg.png / bullet frame 8)',
+    final: true,
+  },
+  {
+    id: 'seekerbullet',
+    sourceFile: 'seekerbullet.png',
+    originalW: 23,
+    originalH: 15,
+    pivot: { x: 0.5, y: 0.5 },
+    role: 'Seeker projectile (Flash seekerbullet.png / bullet frame 5)',
+    final: true,
+  },
+  {
+    id: 'flame',
+    sourceFile: 'flame.png',
+    originalW: 42,
+    originalH: 42,
+    pivot: { x: 0.5, y: 0.5 },
+    role: 'FlameThrower projectile (Flash flame.png / bullet frame 3)',
+    final: true,
+  },
+  {
+    id: 'minebullet',
+    sourceFile: 'minebullet.png',
+    originalW: 20,
+    originalH: 11,
+    pivot: { x: 0.5, y: 0.5 },
+    role: 'FireMines lobbed projectile (Flash minebullet.png / bullet frame 10)',
+    final: true,
+  },
+  {
+    id: 'mine',
+    sourceFile: 'mine.png',
+    originalW: 21,
+    originalH: 19,
+    pivot: { x: 0.5, y: 0.5 },
+    role: 'FireMines planted look (Flash mine.png)',
+    final: true,
+  },
+  {
+    id: 'abombbullet',
+    sourceFile: 'abombbullet.png',
+    originalW: 36,
+    originalH: 29,
+    pivot: { x: 0.5, y: 0.5 },
+    role: 'A-Bomb projectile (Flash abombbullet.png / bullet frame 6)',
+    final: true,
+  },
+  {
+    id: 'rail',
+    sourceFile: 'rail.png',
+    originalW: 57,
+    originalH: 31,
+    pivot: { x: 0.5, y: 0.5 },
+    role: 'RailGun / ShoulderCannon beam (Flash rail.png / bullet frames 9+11)',
+    final: true,
+  },
+  {
+    id: 'grapplebullet',
+    sourceFile: 'grapplebullet.png',
+    originalW: 21,
+    originalH: 21,
+    pivot: { x: 0.5, y: 0.5 },
+    role: 'GrappleCannon projectile (Flash grapplebullet.png / bullet frame 12)',
+    final: true,
+  },
+  {
     id: 'smoke',
     sourceFile: 'smoke.png',
     originalW: 28,
@@ -248,7 +329,16 @@ export const SPRITE_DEFS = [
     originalW: 33,
     originalH: 32,
     pivot: { x: 0.5, y: 0.5 },
-    role: 'Powerup crate base (temp Flash powerup.png)',
+    role: 'State / mystery powerup crate (Flash powerup.png)',
+    final: true,
+  },
+  {
+    id: 'powerhealth',
+    sourceFile: 'powerhealth.png',
+    originalW: 33,
+    originalH: 32,
+    pivot: { x: 0.5, y: 0.5 },
+    role: 'Health crate (Flash powerhealth.png — white box + red cross)',
     final: true,
   },
   // Flash `HUD.weapon` crate icons — one frame per cgun slot (#105).
@@ -462,10 +552,20 @@ export const FLASH_ORIGINAL_SOURCES = {
   muzzle_flash: null, // generated stub
   grenade: 'grenade.png',
   rocket: 'Rocket.png',
+  shotgunrocketbullet: 'shotgunrocketbullet.png',
+  rpg: 'rpg.png',
+  seekerbullet: 'seekerbullet.png',
+  flame: 'flame.png',
+  minebullet: 'minebullet.png',
+  mine: 'mine.png',
+  abombbullet: 'abombbullet.png',
+  rail: 'rail.png',
+  grapplebullet: 'grapplebullet.png',
   smoke: 'smoke.png',
   blood: 'blood.png',
   explosion: 'bigboom.png',
   powerup: 'powerup.png',
+  powerhealth: 'powerhealth.png',
   powermachinegun: 'powermachinegun.png',
   poweruzi: 'old/poweruzi.png', // AkimboMac10 — only under iopred old/
   powershotgun: 'powershotgun.png',
@@ -507,6 +607,49 @@ export const WEAPON_HUD_ICON_FRAMES = [
 /** Atlas frame for Flash HUD weapon crate at arsenal slot `cgun`. */
 export function weaponHudIconFrame(cgun: number): SpriteId {
   return WEAPON_HUD_ICON_FRAMES[cgun] ?? WEAPON_HUD_ICON_FRAMES[0];
+}
+
+/**
+ * Flash `addBullet(..., frame)` — atlas frame per arsenal weapon.
+ * MG / Uzi / Shotgun share `bullett` (frame 1); others use dedicated PNGs.
+ */
+export const WEAPON_PROJECTILE_FRAMES = [
+  'bullet_player', // 0 MachineGun
+  'bullet_player', // 1 AkimboMac10
+  'bullet_player', // 2 Shotgun
+  'shotgunrocketbullet', // 3 ShotgunRockets
+  'grenade', // 4 GrenadeLauncher
+  'rpg', // 5 RPG
+  'rocket', // 6 RocketLauncher
+  'seekerbullet', // 7 SeekerLauncher
+  'flame', // 8 FlameThrower
+  'minebullet', // 9 FireMines (lobbed)
+  'abombbullet', // 10 ABombLauncher
+  'rail', // 11 RailGun
+  'grapplebullet', // 12 GrappleCannon
+  'rail', // 13 ShoulderCannon
+] as const satisfies readonly SpriteId[];
+
+/** Atlas frame for a fired weapon projectile (Flash bullet timeline frame). */
+export function projectileFrameForWeapon(weaponIndex: number): SpriteId {
+  return WEAPON_PROJECTILE_FRAMES[weaponIndex] ?? WEAPON_PROJECTILE_FRAMES[0];
+}
+
+/**
+ * World-drop crate frame: health → `powerhealth`, state → `powerup`,
+ * weapon → matching HUD crate icon.
+ */
+export function powerupCrateFrame(
+  kind: 'health' | 'weapon' | 'state',
+  weaponIndex: number = 0,
+): SpriteId {
+  if (kind === 'health') {
+    return 'powerhealth';
+  }
+  if (kind === 'state') {
+    return 'powerup';
+  }
+  return weaponHudIconFrame(weaponIndex);
 }
 
 /** Frame ids with no dedicated Flash original (documented stubs). */
