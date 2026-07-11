@@ -13,6 +13,9 @@ import {
   createHeliExplosion,
   createSpawnRng,
   damageHelicopter,
+  heliGunAttachLocal,
+  heliGunWorldPose,
+  heliMuzzlePosition,
   spawnHelicopter,
   stepBulletsVsHelis,
   stepHeliExplosion,
@@ -134,5 +137,91 @@ describe('helicopter (issue #12 — enemy entity)', () => {
     }
     expect(heli.x).toBeGreaterThanOrEqual(HELI.spriteW / 2);
     expect(heli.x).toBeLessThanOrEqual(LEVEL1_WIDTH_PX - HELI.spriteW / 2);
+  });
+});
+
+describe('heli door gunner (Flash nested `gun` clip)', () => {
+  it('locks Flash Heli PlaceObject attach offsets per look', () => {
+    expect(heliGunAttachLocal(0)).toEqual({
+      x: HELI.gunAttachLook0X,
+      y: HELI.gunAttachLook0Y,
+    });
+    expect(heliGunAttachLocal(1)).toEqual({
+      x: HELI.gunAttachLook1X,
+      y: HELI.gunAttachLook1Y,
+    });
+  });
+
+  it('places the gun in the doorway and flips past ±90° like Flash', () => {
+    const heli = createHelicopter(400, 200, HELI.hp);
+    heli.look = 0;
+    heli.rotationDeg = 0;
+    heli.gunRotationDeg = 0;
+
+    const pose = heliGunWorldPose(heli);
+    expect(pose.x).toBeCloseTo(400 + HELI.gunAttachLook0X, 5);
+    expect(pose.y).toBeCloseTo(200 + HELI.gunAttachLook0Y, 5);
+    expect(pose.rotationDeg).toBe(0);
+    expect(pose.flipY).toBe(false);
+
+    heli.gunRotationDeg = 120;
+    expect(heliGunWorldPose(heli).rotationDeg).toBe(120);
+    expect(heliGunWorldPose(heli).flipY).toBe(true);
+
+    heli.look = 1;
+    heli.gunRotationDeg = 0;
+    const strafe = heliGunWorldPose(heli);
+    expect(strafe.x).toBeCloseTo(400 + HELI.gunAttachLook1X, 5);
+    expect(strafe.y).toBeCloseTo(200 + HELI.gunAttachLook1Y, 5);
+  });
+
+  it('rotates the gun attach with the hull (Flash nests gun under the heli)', () => {
+    const heli = createHelicopter(0, 0, HELI.hp);
+    heli.look = 0;
+    heli.gunRotationDeg = 0;
+    heli.rotationDeg = 90;
+
+    const pose = heliGunWorldPose(heli);
+    // Attach (11, 7) rotated 90° CW → (-7, 11).
+    expect(pose.x).toBeCloseTo(-HELI.gunAttachLook0Y, 5);
+    expect(pose.y).toBeCloseTo(HELI.gunAttachLook0X, 5);
+    // Barrel aim composes the hull tilt with the gun's own rotation.
+    expect(pose.rotationDeg).toBe(90);
+  });
+
+  it('spawns bullets at gun.barrell, not at the heli center', () => {
+    const heli = createHelicopter(0, 0, HELI.hp);
+    heli.look = 0;
+    heli.rotationDeg = 0;
+    heli.gunRotationDeg = 0;
+
+    const muzzle = heliMuzzlePosition(heli);
+    expect(muzzle.x).toBeCloseTo(
+      HELI.gunAttachLook0X + HELI.gunBarrelLocalX,
+      5,
+    );
+    expect(muzzle.y).toBeCloseTo(
+      HELI.gunAttachLook0Y + HELI.gunBarrelLocalY,
+      5,
+    );
+  });
+
+  it('mirrors the barrel offset on Y when the gun flips past ±90°', () => {
+    const heli = createHelicopter(0, 0, HELI.hp);
+    heli.look = 0;
+    heli.rotationDeg = 0;
+    heli.gunRotationDeg = 180;
+
+    // Flash `_yscale = -100` mirrors the barrel, so the muzzle stays on the
+    // barrel's outer edge instead of crossing to the other side of the gun.
+    const muzzle = heliMuzzlePosition(heli);
+    expect(muzzle.x).toBeCloseTo(
+      HELI.gunAttachLook0X - HELI.gunBarrelLocalX,
+      5,
+    );
+    expect(muzzle.y).toBeCloseTo(
+      HELI.gunAttachLook0Y + HELI.gunBarrelLocalY,
+      5,
+    );
   });
 });

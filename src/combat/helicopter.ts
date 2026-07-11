@@ -7,7 +7,13 @@
  */
 
 import { ENEMY_BULLET, HELI, WORLD } from '../config/constants';
-import { aimAngleDeg, shortestAngleDelta } from './gunAim';
+import {
+  aimAngleDeg,
+  gunNeedsFlipY,
+  muzzleWorld,
+  shortestAngleDelta,
+  type Vec2,
+} from './gunAim';
 import type { BulletPool } from './bullet';
 import type { EnemyBulletPool } from './enemyBullet';
 import { stepSpecialBullet } from './specialProjectile';
@@ -331,8 +337,7 @@ function updateChaseTargets(heli: Helicopter, ctx: HeliStepContext): void {
 
   // Flash: xdif = -spw/2 + random(spw - width/2) + width/2
   if (ctx.move && heli.frameCounter % HELI.chaseDriftPeriod === 1) {
-    heli.xDrift =
-      -HELI.viewW / 2 + randomInt(ctx.rng, X_DRIFT_SPAN) + halfW;
+    heli.xDrift = -HELI.viewW / 2 + randomInt(ctx.rng, X_DRIFT_SPAN) + halfW;
   }
   heli.tx = clamp(ctx.playerX + heli.xDrift, halfW, ctx.arenaW - halfW);
 
@@ -348,8 +353,7 @@ function updateChaseTargets(heli: Helicopter, ctx: HeliStepContext): void {
     // Flash: ty = player._y - sph/2 - (-2 + random(4)) * 10
     const jitter =
       HELI.chaseVertJitterMin + randomInt(ctx.rng, HELI.chaseVertJitterRange);
-    heli.ty =
-      ctx.playerY - HELI.viewH / 2 - jitter * HELI.chaseVertJitterStep;
+    heli.ty = ctx.playerY - HELI.viewH / 2 - jitter * HELI.chaseVertJitterStep;
   }
 }
 
@@ -493,16 +497,64 @@ export function heliFireSpreadDeg(
   return gunRotationDeg - half + jitter;
 }
 
-/** Muzzle point along the barrel from heli center. */
-export function heliMuzzlePosition(
-  heli: Helicopter,
-  offset: number = HELI.muzzleOffset,
-): { x: number; y: number } {
-  const rad = (heli.gunRotationDeg * Math.PI) / 180;
+/**
+ * Flash nested `gun` attach in heli-local space.
+ * Look 0: `(11, 7)`; look 1 (mirrored strafe frame): `(-9, 7)`.
+ */
+export function heliGunAttachLocal(look: HeliLook): { x: number; y: number } {
+  if (look === 1) {
+    return { x: HELI.gunAttachLook1X, y: HELI.gunAttachLook1Y };
+  }
+  return { x: HELI.gunAttachLook0X, y: HELI.gunAttachLook0Y };
+}
+
+export type HeliGunWorldPose = {
+  /** Gun grip / clip registration in arena space. */
+  x: number;
+  y: number;
+  /**
+   * World-space gun angle (Flash parent heli `_rotation` + nested
+   * `gun._rotation`). Matches the aimed barrel the player sees.
+   */
+  rotationDeg: number;
+  /** Flash `gun._yscale = -100` when `|gun._rotation| > 90`. */
+  flipY: boolean;
+};
+
+/**
+ * Door-gunner pose for the nested Flash `gun` clip (machineGun + hands in the
+ * doorway). Attach is rotated by the heli body; barrel aim uses local
+ * `gunRotationDeg` composed with heli tilt.
+ */
+export function heliGunWorldPose(heli: Helicopter): HeliGunWorldPose {
+  const attach = heliGunAttachLocal(heli.look);
+  const grip = muzzleWorld(
+    heli.x,
+    heli.y,
+    heli.rotationDeg,
+    attach.x,
+    attach.y,
+  );
   return {
-    x: heli.x + Math.cos(rad) * offset,
-    y: heli.y + Math.sin(rad) * offset,
+    x: grip.x,
+    y: grip.y,
+    rotationDeg: heli.gunRotationDeg + heli.rotationDeg,
+    // Flash yscale keys off the gun's own `_rotation`, not the parent's.
+    flipY: gunNeedsFlipY(heli.gunRotationDeg),
   };
+}
+
+/** Muzzle point from Flash `gun.barrell.localToGlobal`. */
+export function heliMuzzlePosition(heli: Helicopter): Vec2 {
+  const pose = heliGunWorldPose(heli);
+  return muzzleWorld(
+    pose.x,
+    pose.y,
+    pose.rotationDeg,
+    HELI.gunBarrelLocalX,
+    HELI.gunBarrelLocalY,
+    pose.flipY,
+  );
 }
 
 export type HeliFireShot = {

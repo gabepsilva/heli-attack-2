@@ -202,8 +202,23 @@ export const HELI = {
   gunTurnDivisor: 10,
   /** Floor of Flash `Math.max(1,10-level)`. */
   gunTurnDivisorMin: 1,
-  /** Muzzle distance from heli center along the barrel (px). */
-  muzzleOffset: 40,
+  /**
+   * Flash `Heli` PlaceObject for the nested `gun` clip (look 0 / frame 1):
+   * matrix tx=11, ty=7 relative to heli registration (center).
+   */
+  gunAttachLook0X: 11,
+  gunAttachLook0Y: 7,
+  /**
+   * Flash look 1 (`heli_strafe` / mirrored body): gun move matrix tx=-9, ty=7.
+   */
+  gunAttachLook1X: -9,
+  gunAttachLook1Y: 7,
+  /**
+   * Flash `gun.barrell` PlaceObject on gun frame 1 (machine gun): tx=22.7, ty=-7.4.
+   * Used for muzzle spawn; visual uses the machineGun sprite at the attach point.
+   */
+  gunBarrelLocalX: 22.7,
+  gunBarrelLocalY: -7.4,
 } as const;
 
 /**

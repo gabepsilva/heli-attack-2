@@ -15,6 +15,15 @@ export const ATLAS_IMAGE_PATH = 'atlas/game-atlas.png';
 export const ATLAS_JSON_PATH = 'atlas/game-atlas.json';
 
 /**
+ * Atlas frame names shared by more than one scene — the menu draws the same
+ * heli, door gun and enemy bullet the game does. Frames used by a single scene
+ * stay local to it.
+ */
+export const HELI_FRAME = 'heli';
+export const MACHINEGUN_FRAME = 'weapon_machinegun';
+export const BULLET_ENEMY_FRAME = 'bullet_enemy';
+
+/**
  * Integer upscale formerly applied to reference sprites for placeholders (#32).
  * Retained for ART-SPEC history; the packer no longer emits placeholders.
  */

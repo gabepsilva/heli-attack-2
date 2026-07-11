@@ -20,8 +20,15 @@ import { getGameAudio } from '../audio/gameAudio';
 import { GameSfx } from '../audio/gameSfx';
 import { GameParticles } from '../fx/gameParticles';
 import { HurtFlash } from '../fx/hurtFlash';
-import { ATLAS_KEY, BG_IMAGE_KEY } from '../config/art';
+import {
+  ATLAS_KEY,
+  BG_IMAGE_KEY,
+  BULLET_ENEMY_FRAME,
+  HELI_FRAME,
+  MACHINEGUN_FRAME,
+} from '../config/art';
 import { isPlayerHurtFlashing } from '../combat/playerHealth';
+import { heliGunWorldPose } from '../combat/helicopter';
 import { playerPowerupAlpha } from '../combat/powerupEffects';
 import { getActiveWeaponDef } from '../combat/weaponInventory';
 import {
@@ -112,10 +119,10 @@ const PLAYER_CHUTE = {
   bulge: 0.15,
 } as const;
 const HELI_HIT_FRAME = 'heli_hit';
-const WEAPON_FRAME = 'weapon_machinegun';
 const BULLET_PLAYER_FRAME = 'bullet_player';
-const BULLET_ENEMY_FRAME = 'bullet_enemy';
 const MUZZLE_FRAME = 'muzzle_flash';
+/** Door gunner draws above the hull (depth 0) and below the player (20). */
+const HELI_GUN_DEPTH = 5;
 const EXPLOSION_FRAME = 'explosion';
 /** Foliage sits behind the ground (depth 0) but above the sky plate (-10). */
 const BG_LAYER_DEPTH = -1;
@@ -209,6 +216,11 @@ export class GameScene extends Phaser.Scene {
   private enemyBulletSprites: Phaser.GameObjects.Image[] = [];
   /** One visual per concurrent heli slot (Flash parity: maxConcurrent = 1). */
   private heliSprites: Phaser.GameObjects.Image[] = [];
+  /**
+   * Flash nested `gun` clip on each heli (machineGun + hands in the doorway).
+   * Aimed with {@link Helicopter.gunRotationDeg}.
+   */
+  private heliGunSprites: Phaser.GameObjects.Image[] = [];
   /** One visual per in-flight explosion (kills can overlap). */
   private explosionSprites: Phaser.GameObjects.Image[] = [];
   /** Crate + chute visuals for parachuting pickups (#21). */
@@ -850,13 +862,13 @@ export class GameScene extends Phaser.Scene {
 
   private createGunVisual(): void {
     const pivot = this.session.player.gunPivot;
-    const gunDef = getSpriteDef(WEAPON_FRAME);
+    const gunDef = getSpriteDef(MACHINEGUN_FRAME);
     this.gunSprite = this.add
       .image(
         this.arenaOriginX + pivot.x,
         this.arenaOriginY + pivot.y,
         ATLAS_KEY,
-        WEAPON_FRAME,
+        MACHINEGUN_FRAME,
       )
       .setOrigin(gunDef.pivot.x, gunDef.pivot.y)
       .setDisplaySize(GUN.spriteW, GUN.spriteH)
@@ -985,18 +997,29 @@ export class GameScene extends Phaser.Scene {
     // Pool sized for max concurrent + spare explosion slots (#19 / #37 audit).
     const heliPool = PERF.heliVisualPool;
     const boomPool = PERF.explosionVisualPool;
-    const def = getSpriteDef('heli');
+    const def = getSpriteDef(HELI_FRAME);
     const place = placeOnCenter(0, 0, def.pivot, {
       w: def.originalW,
       h: def.originalH,
     });
     this.heliSprites = [];
+    this.heliGunSprites = [];
+    const gunDef = getSpriteDef(MACHINEGUN_FRAME);
     for (let i = 0; i < heliPool; i += 1) {
       this.heliSprites.push(
         this.add
-          .image(0, 0, ATLAS_KEY, 'heli')
+          .image(0, 0, ATLAS_KEY, HELI_FRAME)
           .setOrigin(place.originX, place.originY)
           .setDisplaySize(place.displayW, place.displayH)
+          .setVisible(false),
+      );
+      // Flash nested `gun` — machineGun + hands in the doorway.
+      this.heliGunSprites.push(
+        this.add
+          .image(0, 0, ATLAS_KEY, MACHINEGUN_FRAME)
+          .setOrigin(gunDef.pivot.x, gunDef.pivot.y)
+          .setDisplaySize(GUN.spriteW, GUN.spriteH)
+          .setDepth(HELI_GUN_DEPTH)
           .setVisible(false),
       );
     }
@@ -1056,9 +1079,11 @@ export class GameScene extends Phaser.Scene {
     const helis = this.session.helicopters;
     for (let i = 0; i < this.heliSprites.length; i += 1) {
       const sprite = this.heliSprites[i]!;
+      const gunSprite = this.heliGunSprites[i]!;
       const heli = helis[i];
       if (!heli || !heli.active) {
         sprite.setVisible(false);
+        gunSprite.setVisible(false);
         continue;
       }
       const flashing = heli.hitFlashRemaining > 0;
@@ -1079,6 +1104,16 @@ export class GameScene extends Phaser.Scene {
       sprite.setAngle(heli.rotationDeg);
       // Hit flash uses the dedicated white frame; look variants are redrawn.
       sprite.clearTint();
+
+      // Flash `this.gun` — door gunner (machineGun) tracks the player.
+      const gunPose = heliGunWorldPose(heli);
+      gunSprite.setVisible(true);
+      gunSprite.setPosition(
+        this.arenaOriginX + gunPose.x,
+        this.arenaOriginY + gunPose.y,
+      );
+      gunSprite.setAngle(gunPose.rotationDeg);
+      gunSprite.setFlipY(gunPose.flipY);
     }
 
     const booms = this.session.explosions;

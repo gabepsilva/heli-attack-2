@@ -112,7 +112,12 @@ describe('config/constants (spec seed)', () => {
       fireIntervalMin: 10,
       gunTurnDivisor: 10,
       gunTurnDivisorMin: 1,
-      muzzleOffset: 40,
+      gunAttachLook0X: 11,
+      gunAttachLook0Y: 7,
+      gunAttachLook1X: -9,
+      gunAttachLook1Y: 7,
+      gunBarrelLocalX: 22.7,
+      gunBarrelLocalY: -7.4,
     });
     expect(HELI_SPAWN).toEqual({
       initialConcurrent: 1,
