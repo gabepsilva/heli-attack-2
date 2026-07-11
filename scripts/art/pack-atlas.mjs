@@ -556,6 +556,24 @@ export const SPRITE_DEFS = [
     role: 'Bush at a ledge base — Flash frame 11, same art as tile_06',
     final: true,
   },
+  {
+    id: 'bg_tile_01',
+    sourceFile: 'bg_tile_01.png',
+    originalW: 52,
+    originalH: 52,
+    pivot: { x: 0, y: 0 },
+    role: 'Background foliage — fern / bush crown',
+    final: true,
+  },
+  {
+    id: 'bg_tile_02',
+    sourceFile: 'bg_tile_02.png',
+    originalW: 52,
+    originalH: 52,
+    pivot: { x: 0, y: 0 },
+    role: 'Background foliage — palm trunk with fronds',
+    final: true,
+  },
 ];
 
 function nextPowerOfTwo(n) {
@@ -652,7 +670,7 @@ export function renderArtSpecMarkdown(
     if (def.id.startsWith('player_')) {
       return { w: PLAYER.spriteW, h: PLAYER.spriteH };
     }
-    if (def.id.startsWith('tile_')) {
+    if (def.id.startsWith('tile_') || def.id.startsWith('bg_tile_')) {
       return { w: TILE_ART_SIZE, h: TILE_ART_SIZE };
     }
     if (def.id === 'explosion') {

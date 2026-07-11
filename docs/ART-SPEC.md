@@ -122,6 +122,8 @@ origin  = (pivot.x, pivot.y)   // usually (0.5, 1)
 | `tile_08` | `tile_08.png` | 52×52 | 208×208 (final) | 52×52 | (0, 0) | Rocky overhang corner — Flash frame 9, same art as tile_07 |
 | `tile_09` | `tile_09.png` | 52×52 | 208×208 (final) | 52×52 | (0, 0) | Buried dirt variant (tileset frame 10; unused by map1) |
 | `tile_10` | `tile_10.png` | 52×52 | 208×208 (final) | 52×52 | (0, 0) | Bush at a ledge base — Flash frame 11, same art as tile_06 |
+| `bg_tile_01` | `bg_tile_01.png` | 52×52 | 208×208 (final) | 52×52 | (0, 0) | Background foliage — fern / bush crown |
+| `bg_tile_02` | `bg_tile_02.png` | 52×52 | 208×208 (final) | 52×52 | (0, 0) | Background foliage — palm trunk with fronds |
 
 ## Adding a new sprite
 

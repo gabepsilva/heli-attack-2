@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { TITLE_IMAGE_KEY } from '../config/art';
+import { BG_IMAGE_KEY, TITLE_IMAGE_KEY } from '../config/art';
 import { BOOT_BACKGROUND_COLOR, GAME_HEIGHT, GAME_WIDTH } from '../config/game';
 import { SCENE_KEYS } from '../config/scenes';
 import { getGameAudio } from '../audio/gameAudio';
@@ -12,8 +12,9 @@ import {
 /**
  * Main menu — issues #24 / #25 / #27.
  * Boot loads assets then lands here; Space / click starts a fresh run,
- * unlocks audio, and preloads the full SFX/music catalog. Shows the
- * Flash `title.png` plate plus the persisted local high-score table.
+ * unlocks audio, and preloads the full SFX/music catalog. Shows Flash
+ * `bg.png` + transparent `title.png` stacked (original intro/menu plates),
+ * a dark text panel (Flash menu button backs), and the local high-score table.
  */
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -25,11 +26,22 @@ export class MenuScene extends Phaser.Scene {
 
     const table = loadHighScores();
 
-    // Flash menu title plate (same stage size as bg.png).
+    // Flash intro/menu: full-bleed desert plate, then title overlay on top.
+    this.add
+      .image(GAME_WIDTH / 2, GAME_HEIGHT / 2, BG_IMAGE_KEY)
+      .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
+      .setDepth(-11);
     this.add
       .image(GAME_WIDTH / 2, GAME_HEIGHT / 2, TITLE_IMAGE_KEY)
       .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
       .setDepth(-10);
+
+    // Flash menu buttons sat on near-black backs (SWF DefineBitsLossless2
+    // id419/id427 — solid black with soft alpha edges). One panel behind our
+    // text stack keeps START / scores readable over the bright desert + heli.
+    this.add
+      .rectangle(GAME_WIDTH / 2, 520, 720, 560, 0x000000, 0.55)
+      .setDepth(-5);
 
     this.add
       .text(GAME_WIDTH / 2, 280, 'START', {

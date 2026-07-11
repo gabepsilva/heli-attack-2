@@ -1,4 +1,5 @@
 import { PLAYER, WORLD } from '../config/constants';
+import { createBgLayer, type BgLayer } from './bgLayer';
 import {
   TILE_EMPTY,
   TILE_SOLID,
@@ -125,6 +126,36 @@ export const LEVEL1_FRAMES: TileFrameGrid = LEVEL1_MAP.map((row) =>
 /** Build the original playfield. Pure data — no Phaser. */
 export function createLevel1(): TileMap {
   return createTileMap(LEVEL1_CELLS, WORLD.tile, LEVEL1_FRAMES);
+}
+
+/**
+ * Decompiled `bglayer1_1` — the parallax foliage grid (ferns / palm trunks)
+ * drawn behind the level. 20 columns against the level's 35: Flash repeats it,
+ * and the pattern itself is two copies of a 10-column run, which is why the
+ * original can wrap at half its width without a visible seam.
+ */
+// prettier-ignore
+export const LEVEL1_BG_FRAMES: TileFrameGrid = [
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  [2, 0, 0, 1, 1, 0, 0, 0, 0, 1, 2, 0, 0, 1, 1, 0, 0, 0, 0, 1],
+  [2, 1, 1, 2, 2, 1, 0, 0, 1, 2, 2, 1, 1, 2, 2, 1, 0, 0, 1, 2],
+];
+
+/** Build the level's parallax foliage layer. Pure data — no Phaser. */
+export function createLevel1BgLayer(): BgLayer {
+  return createBgLayer(LEVEL1_BG_FRAMES);
 }
 
 /** Convenience: true if the level cell is solid (for placeholder rendering). */

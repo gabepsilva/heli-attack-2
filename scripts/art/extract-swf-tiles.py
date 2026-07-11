@@ -1,18 +1,24 @@
 #!/usr/bin/env python3
 """
-Extract the original Flash ground tileset from the compiled Heli Attack 2 SWF.
+Extract the original Flash tilesets from the compiled Heli Attack 2 SWF.
 
 The iopred `ha2/assets` PNGs ship the tile *fills* only (`Floor.png`,
-`FloorEdge.png`, …) — the shipped tileset is the `tiles` MovieClip, whose 11
-frames combine those bitmaps with per-frame transforms (three frames are
-horizontally mirrored reuses). Rendering the map from a single `Floor.png`
-loses the grass caps, rocky corners and bushes, so we take the tiles straight
-from the SWF where the mapping is unambiguous:
+`FloorEdge.png`, …) — the shipped tilesets are MovieClips whose frames combine
+those bitmaps with per-frame transforms (some frames are horizontally mirrored
+reuses). Rendering the map from a single `Floor.png` loses the grass caps,
+rocky corners and bushes, so we take the tiles straight from the SWF where the
+mapping is unambiguous:
 
-    map cell `[collision, frame]` → tiles.gotoAndStop(frame + 1)
+    map cell `[collision, frame]` → tileset.gotoAndStop(frame + 1)
 
-Frame 1 is blank (cell frame 0 = empty), so frames 2..11 are cell frames 1..10
-and land here as `tile_01.png` … `tile_10.png` (52×52 RGBA, mirrors baked in).
+Frame 1 of each tileset is blank (cell frame 0 = empty), so frame `n + 1` is
+cell frame `n`. Two tilesets ship:
+
+  `tiles` → tiles/tile_01.png … tile_10.png   ground (drawMap "tiles")
+  `bg`    → tiles/bg_tile_01.png, bg_tile_02.png
+            parallax foliage (drawMap "bg" — Flash `bglayer1`)
+
+All are 52×52 RGBA with mirrors baked in.
 
 Source SWF (gitignored, like the rest of reference/ha2-source):
     https://github.com/iopred/heliattack/raw/main/ha2/heli2miniclip.%24wf
@@ -38,13 +44,15 @@ OUT_DIR = ROOT / "reference" / "ha2-source" / "gfx" / "tiles"
 TILE_SIZE = 52
 """Flash tile art edge (drawn on the 50px map grid with a 1px overlap)."""
 
-TILES_SYMBOL = "tiles"
-"""ExportAssets name of the ground tileset MovieClip."""
-
 FIRST_TILE_FRAME = 2
-"""Frame 1 of `tiles` is blank (map frame 0); real tiles start at frame 2."""
+"""Frame 1 of a tileset is blank (map frame 0); real tiles start at frame 2."""
 
-TILE_COUNT = 10
+TILESETS = (
+    # (ExportAssets symbol, output prefix, tile count)
+    ("tiles", "tile", 10),
+    ("bg", "bg_tile", 2),
+)
+"""Flash tileset MovieClips, as named by `drawMap(map, clip, depth, tileset)`."""
 
 # SWF tag codes we care about.
 TAG_END = 0
@@ -275,34 +283,38 @@ def main() -> None:
         )
 
     swf = Swf(SWF)
-    if TILES_SYMBOL not in swf.exports:
-        raise SystemExit(f"SWF exports no `{TILES_SYMBOL}` symbol")
-
-    frames = swf.sprite_frame_chars(swf.exports[TILES_SYMBOL])
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    print(f"Extracting `{TILES_SYMBOL}` frames → {OUT_DIR.relative_to(ROOT)}")
+    print(f"Extracting tilesets → {OUT_DIR.relative_to(ROOT)}")
 
-    for tile in range(1, TILE_COUNT + 1):
-        frame = tile + FIRST_TILE_FRAME - 1
-        # A frame without its own PlaceObject keeps the previous frame's art.
-        shape_id = next(
-            frames[f] for f in range(frame, 0, -1) if f in frames  # noqa: B905
-        )
-        bitmap_id, matrix = swf.shape_bitmap_fill(shape_id)
-        image = swf.bitmap_image(bitmap_id)
-        if image.size != (TILE_SIZE, TILE_SIZE):
-            raise SystemExit(f"tile {tile}: expected 52×52, got {image.size}")
+    for symbol, prefix, count in TILESETS:
+        if symbol not in swf.exports:
+            raise SystemExit(f"SWF exports no `{symbol}` symbol")
+        frames = swf.sprite_frame_chars(swf.exports[symbol])
+        print(f"  `{symbol}`:")
 
-        mirrored = matrix["scaleX"] < 0
-        if mirrored:
-            image = image.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
-        if matrix["scaleY"] < 0:
-            image = image.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+        for tile in range(1, count + 1):
+            frame = tile + FIRST_TILE_FRAME - 1
+            # A frame without its own PlaceObject keeps the previous frame's art
+            # (Flash `tiles` frame 9 reuses frame 8's shape at the same depth).
+            shape_id = frames[max(n for n in frames if n <= frame)]
+            bitmap_id, matrix = swf.shape_bitmap_fill(shape_id)
+            image = swf.bitmap_image(bitmap_id)
+            if image.size != (TILE_SIZE, TILE_SIZE):
+                raise SystemExit(f"{prefix} {tile}: expected 52×52, got {image.size}")
 
-        out = OUT_DIR / f"tile_{tile:02d}.png"
-        image.save(out, "PNG")
-        note = " (mirrored)" if mirrored else ""
-        print(f"  {out.name} ← frame {frame} shape {shape_id} bitmap {bitmap_id}{note}")
+            mirrored = matrix["scaleX"] < 0
+            if mirrored:
+                image = image.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+            if matrix["scaleY"] < 0:
+                image = image.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+
+            out = OUT_DIR / f"{prefix}_{tile:02d}.png"
+            image.save(out, "PNG")
+            note = " (mirrored)" if mirrored else ""
+            print(
+                f"    {out.name} ← frame {frame} shape {shape_id} "
+                f"bitmap {bitmap_id}{note}"
+            )
 
     print("Done. Run: npm run art:import-original && npm run art:pack")
 

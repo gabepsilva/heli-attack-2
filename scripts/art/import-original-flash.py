@@ -169,9 +169,12 @@ def main() -> None:
         ("bg.png", "bg.png"),
         ("title.png", "title.png"),
     ]
-    # Ground tileset — `tiles` MovieClip frames 2..11 (see extract-swf-tiles.py).
+    # Tilesets — `tiles` / `bg` MovieClip frames (see extract-swf-tiles.py).
     world_map += [
         (f"tiles/tile_{n:02d}.png", f"tile_{n:02d}.png") for n in range(1, 11)
+    ]
+    world_map += [
+        (f"tiles/bg_tile_{n:02d}.png", f"bg_tile_{n:02d}.png") for n in range(1, 3)
     ]
     heli_src = load_rgba("heli.png")
     for src_name, dest_name in world_map:

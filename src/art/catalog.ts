@@ -563,6 +563,26 @@ export const SPRITE_DEFS = [
     role: 'Bush at a ledge base — Flash frame 11, same art as tile_06',
     final: true,
   },
+  // Parallax foliage tileset — Flash `bg` MovieClip frames 2..3, drawn behind
+  // the ground by `bglayer1` (decorative only; collision slot is always 0).
+  {
+    id: 'bg_tile_01',
+    sourceFile: 'bg_tile_01.png',
+    originalW: 52,
+    originalH: 52,
+    pivot: { x: 0, y: 0 },
+    role: 'Background foliage — fern / bush crown',
+    final: true,
+  },
+  {
+    id: 'bg_tile_02',
+    sourceFile: 'bg_tile_02.png',
+    originalW: 52,
+    originalH: 52,
+    pivot: { x: 0, y: 0 },
+    role: 'Background foliage — palm trunk with fronds',
+    final: true,
+  },
 ] as const satisfies readonly SpriteDef[];
 
 export type SpriteId = (typeof SPRITE_DEFS)[number]['id'];
@@ -619,6 +639,15 @@ export const TILE_FRAME_IDS = [
 ] as const satisfies readonly SpriteId[];
 
 /**
+ * Parallax foliage frames (Flash `bg` tileset), indexed the same way: `bglayer1`
+ * cell frame `n` (1..2) draws `BG_TILE_FRAME_IDS[n - 1]`.
+ */
+export const BG_TILE_FRAME_IDS = [
+  'bg_tile_01',
+  'bg_tile_02',
+] as const satisfies readonly SpriteId[];
+
+/**
  * Atlas frame for a map cell's visual slot, or `null` for a blank cell.
  * Out-of-range frames are treated as blank rather than throwing — a malformed
  * cell should leave a hole, not crash the render.
@@ -627,9 +656,15 @@ export function tileFrameForCell(frame: number): SpriteId | null {
   return TILE_FRAME_IDS[frame - 1] ?? null;
 }
 
-/** True for ground tileset frames (they share the 52×52 draw box). */
+/** As {@link tileFrameForCell}, for the background foliage layer. */
+export function bgTileFrameForCell(frame: number): SpriteId | null {
+  return BG_TILE_FRAME_IDS[frame - 1] ?? null;
+}
+
+/** True for tileset frames (ground or foliage) — they share the 52×52 draw box. */
 export function isTileFrame(id: string): boolean {
-  return (TILE_FRAME_IDS as readonly string[]).includes(id);
+  const tilesets: readonly string[] = [...TILE_FRAME_IDS, ...BG_TILE_FRAME_IDS];
+  return tilesets.includes(id);
 }
 
 /**
@@ -710,6 +745,8 @@ export const FLASH_ORIGINAL_SOURCES = {
   tile_08: 'tiles/tile_08.png',
   tile_09: 'tiles/tile_09.png',
   tile_10: 'tiles/tile_10.png',
+  bg_tile_01: 'tiles/bg_tile_01.png',
+  bg_tile_02: 'tiles/bg_tile_02.png',
 } as const satisfies Record<SpriteId, string | null>;
 
 /**

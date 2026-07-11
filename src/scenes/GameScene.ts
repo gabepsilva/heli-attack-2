@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import {
+  bgTileFrameForCell,
   gameDrawSize,
   getSpriteDef,
   heliFrameForLook,
@@ -85,7 +86,13 @@ import { PerfMonitor } from '../tooling/perfMonitor';
 import { buildHudSnapshot } from '../ui/hud';
 import { GameHud } from '../ui/gameHud';
 import { getMountedTouchControlsHud } from '../ui/touchControlsHud';
-import { LEVEL1_HEIGHT_PX, LEVEL1_WIDTH_PX } from '../world/level1';
+import {
+  LEVEL1_COLS,
+  LEVEL1_HEIGHT_PX,
+  LEVEL1_WIDTH_PX,
+  createLevel1BgLayer,
+} from '../world/level1';
+import { BG_LAYER_SCROLL_FACTOR, bgFrameAt } from '../world/bgLayer';
 import { getTileFrame } from '../world/tileMap';
 
 const PLAYER_HITBOX_STROKE = 0xd8f3dc;
@@ -110,6 +117,8 @@ const BULLET_PLAYER_FRAME = 'bullet_player';
 const BULLET_ENEMY_FRAME = 'bullet_enemy';
 const MUZZLE_FRAME = 'muzzle_flash';
 const EXPLOSION_FRAME = 'explosion';
+/** Foliage sits behind the ground (depth 0) but above the sky plate (-10). */
+const BG_LAYER_DEPTH = -1;
 /** Planted FireMine body — replaces the lobbed projectile frame on contact. */
 const MINE_PLANTED_FRAME = 'mine';
 /** Crate frame every powerup sprite is built with; swapped per pickup kind. */
@@ -274,6 +283,7 @@ export class GameScene extends Phaser.Scene {
       .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
       .setDepth(-10);
 
+    this.drawBgLayer();
     this.drawArena();
     this.createPlayerVisual();
     this.createGunVisual();
@@ -672,6 +682,37 @@ export class GameScene extends Phaser.Scene {
     this.syncPowerupVisuals();
     this.syncGameHud();
     this.syncPlayerCombatFx();
+  }
+
+  /**
+   * Draw the parallax foliage (Flash `bglayer1`) behind the ground: ferns and
+   * palm trunks on their own grid, repeated across the level width. The layer
+   * scrolls at {@link BG_LAYER_SCROLL_FACTOR}; with our static camera that is
+   * a no-op today, but it keeps the depth cue correct if the camera pans.
+   */
+  private drawBgLayer(): void {
+    const layer = createLevel1BgLayer();
+
+    for (let row = 0; row < layer.rows; row += 1) {
+      for (let col = 0; col < LEVEL1_COLS; col += 1) {
+        const frame = bgTileFrameForCell(bgFrameAt(layer, col, row));
+        if (frame === null) {
+          continue;
+        }
+        const place = tilePlacement(
+          col,
+          row,
+          this.arenaOriginX,
+          this.arenaOriginY,
+        );
+        this.add
+          .image(place.x, place.y, ATLAS_KEY, frame)
+          .setOrigin(place.originX, place.originY)
+          .setDisplaySize(place.displayW, place.displayH)
+          .setScrollFactor(BG_LAYER_SCROLL_FACTOR)
+          .setDepth(BG_LAYER_DEPTH);
+      }
+    }
   }
 
   /**
