@@ -18,10 +18,11 @@ export interface BgLayer {
 }
 
 /**
- * Flash `bglayer1._x -= sdx / 2` — the layer drifts at half the world's scroll
- * speed. Our camera is static (the whole level fits the canvas), so this
- * changes nothing today; it is applied at draw time so the parallax is already
- * correct if the camera ever starts panning.
+ * Flash `bglayer1._x -= sdx / 2` — the layer drifts at half the world's
+ * horizontal scroll speed, which reads as distance behind the ground now that
+ * the camera follows the player. Applied as a scroll factor at draw time; the
+ * vertical axis stays 1:1 so the foliage keeps its footing in the ground (Flash
+ * drove `bglayer1._y` off the camera's height instead).
  */
 export const BG_LAYER_SCROLL_FACTOR = 0.5;
 

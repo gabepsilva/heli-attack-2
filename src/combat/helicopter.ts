@@ -151,8 +151,13 @@ export function isHeliOffArena(
 
 /**
  * Flash camera visibility — the sprite box overlaps the view, grown by one tile.
- * The camera is fixed over the whole arena, so "in view" means "in the arena".
  * Gates `onscreen--` so the timer does not tick down while still approaching.
+ *
+ * The sim keeps using the arena as the visibility region even though the render
+ * camera now shows a window of it ({@link CAMERA}): chase targets hold the heli
+ * within half a Flash view of the player, so a live heli is on screen either
+ * way, and an arena-sized region keeps spawns and exits frame-rate stable
+ * instead of tied to where the player happens to be looking.
  */
 export function isHeliInView(
   heli: Readonly<{ x: number; y: number }>,

@@ -18,6 +18,11 @@ import {
 } from '../art/spritePlacement';
 import { getGameAudio } from '../audio/gameAudio';
 import { GameSfx } from '../audio/gameSfx';
+import {
+  centerCameraScroll,
+  followCameraScroll,
+  type CameraScroll,
+} from '../camera/followCamera';
 import { GameParticles } from '../fx/gameParticles';
 import { HurtFlash } from '../fx/hurtFlash';
 import {
@@ -39,6 +44,7 @@ import {
 } from '../player/playerAnim';
 import { PLAYER_PARACHUTE } from '../player/parachuteIntro';
 import {
+  CAMERA,
   GAME_FLOW,
   GUN,
   PLAYER,
@@ -106,6 +112,18 @@ import { getTileFrame } from '../world/tileMap';
 
 const PLAYER_HITBOX_STROKE = 0xd8f3dc;
 const POWERUP_CHUTE_COLOR = 0xf8f9fa;
+
+/** World px the zoomed camera shows — Flash `sw` × `sh` (450 × 320 at 1×). */
+const CAMERA_VIEW = {
+  w: GAME_WIDTH / CAMERA.zoom,
+  h: GAME_HEIGHT / CAMERA.zoom,
+} as const;
+
+/** Scroll limits — Flash `scrollMap` holds the window inside the map. */
+const CAMERA_LEVEL = {
+  w: LEVEL1_WIDTH_PX,
+  h: LEVEL1_HEIGHT_PX,
+} as const;
 
 /** Flash `gfx.chute` canopy drawn above the player during `heroStart`. */
 const PLAYER_CHUTE = {
@@ -260,6 +278,8 @@ export class GameScene extends Phaser.Scene {
   private overlay: DebugOverlay | null = null;
   private arenaOriginX = 0;
   private arenaOriginY = 0;
+  /** Top-left of the visible window in arena px (Flash `-world._x/_y`). */
+  private cameraScroll: CameraScroll = { x: 0, y: 0 };
 
   private readonly onResume = (): void => {
     resumeGame(this.flow);
@@ -302,10 +322,19 @@ export class GameScene extends Phaser.Scene {
     this.arenaOriginX = Math.floor((GAME_WIDTH - LEVEL1_WIDTH_PX) / 2);
     this.arenaOriginY = Math.floor((GAME_HEIGHT - LEVEL1_HEIGHT_PX) / 2) - 40;
 
-    // Full-bleed desert plate behind the arena (#34).
+    // Objects the world builders below add ride the scrolling camera; anything
+    // created after them (hurt flash, HUD, key hints) is screen furniture and
+    // rides the fixed HUD camera. Both pools are complete by the end of
+    // create() — nothing here allocates game objects during play.
+    const worldStart = this.children.list.length;
+
+    // Full-bleed desert plate behind the arena (#34). Scroll factor 0 pins it
+    // to the screen, but camera zoom still scales it, so it is drawn at view
+    // size and the zoom blows it back up to fill the canvas.
     this.add
       .image(GAME_WIDTH / 2, GAME_HEIGHT / 2, BG_IMAGE_KEY)
-      .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
+      .setDisplaySize(CAMERA_VIEW.w, CAMERA_VIEW.h)
+      .setScrollFactor(0)
       .setDepth(-10);
 
     this.drawBgLayer();
@@ -320,6 +349,8 @@ export class GameScene extends Phaser.Scene {
       originX: this.arenaOriginX,
       originY: this.arenaOriginY,
     });
+    const worldObjects = this.children.list.slice(worldStart);
+
     this.hurtFlash = new HurtFlash({ scene: this });
     this.gameHud = new GameHud(this);
     this.setupGameAudio();
@@ -418,6 +449,9 @@ export class GameScene extends Phaser.Scene {
       );
     }
 
+    // Last: every game object exists now, so the world / HUD split is complete.
+    this.setupCameras(worldObjects);
+
     // Resume may re-enter without a full create() — keep flow in sync.
     this.events.on(Phaser.Scenes.Events.RESUME, this.onResume);
 
@@ -444,6 +478,63 @@ export class GameScene extends Phaser.Scene {
       this.controlsHelpTop = null;
       this.controlsHelpBottom = null;
     });
+  }
+
+  /**
+   * Split the scene between a zoomed camera that follows the player over the
+   * map and a 1:1 camera that holds the HUD still. Phaser applies camera zoom
+   * to scroll-factor-0 objects as well, so the HUD cannot ride the world camera
+   * — it gets its own, stacked on top, and the two ignore each other's objects.
+   * Phaser rebuilds the camera manager on every scene start, so this runs fresh
+   * each create().
+   */
+  private setupCameras(worldObjects: Phaser.GameObjects.GameObject[]): void {
+    const world = this.cameras.main;
+    world.setZoom(CAMERA.zoom);
+    // Bounds are in scene coords, where the arena sits at its origin offset.
+    world.setBounds(
+      this.arenaOriginX,
+      this.arenaOriginY,
+      CAMERA_LEVEL.w,
+      CAMERA_LEVEL.h,
+    );
+
+    const ui = this.cameras.add(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    ui.ignore(worldObjects);
+    const worldSet = new Set<Phaser.GameObjects.GameObject>(worldObjects);
+    world.ignore(this.children.list.filter((obj) => !worldSet.has(obj)));
+
+    // Spawn snap, so the first frame opens on the player rather than the map
+    // origin (Flash seeds the same way in heroDie).
+    this.cameraScroll = centerCameraScroll(
+      this.session.player.body,
+      CAMERA_VIEW,
+      CAMERA_LEVEL,
+    );
+    this.applyCameraScroll();
+  }
+
+  /** One frame of Flash `heroAction` scrolling — see {@link followCameraScroll}. */
+  private syncCamera(): void {
+    this.cameraScroll = followCameraScroll(
+      this.cameraScroll,
+      this.session.player.body,
+      CAMERA_VIEW,
+      CAMERA_LEVEL,
+    );
+    this.applyCameraScroll();
+  }
+
+  /**
+   * Phaser's `scrollX` is the *centre* of the view minus half the (unzoomed)
+   * camera width, so a zoomed camera is positioned through its midpoint rather
+   * than by assigning the window's top-left directly.
+   */
+  private applyCameraScroll(): void {
+    this.cameras.main.centerOn(
+      this.arenaOriginX + this.cameraScroll.x + CAMERA_VIEW.w / 2,
+      this.arenaOriginY + this.cameraScroll.y + CAMERA_VIEW.h / 2,
+    );
   }
 
   /**
@@ -495,6 +586,11 @@ export class GameScene extends Phaser.Scene {
     const allowFire = this.flow.phase === 'playing';
     const touchHud = getMountedTouchControlsHud();
     const touchMode = touchHud?.isVisible() ?? false;
+    // Aim lives in arena space. `pointer.worldX` reflects whichever camera last
+    // hit-tested the pointer — with the HUD camera in the stack that is not
+    // necessarily the world one, so project through the world camera by hand:
+    // it owns the zoom and the scroll.
+    const aim = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
     // In touch mode, ignore canvas pointer fire/aim — sticks own those slots.
     const kbIntent = sampleKeyboardMouseIntent({
       held: {
@@ -508,10 +604,10 @@ export class GameScene extends Phaser.Scene {
       pointer: {
         aimX: touchMode
           ? this.session.player.mouse.x
-          : pointer.worldX - this.arenaOriginX,
+          : aim.x - this.arenaOriginX,
         aimY: touchMode
           ? this.session.player.mouse.y
-          : pointer.worldY - this.arenaOriginY,
+          : aim.y - this.arenaOriginY,
         primaryDown: touchMode ? false : pointer.isDown,
         rightDown: touchMode ? false : pointer.rightButtonDown(),
       },
@@ -699,6 +795,7 @@ export class GameScene extends Phaser.Scene {
     });
     this.perfHud?.refresh();
 
+    this.syncCamera();
     this.syncPlayerVisual();
     this.syncGunVisual();
     this.syncBulletVisuals();
@@ -711,9 +808,10 @@ export class GameScene extends Phaser.Scene {
 
   /**
    * Draw the parallax foliage (Flash `bglayer1`) behind the ground: ferns and
-   * palm trunks on their own grid, repeated across the level width. The layer
-   * scrolls at {@link BG_LAYER_SCROLL_FACTOR}; with our static camera that is
-   * a no-op today, but it keeps the depth cue correct if the camera pans.
+   * palm trunks on their own grid, repeated across the level width. It drifts
+   * at {@link BG_LAYER_SCROLL_FACTOR} horizontally (Flash `bglayer1._x -= sdx/2`)
+   * but tracks the world 1:1 vertically, so the foliage stays planted in the
+   * ground it grows out of while the camera climbs.
    */
   private drawBgLayer(): void {
     const layer = createLevel1BgLayer();
@@ -734,7 +832,7 @@ export class GameScene extends Phaser.Scene {
           .image(place.x, place.y, ATLAS_KEY, frame)
           .setOrigin(place.originX, place.originY)
           .setDisplaySize(place.displayW, place.displayH)
-          .setScrollFactor(BG_LAYER_SCROLL_FACTOR)
+          .setScrollFactor(BG_LAYER_SCROLL_FACTOR, 1)
           .setDepth(BG_LAYER_DEPTH);
       }
     }

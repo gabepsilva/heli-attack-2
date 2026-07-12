@@ -113,6 +113,24 @@ export function resetPhysicsConstants(): void {
   Object.assign(PLAYER, PLAYER_DEFAULTS);
 }
 
+/**
+ * Scrolling world camera — see {@link ../camera/followCamera}.
+ *
+ * Flash showed a 450×320 window (`sw`/`sh`) of 50 px tiles: 9 × 6.4 tiles, with
+ * the 212 px heli filling half the width. Our 1920×1080 canvas fits the whole
+ * 1750×750 level, which is why the map reads as a single flat platform. Zooming
+ * the camera restores the window: at {@link CAMERA.zoom} 2 it shows 960×540
+ * world px (19 × 11 tiles). Raise the zoom for a tighter, more faithful frame
+ * (4.27 would match Flash exactly); the follow rules are zoom-independent.
+ */
+export const CAMERA = {
+  zoom: 2,
+  /** Flash `sh/4` — the player box never rides above this line in the view. */
+  deadzoneTopFrac: 0.25,
+  /** Flash `sh - sh/4` — nor below this one. */
+  deadzoneBottomFrac: 0.75,
+} as const;
+
 export const HELI = {
   hp: 300,
   bulletSpeed: 7,
@@ -134,8 +152,11 @@ export const HELI = {
   lookCount: 2,
   /**
    * Flash camera size in world px (`spw`/`sph` from `sw=450`, `sh=320`,
-   * tile 50 → stw=9, sth=7). Chase drift / hover height are relative to the
-   * camera, not the map; retune here if camera zoom ever lands.
+   * tile 50 → stw=9, sth=7). Chase drift and hover height are expressed in
+   * these units — how far the heli wanders either side of the player and how
+   * high above him it sits. They are *chase tuning*, not the render window:
+   * {@link CAMERA} owns that, and the two are deliberately independent, so the
+   * heli keeps its Flash spacing from the player at any zoom.
    */
   viewW: 450,
   viewH: 350,
