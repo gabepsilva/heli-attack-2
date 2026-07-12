@@ -125,6 +125,8 @@ describe('config/constants (spec seed)', () => {
       shardBurst: 3,
       shardLookCount: 5,
       shardMaxBounces: 3,
+      metalBounceInterval: 3,
+      metalSoundCount: 4,
       pilotSettleSpeed: 4,
     });
     expect(HELI_SPAWN).toEqual({
