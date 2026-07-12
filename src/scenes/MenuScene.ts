@@ -1,9 +1,8 @@
 import Phaser from 'phaser';
-import { gameDrawSize, getSpriteDef } from '../art/catalog';
 import {
-  ATLAS_KEY,
   BG_IMAGE_KEY,
   BULLET_ENEMY_FRAME,
+  ENEMY_GUY_FRAME,
   HELI_FRAME,
   MACHINEGUN_FRAME,
   TITLE_IMAGE_KEY,
@@ -17,8 +16,10 @@ import {
   formatHighScoreTableText,
   loadHighScores,
 } from '../core/highScores';
+import { addAtlasImage } from './atlasSprite';
 import {
   createMenuHeliAmbience,
+  menuHeliGunnerPose,
   menuHeliGunPose,
   stepMenuHeliAmbience,
   type MenuHeliAmbienceState,
@@ -26,6 +27,16 @@ import {
 
 /** Longest frame the ambience sim will absorb before it stops catching up. */
 const MAX_MENU_DELTA_SEC = 0.05;
+
+/**
+ * Ambience heli stack, all behind the title plate (-10) and text panel (-5).
+ * The gunner's body is sandwiched between the hull he stands in and the gun he
+ * holds, so the depths have to interleave rather than sit on integers.
+ */
+const HELI_HULL_DEPTH = -9;
+const HELI_GUNNER_DEPTH = -8.5;
+const HELI_GUN_DEPTH = -8;
+const HELI_BULLET_DEPTH = -7;
 
 /**
  * Main menu — issues #24 / #25 / #27.
@@ -38,6 +49,7 @@ const MAX_MENU_DELTA_SEC = 0.05;
 export class MenuScene extends Phaser.Scene {
   private heliAmbience!: MenuHeliAmbienceState;
   private heliSprite!: Phaser.GameObjects.Image;
+  private heliGunnerSprite!: Phaser.GameObjects.Image;
   private heliGunSprite!: Phaser.GameObjects.Image;
   private cosmeticBulletSprites: Phaser.GameObjects.Image[] = [];
   private starting = false;
@@ -160,29 +172,17 @@ export class MenuScene extends Phaser.Scene {
 
   private createMenuHeli(): void {
     this.heliAmbience = createMenuHeliAmbience();
-    const heliDef = getSpriteDef(HELI_FRAME);
-    const heliDraw = gameDrawSize(heliDef);
-    this.heliSprite = this.add
-      .image(0, 0, ATLAS_KEY, HELI_FRAME)
-      .setOrigin(heliDef.pivot.x, heliDef.pivot.y)
-      .setDisplaySize(heliDraw.w, heliDraw.h)
-      .setDepth(-9);
-
-    const gunDef = getSpriteDef(MACHINEGUN_FRAME);
-    this.heliGunSprite = this.add
-      .image(0, 0, ATLAS_KEY, MACHINEGUN_FRAME)
-      .setOrigin(gunDef.pivot.x, gunDef.pivot.y)
-      .setDisplaySize(GUN.spriteW, GUN.spriteH)
-      .setDepth(-8);
-
-    const bulletDef = getSpriteDef(BULLET_ENEMY_FRAME);
-    const bulletDraw = gameDrawSize(bulletDef);
+    this.heliSprite = addAtlasImage(this, HELI_FRAME).setDepth(HELI_HULL_DEPTH);
+    this.heliGunnerSprite = addAtlasImage(this, ENEMY_GUY_FRAME).setDepth(
+      HELI_GUNNER_DEPTH,
+    );
+    this.heliGunSprite = addAtlasImage(this, MACHINEGUN_FRAME, {
+      w: GUN.spriteW,
+      h: GUN.spriteH,
+    }).setDepth(HELI_GUN_DEPTH);
     this.cosmeticBulletSprites = this.heliAmbience.bullets.map(() =>
-      this.add
-        .image(0, 0, ATLAS_KEY, BULLET_ENEMY_FRAME)
-        .setOrigin(bulletDef.pivot.x, bulletDef.pivot.y)
-        .setDisplaySize(bulletDraw.w, bulletDraw.h)
-        .setDepth(-7)
+      addAtlasImage(this, BULLET_ENEMY_FRAME)
+        .setDepth(HELI_BULLET_DEPTH)
         .setVisible(false),
     );
 
@@ -194,6 +194,10 @@ export class MenuScene extends Phaser.Scene {
     const { heli, bullets } = this.heliAmbience;
     this.heliSprite.setPosition(heli.x, heli.y);
     this.heliSprite.setAngle(heli.rotationDeg);
+
+    const gunner = menuHeliGunnerPose(this.heliAmbience);
+    this.heliGunnerSprite.setPosition(gunner.x, gunner.y);
+    this.heliGunnerSprite.setAngle(gunner.rotationDeg);
 
     const gun = menuHeliGunPose(this.heliAmbience);
     this.heliGunSprite.setPosition(gun.x, gun.y);

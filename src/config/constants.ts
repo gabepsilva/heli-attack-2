@@ -219,6 +219,13 @@ export const HELI = {
    */
   gunBarrelLocalX: 22.7,
   gunBarrelLocalY: -7.4,
+  /**
+   * Flash Heli body shape composites `enemyguy.png` into the doorway (bitmap
+   * fill top-left (−1.5, −20) on the 25×48 sprite). The catalog pivot is the
+   * gunner's feet (bottom-center), which land this far below the gun attach on
+   * the same X — so the nested `gun` clip rides his chest.
+   */
+  gunnerFeetBelowGunY: 21,
 } as const;
 
 /**

@@ -118,6 +118,7 @@ describe('config/constants (spec seed)', () => {
       gunAttachLook1Y: 7,
       gunBarrelLocalX: 22.7,
       gunBarrelLocalY: -7.4,
+      gunnerFeetBelowGunY: 21,
     });
     expect(HELI_SPAWN).toEqual({
       initialConcurrent: 1,

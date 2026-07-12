@@ -77,7 +77,7 @@ origin  = (pivot.x, pivot.y)   // usually (0.5, 1)
 | `heli_strafe` | `heli_strafe.png` | 212×106 | 848×424 (final) | 212×106 | (0.5, 0.5) | Enemy helicopter look 1 / strafe (stub: reuse heli.png) |
 | `heli_hit` | `heli_hit.png` | 212×106 | 848×424 (final) | 212×106 | (0.5, 0.5) | Helicopter damaged flash (temp Flash heli_hit.png) |
 | `heli_destroyed` | `heliDestroyed.png` | 173×89 | 692×356 (final) | 173×89 | (0.5, 0.5) | Helicopter wreck (temp Flash heliDestroyed.png) |
-| `enemy_guy` | `enemyguy.png` | 25×48 | 100×192 (final) | 25×48 | (0.5, 1) | Paratrooper / ground enemy (temp Flash enemyguy.png) |
+| `enemy_guy` | `enemyguy.png` | 25×48 | 100×192 (final) | 25×48 | (0.5, 1) | Heli door-gunner body (+ ground enemy) (temp Flash enemyguy.png) |
 | `bullet_player` | `bullett.png` | 10×9 | 40×36 (final) | 10×9 | (0.5, 0.5) | Player projectile (temp Flash bullett.png) |
 | `bullet_enemy` | `enemybullet.png` | 10×9 | 40×36 (final) | 10×9 | (0.5, 0.5) | Enemy projectile (temp Flash enemybullet.png) |
 | `weapon_machinegun` | `machineGun.png` | 29×16 | 116×64 (final) | 29×16 | (0.2, 0.5) | Starting machine gun (temp Flash machineGun.png) |

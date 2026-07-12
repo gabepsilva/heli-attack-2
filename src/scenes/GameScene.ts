@@ -24,11 +24,12 @@ import {
   ATLAS_KEY,
   BG_IMAGE_KEY,
   BULLET_ENEMY_FRAME,
+  ENEMY_GUY_FRAME,
   HELI_FRAME,
   MACHINEGUN_FRAME,
 } from '../config/art';
 import { isPlayerHurtFlashing } from '../combat/playerHealth';
-import { heliGunWorldPose } from '../combat/helicopter';
+import { heliGunnerWorldPose, heliGunWorldPose } from '../combat/helicopter';
 import { playerPowerupAlpha } from '../combat/powerupEffects';
 import { getActiveWeaponDef } from '../combat/weaponInventory';
 import {
@@ -93,6 +94,7 @@ import { PerfMonitor } from '../tooling/perfMonitor';
 import { buildHudSnapshot } from '../ui/hud';
 import { GameHud } from '../ui/gameHud';
 import { getMountedTouchControlsHud } from '../ui/touchControlsHud';
+import { addAtlasImage } from './atlasSprite';
 import {
   LEVEL1_COLS,
   LEVEL1_HEIGHT_PX,
@@ -121,9 +123,15 @@ const PLAYER_CHUTE = {
 const HELI_HIT_FRAME = 'heli_hit';
 const BULLET_PLAYER_FRAME = 'bullet_player';
 const MUZZLE_FRAME = 'muzzle_flash';
-/** Door gunner draws above the hull (depth 0) and below the player (20). */
+/**
+ * Door gunner draws above the hull (depth 0) and below the player (20), with
+ * his gun over his body.
+ */
+const HELI_GUNNER_DEPTH = 4;
 const HELI_GUN_DEPTH = 5;
 const EXPLOSION_FRAME = 'explosion';
+/** Booms draw over everything they consume, player included. */
+const EXPLOSION_DEPTH = 25;
 /** Foliage sits behind the ground (depth 0) but above the sky plate (-10). */
 const BG_LAYER_DEPTH = -1;
 /** Planted FireMine body — replaces the lobbed projectile frame on contact. */
@@ -221,6 +229,11 @@ export class GameScene extends Phaser.Scene {
    * Aimed with {@link Helicopter.gunRotationDeg}.
    */
   private heliGunSprites: Phaser.GameObjects.Image[] = [];
+  /**
+   * Flash heli body bitmap-fill of `enemyguy.png` — feet in the doorway, fixed
+   * to the hull (does not track gun aim). Drawn under the arms/gun.
+   */
+  private heliGunnerSprites: Phaser.GameObjects.Image[] = [];
   /** One visual per in-flight explosion (kills can overlap). */
   private explosionSprites: Phaser.GameObjects.Image[] = [];
   /** Crate + chute visuals for parachuting pickups (#21). */
@@ -1003,9 +1016,11 @@ export class GameScene extends Phaser.Scene {
       h: def.originalH,
     });
     this.heliSprites = [];
+    this.heliGunnerSprites = [];
     this.heliGunSprites = [];
-    const gunDef = getSpriteDef(MACHINEGUN_FRAME);
     for (let i = 0; i < heliPool; i += 1) {
+      // The hull re-places itself per frame (look variants swap the texture),
+      // so it takes the placement origin rather than the catalog pivot.
       this.heliSprites.push(
         this.add
           .image(0, 0, ATLAS_KEY, HELI_FRAME)
@@ -1013,26 +1028,27 @@ export class GameScene extends Phaser.Scene {
           .setDisplaySize(place.displayW, place.displayH)
           .setVisible(false),
       );
+      // Flash heli body composites enemyguy into the doorway under the gun.
+      this.heliGunnerSprites.push(
+        addAtlasImage(this, ENEMY_GUY_FRAME)
+          .setDepth(HELI_GUNNER_DEPTH)
+          .setVisible(false),
+      );
       // Flash nested `gun` — machineGun + hands in the doorway.
       this.heliGunSprites.push(
-        this.add
-          .image(0, 0, ATLAS_KEY, MACHINEGUN_FRAME)
-          .setOrigin(gunDef.pivot.x, gunDef.pivot.y)
-          .setDisplaySize(GUN.spriteW, GUN.spriteH)
+        addAtlasImage(this, MACHINEGUN_FRAME, {
+          w: GUN.spriteW,
+          h: GUN.spriteH,
+        })
           .setDepth(HELI_GUN_DEPTH)
           .setVisible(false),
       );
     }
-    const boomDef = getSpriteDef(EXPLOSION_FRAME);
-    const boomDraw = gameDrawSize(boomDef);
     this.explosionSprites = [];
     for (let i = 0; i < boomPool; i += 1) {
       this.explosionSprites.push(
-        this.add
-          .image(0, 0, ATLAS_KEY, EXPLOSION_FRAME)
-          .setOrigin(boomDef.pivot.x, boomDef.pivot.y)
-          .setDisplaySize(boomDraw.w, boomDraw.h)
-          .setDepth(25)
+        addAtlasImage(this, EXPLOSION_FRAME)
+          .setDepth(EXPLOSION_DEPTH)
           .setVisible(false),
       );
     }
@@ -1079,10 +1095,12 @@ export class GameScene extends Phaser.Scene {
     const helis = this.session.helicopters;
     for (let i = 0; i < this.heliSprites.length; i += 1) {
       const sprite = this.heliSprites[i]!;
+      const gunnerSprite = this.heliGunnerSprites[i]!;
       const gunSprite = this.heliGunSprites[i]!;
       const heli = helis[i];
       if (!heli || !heli.active) {
         sprite.setVisible(false);
+        gunnerSprite.setVisible(false);
         gunSprite.setVisible(false);
         continue;
       }
@@ -1104,6 +1122,15 @@ export class GameScene extends Phaser.Scene {
       sprite.setAngle(heli.rotationDeg);
       // Hit flash uses the dedicated white frame; look variants are redrawn.
       sprite.clearTint();
+
+      // Flash heli doorway body (`enemyguy`) — fixed to hull, under the gun.
+      const gunnerPose = heliGunnerWorldPose(heli);
+      gunnerSprite.setVisible(true);
+      gunnerSprite.setPosition(
+        this.arenaOriginX + gunnerPose.x,
+        this.arenaOriginY + gunnerPose.y,
+      );
+      gunnerSprite.setAngle(gunnerPose.rotationDeg);
 
       // Flash `this.gun` — door gunner (machineGun) tracks the player.
       const gunPose = heliGunWorldPose(heli);

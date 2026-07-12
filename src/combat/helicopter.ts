@@ -498,14 +498,41 @@ export function heliFireSpreadDeg(
 }
 
 /**
+ * `heli_strafe` is still an unmirrored copy of `heli.png`, so the look-1 hull
+ * has its doorway on the look-0 side. Flip this when a real mirrored strafe
+ * frame ships; until then everything bolted to the door attaches to look 0,
+ * or the gunner hangs off the left of a door that never moved.
+ */
+const STRAFE_FRAME_IS_MIRRORED: boolean = false;
+
+/** Which look's doorway offsets a door attachment should use. */
+function doorLook(look: HeliLook): HeliLook {
+  return STRAFE_FRAME_IS_MIRRORED ? look : 0;
+}
+
+/** Rotate a heli-local point (px) into arena space through the hull bank. */
+function heliLocalToWorld(heli: Helicopter, local: Vec2): Vec2 {
+  return muzzleWorld(heli.x, heli.y, heli.rotationDeg, local.x, local.y);
+}
+
+/**
  * Flash nested `gun` attach in heli-local space.
  * Look 0: `(11, 7)`; look 1 (mirrored strafe frame): `(-9, 7)`.
  */
-export function heliGunAttachLocal(look: HeliLook): { x: number; y: number } {
-  if (look === 1) {
-    return { x: HELI.gunAttachLook1X, y: HELI.gunAttachLook1Y };
-  }
-  return { x: HELI.gunAttachLook0X, y: HELI.gunAttachLook0Y };
+export function heliGunAttachLocal(look: HeliLook): Vec2 {
+  return doorLook(look) === 1
+    ? { x: HELI.gunAttachLook1X, y: HELI.gunAttachLook1Y }
+    : { x: HELI.gunAttachLook0X, y: HELI.gunAttachLook0Y };
+}
+
+/**
+ * Flash Heli body shape bitmap-fill for `enemyguy.png` — feet in the doorway,
+ * fixed to the hull (does not track gun aim). The body hangs off the same
+ * attach as the gun, so it follows the gun into whichever door is real.
+ */
+export function heliGunnerFeetLocal(look: HeliLook): Vec2 {
+  const attach = heliGunAttachLocal(look);
+  return { x: attach.x, y: attach.y + HELI.gunnerFeetBelowGunY };
 }
 
 export type HeliGunWorldPose = {
@@ -527,20 +554,31 @@ export type HeliGunWorldPose = {
  * `gunRotationDeg` composed with heli tilt.
  */
 export function heliGunWorldPose(heli: Helicopter): HeliGunWorldPose {
-  const attach = heliGunAttachLocal(heli.look);
-  const grip = muzzleWorld(
-    heli.x,
-    heli.y,
-    heli.rotationDeg,
-    attach.x,
-    attach.y,
-  );
+  const grip = heliLocalToWorld(heli, heliGunAttachLocal(heli.look));
   return {
     x: grip.x,
     y: grip.y,
     rotationDeg: heli.gunRotationDeg + heli.rotationDeg,
     // Flash yscale keys off the gun's own `_rotation`, not the parent's.
     flipY: gunNeedsFlipY(heli.gunRotationDeg),
+  };
+}
+
+export type HeliGunnerWorldPose = {
+  /** Feet / catalog pivot in arena space. */
+  x: number;
+  y: number;
+  /** Matches heli hull bank — body does not aim with the gun. */
+  rotationDeg: number;
+};
+
+/** World pose for the door-gunner body sprite (`enemy_guy`). */
+export function heliGunnerWorldPose(heli: Helicopter): HeliGunnerWorldPose {
+  const feet = heliLocalToWorld(heli, heliGunnerFeetLocal(heli.look));
+  return {
+    x: feet.x,
+    y: feet.y,
+    rotationDeg: heli.rotationDeg,
   };
 }
 

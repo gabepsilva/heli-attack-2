@@ -13,10 +13,12 @@
 import {
   createHelicopter,
   createSpawnRng,
+  heliGunnerWorldPose,
   heliGunWorldPose,
   stepHeliGunAim,
   tryHeliFire,
   type Helicopter,
+  type HeliGunnerWorldPose,
   type HeliGunWorldPose,
   type SpawnRng,
 } from '../combat/helicopter';
@@ -193,4 +195,11 @@ export function menuHeliGunPose(
   state: MenuHeliAmbienceState,
 ): HeliGunWorldPose {
   return heliGunWorldPose(state.heli);
+}
+
+/** Door-gunner body (`enemyguy`) pose — fixed to the hull. */
+export function menuHeliGunnerPose(
+  state: MenuHeliAmbienceState,
+): HeliGunnerWorldPose {
+  return heliGunnerWorldPose(state.heli);
 }

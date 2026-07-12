@@ -14,6 +14,8 @@ import {
   createSpawnRng,
   damageHelicopter,
   heliGunAttachLocal,
+  heliGunnerFeetLocal,
+  heliGunnerWorldPose,
   heliGunWorldPose,
   heliMuzzlePosition,
   spawnHelicopter,
@@ -141,15 +143,12 @@ describe('helicopter (issue #12 — enemy entity)', () => {
 });
 
 describe('heli door gunner (Flash nested `gun` clip)', () => {
-  it('locks Flash Heli PlaceObject attach offsets per look', () => {
-    expect(heliGunAttachLocal(0)).toEqual({
-      x: HELI.gunAttachLook0X,
-      y: HELI.gunAttachLook0Y,
-    });
-    expect(heliGunAttachLocal(1)).toEqual({
-      x: HELI.gunAttachLook1X,
-      y: HELI.gunAttachLook1Y,
-    });
+  it('keeps attach on the look-0 doorway while heli_strafe is unmirrored', () => {
+    // heli_strafe.png still equals heli.png, so look 1 has no mirrored door to
+    // attach to and both looks use the look-0 offsets.
+    const look0 = { x: HELI.gunAttachLook0X, y: HELI.gunAttachLook0Y };
+    expect(heliGunAttachLocal(0)).toEqual(look0);
+    expect(heliGunAttachLocal(1)).toEqual(look0);
   });
 
   it('places the gun in the doorway and flips past ±90° like Flash', () => {
@@ -171,8 +170,8 @@ describe('heli door gunner (Flash nested `gun` clip)', () => {
     heli.look = 1;
     heli.gunRotationDeg = 0;
     const strafe = heliGunWorldPose(heli);
-    expect(strafe.x).toBeCloseTo(400 + HELI.gunAttachLook1X, 5);
-    expect(strafe.y).toBeCloseTo(200 + HELI.gunAttachLook1Y, 5);
+    expect(strafe.x).toBeCloseTo(400 + HELI.gunAttachLook0X, 5);
+    expect(strafe.y).toBeCloseTo(200 + HELI.gunAttachLook0Y, 5);
   });
 
   it('rotates the gun attach with the hull (Flash nests gun under the heli)', () => {
@@ -223,5 +222,39 @@ describe('heli door gunner (Flash nested `gun` clip)', () => {
       HELI.gunAttachLook0Y + HELI.gunBarrelLocalY,
       5,
     );
+  });
+
+  it('stands enemyguy under the gun, in whichever doorway the gun uses', () => {
+    // Feet (catalog pivot, bottom-center) hang below the gun attach on the same
+    // X, so the nested `gun` clip rides the gunner's chest.
+    for (const look of [0, 1] as const) {
+      const attach = heliGunAttachLocal(look);
+      expect(heliGunnerFeetLocal(look)).toEqual({
+        x: attach.x,
+        y: attach.y + HELI.gunnerFeetBelowGunY,
+      });
+    }
+  });
+
+  it('bolts the gunner body to the hull, not to the gun aim', () => {
+    const feet = heliGunnerFeetLocal(0);
+    const heli = createHelicopter(400, 200, HELI.hp);
+    heli.look = 0;
+    heli.rotationDeg = 0;
+    heli.gunRotationDeg = 90; // aim must not move the body
+
+    const body = heliGunnerWorldPose(heli);
+    expect(body.x).toBeCloseTo(400 + feet.x, 5);
+    expect(body.y).toBeCloseTo(200 + feet.y, 5);
+    expect(body.rotationDeg).toBe(0);
+
+    // Banking the hull swings the doorway (and the gunner in it) around.
+    heli.x = 0;
+    heli.y = 0;
+    heli.rotationDeg = 90;
+    const banked = heliGunnerWorldPose(heli);
+    expect(banked.x).toBeCloseTo(-feet.y, 5);
+    expect(banked.y).toBeCloseTo(feet.x, 5);
+    expect(banked.rotationDeg).toBe(90);
   });
 });

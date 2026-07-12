@@ -21,6 +21,8 @@ export const ATLAS_JSON_PATH = 'atlas/game-atlas.json';
  */
 export const HELI_FRAME = 'heli';
 export const MACHINEGUN_FRAME = 'weapon_machinegun';
+/** Door-gunner body baked into the Flash heli doorway (`enemyguy.png`). */
+export const ENEMY_GUY_FRAME = 'enemy_guy';
 export const BULLET_ENEMY_FRAME = 'bullet_enemy';
 
 /**

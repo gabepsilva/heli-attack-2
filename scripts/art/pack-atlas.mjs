@@ -157,7 +157,7 @@ export const SPRITE_DEFS = [
     originalW: 25,
     originalH: 48,
     pivot: { x: 0.5, y: 1 },
-    role: 'Paratrooper / ground enemy (temp Flash enemyguy.png)',
+    role: 'Heli door-gunner body (+ ground enemy) (temp Flash enemyguy.png)',
     final: true,
   },
   {
