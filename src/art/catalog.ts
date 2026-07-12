@@ -11,9 +11,7 @@ import {
   ART_PLAYER_FINAL_SCALE,
   ART_WORLD_FINAL_DIR,
   ART_WORLD_FINAL_SCALE,
-  TILE_ART_SIZE,
 } from '../config/art';
-import { PLAYER } from '../config/constants';
 
 /** Normalized pivot: (0,0) = top-left, (0.5,1) = bottom-center, etc. */
 export type SpritePivot = Readonly<{ x: number; y: number }>;
@@ -32,6 +30,14 @@ export type SpriteDef = Readonly<{
   originalH: number;
   /** Pivot used when placing the sprite in the scene. */
   pivot: SpritePivot;
+  /**
+   * Game-space draw size, when it is *not* the sprite's original pixel size.
+   * Default (omitted) is 1 game unit = 1 Flash px. Set it for art whose drawn
+   * box deliberately differs from its bitmap — an oversized tile, a canopy that
+   * blooms past its source, a half-res explosion sheet drawn at full feel.
+   */
+  drawW?: number;
+  drawH?: number;
   /** Short role note for ART-SPEC / artists. */
   role: string;
   /**
@@ -115,6 +121,18 @@ export const SPRITE_DEFS = [
     originalH: 49,
     pivot: { x: 0.5, y: 1 },
     role: 'Player death (temp Flash guyburned.png)',
+    final: true,
+  },
+  {
+    id: 'player_chute',
+    sourceFile: 'player_chute.png',
+    originalW: 12,
+    originalH: 12,
+    pivot: { x: 0.5, y: 1 },
+    // Canopy blooms well past its source bitmap — it is not a character-sized sprite.
+    drawW: 126,
+    drawH: 126,
+    role: 'Player spawn parachute canopy (heroStart gfx.chute)',
     final: true,
   },
   {
@@ -225,13 +243,111 @@ export const SPRITE_DEFS = [
     role: 'Enemy projectile (temp Flash enemybullet.png)',
     final: true,
   },
+  // --- Held guns, one per arsenal slot ------------------------------------
+  // The hands are drawn into each bitmap, and `pivot` is the grip the gun turns
+  // around — both taken from the original `gun` MovieClip's registration point,
+  // not eyeballed. Slot 13 (ShoulderCannon) has no bitmap: predator mode is
+  // cloaked. Re-derive with: python3 scripts/art/extract-swf-guns.py
   {
     id: 'weapon_machinegun',
     sourceFile: 'machineGun.png',
     originalW: 29,
     originalH: 16,
-    pivot: { x: 0.2, y: 0.5 },
-    role: 'Starting machine gun (temp Flash machineGun.png)',
+    pivot: { x: 0.1724, y: 0.75 },
+    role: 'Held gun 0 — MachineGun (Flash machineGun.png)',
+    final: true,
+  },
+  {
+    id: 'weapon_mac10',
+    sourceFile: 'uzi.png',
+    originalW: 32,
+    originalH: 37,
+    // Akimbo: the pair straddles the grip, so it sits left of the bitmap edge.
+    pivot: { x: -0.0625, y: 0.5676 },
+    role: 'Held gun 1 — AkimboMac10 (Flash uzi.png)',
+    final: true,
+  },
+  {
+    id: 'weapon_shotgun',
+    sourceFile: 'shotty.png',
+    originalW: 36,
+    originalH: 16,
+    pivot: { x: 0.1389, y: 0.75 },
+    role: 'Held gun 2 — Shotgun (Flash shotty.png)',
+    final: true,
+  },
+  {
+    id: 'weapon_shotgunrockets',
+    sourceFile: 'shotgunrocket.png',
+    originalW: 41,
+    originalH: 23,
+    pivot: { x: 0.1707, y: 0.8261 },
+    role: 'Held gun 3 — ShotgunRockets (Flash shotgunrocket.png)',
+    final: true,
+  },
+  {
+    id: 'weapon_grenadelauncher',
+    sourceFile: 'grenadelauncher.png',
+    originalW: 44,
+    originalH: 22,
+    pivot: { x: 0.2955, y: 0.8182 },
+    role: 'Held gun 4 — GrenadeLauncher (Flash grenadelauncher.png)',
+    final: true,
+  },
+  {
+    id: 'weapon_rpg',
+    sourceFile: 'rpggun.png',
+    originalW: 50,
+    originalH: 24,
+    pivot: { x: 0.36, y: 0.8333 },
+    role: 'Held gun 5 — RPG (Flash rpggun.png)',
+    final: true,
+  },
+  {
+    id: 'weapon_rocketlauncher',
+    sourceFile: 'rlauncher.png',
+    originalW: 44,
+    originalH: 27,
+    pivot: { x: 0.4318, y: 0.8519 },
+    role: 'Held gun 6 — RocketLauncher (Flash rlauncher.png)',
+    final: true,
+  },
+  {
+    id: 'weapon_seekerlauncher',
+    sourceFile: 'seekerlauncher.png',
+    originalW: 49,
+    originalH: 32,
+    pivot: { x: 0.4898, y: 0.875 },
+    role: 'Held gun 7 — SeekerLauncher (Flash seekerlauncher.png)',
+    final: true,
+  },
+  {
+    id: 'weapon_flamethrower',
+    sourceFile: 'flameThrower.png',
+    originalW: 39,
+    originalH: 20,
+    pivot: { x: 0.2308, y: 0.8 },
+    role: 'Held gun 8 — FlameThrower (Flash flameThrower.png)',
+    final: true,
+  },
+  {
+    id: 'weapon_firemines',
+    sourceFile: 'mine.png',
+    originalW: 21,
+    originalH: 19,
+    // Not a gun: the player holds the mine itself, out past the hand — hence
+    // the negative grip. Same bitmap as the planted `mine`, different pivot.
+    pivot: { x: -0.4286, y: 0.7895 },
+    role: 'Held gun 9 — FireMines (Flash mine.png, held)',
+    final: true,
+  },
+  {
+    id: 'weapon_abomb',
+    sourceFile: 'abomb.png',
+    originalW: 51,
+    originalH: 35,
+    pivot: { x: 0.4314, y: 0.8571 },
+    role: 'Held gun 10 — ABombLauncher (Flash abomb.png)',
     final: true,
   },
   {
@@ -240,6 +356,8 @@ export const SPRITE_DEFS = [
     originalW: 16,
     originalH: 16,
     pivot: { x: 0.5, y: 0.5 },
+    drawW: 18,
+    drawH: 18,
     role: 'Weapon muzzle flash (generated stub — no Flash original)',
     final: true,
   },
@@ -325,12 +443,42 @@ export const SPRITE_DEFS = [
     final: true,
   },
   {
-    id: 'rail',
+    id: 'railtrail',
+    sourceFile: 'railtrail.png',
+    originalW: 456,
+    originalH: 32,
+    // Flash `railFrame` never moves the clip: the beam is pinned at the muzzle
+    // and fades. The white-hot blast is the left edge, so anchor there and let
+    // the beam extend along +x (rotation 0) like every other bullet frame.
+    pivot: { x: 0, y: 0.5 },
+    role: 'RailGun beam (Flash railtrail.png / bullet frame 9)',
+    final: true,
+  },
+  {
+    id: 'shouldercannon',
+    sourceFile: 'shouldercannon.png',
+    originalW: 456,
+    originalH: 32,
+    pivot: { x: 0, y: 0.5 },
+    role: 'ShoulderCannon beam (Flash shouldercannon.png / bullet frame 11)',
+    final: true,
+  },
+  {
+    id: 'weapon_rail',
     sourceFile: 'rail.png',
     originalW: 57,
     originalH: 31,
-    pivot: { x: 0.5, y: 0.5 },
-    role: 'RailGun / ShoulderCannon beam (Flash rail.png / bullet frames 9+11)',
+    pivot: { x: 0.4035, y: 0.871 },
+    role: 'Held gun 11 — RailGun (Flash rail.png)',
+    final: true,
+  },
+  {
+    id: 'weapon_grapplecannon',
+    sourceFile: 'grapplegun.png',
+    originalW: 54,
+    originalH: 27,
+    pivot: { x: 0.3333, y: 0.8519 },
+    role: 'Held gun 12 — GrappleCannon (Flash grapplegun.png)',
     final: true,
   },
   {
@@ -366,6 +514,9 @@ export const SPRITE_DEFS = [
     originalW: 187,
     originalH: 186,
     pivot: { x: 0.5, y: 0.5 },
+    // Flash bigboom ~374px; catalog stores half-res source, drawn at full feel.
+    drawW: 120,
+    drawH: 120,
     role: 'Heli death explosion (temp Flash bigboom.png, half-res catalog)',
     final: true,
   },
@@ -706,10 +857,15 @@ export function bgTileFrameForCell(frame: number): SpriteId | null {
   return BG_TILE_FRAME_IDS[frame - 1] ?? null;
 }
 
+/** Indexed once — {@link isTileFrame} runs per sprite per frame in the render loops. */
+const TILE_FRAME_ID_SET: ReadonlySet<string> = new Set<string>([
+  ...TILE_FRAME_IDS,
+  ...BG_TILE_FRAME_IDS,
+]);
+
 /** True for tileset frames (ground or foliage) — they share the 52×52 draw box. */
 export function isTileFrame(id: string): boolean {
-  const tilesets: readonly string[] = [...TILE_FRAME_IDS, ...BG_TILE_FRAME_IDS];
-  return tilesets.includes(id);
+  return TILE_FRAME_ID_SET.has(id);
 }
 
 /**
@@ -753,6 +909,7 @@ export const FLASH_ORIGINAL_SOURCES = {
   player_step2: 'step2.png',
   player_hurt: 'guy.png', // stub reuse
   player_death: 'guyburned.png',
+  player_chute: null, // custom canopy art (not from Flash assets)
   heli: 'heli.png',
   heli_strafe: 'heli.png', // stub reuse
   heli_hit: 'heli_hit.png',
@@ -776,7 +933,20 @@ export const FLASH_ORIGINAL_SOURCES = {
   minebullet: 'minebullet.png',
   mine: 'mine.png',
   abombbullet: 'abombbullet.png',
-  rail: 'rail.png',
+  railtrail: 'railtrail.png',
+  shouldercannon: 'shouldercannon.png',
+  weapon_mac10: 'uzi.png',
+  weapon_shotgun: 'shotty.png',
+  weapon_shotgunrockets: 'shotgunrocket.png',
+  weapon_grenadelauncher: 'grenadelauncher.png',
+  weapon_rpg: 'rpggun.png',
+  weapon_rocketlauncher: 'rlauncher.png',
+  weapon_seekerlauncher: 'seekerlauncher.png',
+  weapon_flamethrower: 'flameThrower.png',
+  weapon_firemines: 'mine.png', // held mine (same bitmap as the planted body)
+  weapon_abomb: 'abomb.png',
+  weapon_rail: 'rail.png',
+  weapon_grapplecannon: 'grapplegun.png',
   grapplebullet: 'grapplebullet.png',
   smoke: 'smoke.png',
   blood: 'blood.png',
@@ -842,6 +1012,8 @@ export function weaponHudIconFrame(cgun: number): SpriteId {
 /**
  * Flash `addBullet(..., frame)` — atlas frame per arsenal weapon.
  * MG / Uzi / Shotgun share `bullett` (frame 1); others use dedicated PNGs.
+ * RailGun and ShoulderCannon share `railFrame` behavior but *not* art — they
+ * are bullet frames 9 and 11, two separate beams.
  */
 export const WEAPON_PROJECTILE_FRAMES = [
   'bullet_player', // 0 MachineGun
@@ -855,9 +1027,9 @@ export const WEAPON_PROJECTILE_FRAMES = [
   'flame', // 8 FlameThrower
   'minebullet', // 9 FireMines (lobbed)
   'abombbullet', // 10 ABombLauncher
-  'rail', // 11 RailGun
+  'railtrail', // 11 RailGun
   'grapplebullet', // 12 GrappleCannon
-  'rail', // 13 ShoulderCannon
+  'shouldercannon', // 13 ShoulderCannon
 ] as const satisfies readonly SpriteId[];
 
 /** Atlas frame for a fired weapon projectile (Flash bullet timeline frame). */
@@ -961,25 +1133,16 @@ export function textureSize(def: SpriteDef): { w: number; h: number } {
 
 /**
  * Game-space draw size for a sprite.
- * Characters map to the spec sprite box; tiles keep their oversized Flash art
- * box ({@link TILE_ART_SIZE}, drawn overlapping the {@link WORLD.tile} grid);
- * everything else uses original Flash pixels (1 game unit = 1 Flash px).
+ * Sprites draw at original Flash pixels (1 game unit = 1 Flash px) so aspect is
+ * preserved; a def opts out via {@link SpriteDef.drawW} / {@link SpriteDef.drawH}.
+ * The player's 48×48 constant is the Flash hero *MovieClip* layout box used for
+ * collision centering — never a stretch target for the bitmaps.
  */
 export function gameDrawSize(def: SpriteDef): { w: number; h: number } {
-  if (def.id.startsWith('player_')) {
-    return { w: PLAYER.spriteW, h: PLAYER.spriteH };
-  }
-  if (isTileFrame(def.id)) {
-    return { w: TILE_ART_SIZE, h: TILE_ART_SIZE };
-  }
-  if (def.id === 'explosion') {
-    // Flash bigboom ~374px; catalog stores half-res source, draw at full feel.
-    return { w: 120, h: 120 };
-  }
-  if (def.id === 'muzzle_flash') {
-    return { w: 18, h: 18 };
-  }
-  return { w: def.originalW, h: def.originalH };
+  return {
+    w: def.drawW ?? def.originalW,
+    h: def.drawH ?? def.originalH,
+  };
 }
 
 /** Atlas frame for a heli look index (#20/#34). */

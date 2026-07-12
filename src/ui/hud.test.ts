@@ -379,8 +379,9 @@ describe('HUD weapon crate + ammo (issue #105 AC)', () => {
     expect(projectileFrameForWeapon(0)).toBe('bullet_player');
     expect(projectileFrameForWeapon(8)).toBe('flame');
     expect(projectileFrameForWeapon(5)).toBe('rpg');
-    expect(projectileFrameForWeapon(11)).toBe('rail');
-    expect(projectileFrameForWeapon(13)).toBe('rail');
+    // Flash bullet frames 9 and 11: same `railFrame` behavior, different beams.
+    expect(projectileFrameForWeapon(11)).toBe('railtrail');
+    expect(projectileFrameForWeapon(13)).toBe('shouldercannon');
   });
 
   it('formats ammo exactly like Flash HUD.ammo (Infinite x / N x)', () => {

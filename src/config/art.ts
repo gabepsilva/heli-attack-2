@@ -33,7 +33,8 @@ export const ART_PLACEHOLDER_SCALE = 4;
 
 /**
  * Scale of committed player textures vs Flash-era original pixel sizes.
- * 8× nearest-neighbor upscale of originals into the 48×48 game sprite box
+ * 8× nearest-neighbor upscale for crisp display; game draw uses original
+ * Flash aspect (e.g. guy 24×49), not a stretch into the 48×48 MC layout box
  * (issue #33 pipeline; #95 ships Flash originals at this scale).
  */
 export const ART_PLAYER_FINAL_SCALE = 8;

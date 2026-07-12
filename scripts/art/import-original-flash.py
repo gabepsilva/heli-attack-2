@@ -140,7 +140,6 @@ def main() -> None:
         ("enemyguy.png", "enemyguy.png"),
         ("bullett.png", "bullett.png"),
         ("enemybullet.png", "enemybullet.png"),
-        ("machineGun.png", "machineGun.png"),
         ("grenade.png", "grenade.png"),
         ("Rocket.png", "Rocket.png"),
         # Per-weapon projectile frames (Flash `bullet.gotoAndStop(frame)`).
@@ -151,8 +150,27 @@ def main() -> None:
         ("minebullet.png", "minebullet.png"),
         ("mine.png", "mine.png"),
         ("abombbullet.png", "abombbullet.png"),
-        ("rail.png", "rail.png"),
+        # Rail beams are static muzzle-anchored sprites (Flash `railFrame` never
+        # moves the clip): RailGun is bullet frame 9, ShoulderCannon frame 11.
+        ("railtrail.png", "railtrail.png"),
+        ("shouldercannon.png", "shouldercannon.png"),
         ("grapplebullet.png", "grapplebullet.png"),
+        # Held guns — the 13 bitmaps of the Flash `gun` MovieClip, one per
+        # arsenal slot (slot 13 / ShoulderCannon is cloaked: no bitmap).
+        # FireMines holds `mine.png` (imported above as the planted body).
+        # Grips + muzzles: python3 scripts/art/extract-swf-guns.py
+        ("machineGun.png", "machineGun.png"),
+        ("uzi.png", "uzi.png"),
+        ("shotty.png", "shotty.png"),
+        ("shotgunrocket.png", "shotgunrocket.png"),
+        ("grenadelauncher.png", "grenadelauncher.png"),
+        ("rpggun.png", "rpggun.png"),
+        ("rlauncher.png", "rlauncher.png"),
+        ("seekerlauncher.png", "seekerlauncher.png"),
+        ("flameThrower.png", "flameThrower.png"),
+        ("abomb.png", "abomb.png"),
+        ("rail.png", "rail.png"),
+        ("grapplegun.png", "grapplegun.png"),
         ("smoke.png", "smoke.png"),
         ("blood.png", "blood.png"),
         ("powerup.png", "powerup.png"),

@@ -175,16 +175,12 @@ describe('config/constants (spec seed)', () => {
     expect(BULLET_TIME.easePerFrame).toBe(0.1);
   });
 
-  it('seeds GUN from Flash machineGun.png size/pivot + aim turn rate', () => {
+  it('seeds GUN with the hand mount and aim turn rate only', () => {
+    // Gun size, grip and muzzle are per-weapon (see combat/heldGun.ts) — GUN
+    // must not smuggle the machine gun's dimensions back in as a default.
     expect(GUN).toEqual({
-      attachX: 5,
-      attachY: 16,
-      spriteW: 29,
-      spriteH: 16,
-      pivotX: 0.2,
-      pivotY: 0.5,
-      muzzleLocalX: (1 - 0.2) * 29,
-      muzzleLocalY: 0,
+      attachX: 4.2,
+      attachY: 20,
       turnDivisor: 2,
     });
   });

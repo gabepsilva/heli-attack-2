@@ -11,9 +11,11 @@ import {
   type SpriteId,
 } from '../art/catalog';
 import {
+  chuteOpenDisplaySize,
   explosionAgeScale,
   placeOnCenter,
   playerSpritePlacement,
+  railBeamAlpha,
   scaledDisplaySize,
   tilePlacement,
 } from '../art/spritePlacement';
@@ -37,17 +39,18 @@ import {
 import { isPlayerHurtFlashing } from '../combat/playerHealth';
 import { heliGunnerWorldPose, heliGunWorldPose } from '../combat/helicopter';
 import { playerPowerupAlpha } from '../combat/powerupEffects';
+import { heldGunFor } from '../combat/heldGun';
 import { getActiveWeaponDef } from '../combat/weaponInventory';
 import {
-  advanceWalkPhase,
+  advanceWalkTicks,
   playerAnimMoving,
   selectPlayerAnimFrame,
+  walkPhaseFor,
 } from '../player/playerAnim';
 import { PLAYER_PARACHUTE } from '../player/parachuteIntro';
 import {
   CAMERA,
   GAME_FLOW,
-  GUN,
   PLAYER,
   POWERUP,
   POWERUP_DROP,
@@ -127,16 +130,15 @@ const CAMERA_LEVEL = {
 } as const;
 
 /** Flash `gfx.chute` canopy drawn above the player during `heroStart`. */
+const PLAYER_CHUTE_FRAME = 'player_chute' as const;
+const PLAYER_CHUTE_DRAW = gameDrawSize(getSpriteDef(PLAYER_CHUTE_FRAME));
 const PLAYER_CHUTE = {
-  canopyW: 56,
-  canopyH: 22,
-  /** Y offset from the body top — the canopy floats above the hang pose. */
-  offsetY: -10,
-  alpha: 0.9,
+  /** Y offset from body top — lines attach near the hang-pose hands. */
+  offsetY: 4,
   depth: 15,
   /** Floor so the freshly-deployed canopy is visible rather than a dot. */
   minScale: 0.05,
-  /** Height leads width as the canopy fills out. */
+  /** Height leads width as the canopy fills out (Flash mostly used `_xscale`). */
   bulge: 0.15,
 } as const;
 const HELI_HIT_FRAME = 'heli_hit';
@@ -246,9 +248,9 @@ export class GameScene extends Phaser.Scene {
   private playerSprite!: Phaser.GameObjects.Image;
   private playerHitbox!: Phaser.GameObjects.Rectangle;
   /** Flash `gfx.chute` — scales open/closed during `heroStart`. */
-  private playerChute!: Phaser.GameObjects.Ellipse;
-  /** Flash nested walk-cycle phase (0..walk.length-1). */
-  private playerWalkPhase = 0;
+  private playerChute!: Phaser.GameObjects.Image;
+  /** Sim ticks spent walking — {@link walkPhaseFor} turns this into a bitmap. */
+  private playerWalkTicks = 0;
   private playerAnimFrame: SpriteId = 'player_idle';
   private gunSprite!: Phaser.GameObjects.Image;
   private muzzleSprite!: Phaser.GameObjects.Image;
@@ -716,18 +718,13 @@ export class GameScene extends Phaser.Scene {
     const ticksBefore = this.session.simTickCount;
     this.session.update(delta);
     const simSteps = this.session.simTickCount - ticksBefore;
-    // Advance walk cycle once per sim move tick while horizontally moving
-    // (Flash `gfx.gfx.nextFrame()` under walk parent frame 4).
-    if (simSteps > 0) {
-      const moving = playerAnimMoving(this.session.player.body.vx);
-      for (let i = 0; i < simSteps; i += 1) {
-        this.playerWalkPhase = advanceWalkPhase(
-          this.playerWalkPhase,
-          moving,
-          true,
-        );
-      }
-    }
+    // Advance walk cycle while horizontally moving (Flash nested gfx under
+    // walk parent frame 4).
+    this.playerWalkTicks = advanceWalkTicks(
+      this.playerWalkTicks,
+      playerAnimMoving(this.session.player.body.vx),
+      simSteps,
+    );
     this.gameSfx?.drainAndPlay(this.session.drainAudioEvents(), {
       simTicks: simSteps,
     });
@@ -903,12 +900,12 @@ export class GameScene extends Phaser.Scene {
         (isPlayerHurtFlashing(health) || health.iFramesRemaining > 0),
       dead: !health.alive || this.flow.phase === 'dying',
       parachuting: pl.parachuting,
-      walkPhase: this.playerWalkPhase,
+      walkPhase: walkPhaseFor(this.playerWalkTicks),
     });
   }
 
   private createPlayerVisual(): void {
-    this.playerWalkPhase = 0;
+    this.playerWalkTicks = 0;
     this.playerAnimFrame = this.resolvePlayerAnimFrame();
     const body = this.session.player.body;
     const def = getSpriteDef(this.playerAnimFrame);
@@ -935,15 +932,11 @@ export class GameScene extends Phaser.Scene {
       .setStrokeStyle(1, PLAYER_HITBOX_STROKE, 0.7)
       .setFillStyle(0x000000, 0);
 
-    // Flash `gfx.chute` — white canopy above the hang pose.
-    this.playerChute = this.add
-      .ellipse(
+    // Flash `gfx.chute` — atlas canopy above the hang pose.
+    this.playerChute = addAtlasImage(this, PLAYER_CHUTE_FRAME)
+      .setPosition(
         this.arenaOriginX + body.x + body.w / 2,
         this.arenaOriginY + body.y + PLAYER_CHUTE.offsetY,
-        PLAYER_CHUTE.canopyW,
-        PLAYER_CHUTE.canopyH,
-        POWERUP_CHUTE_COLOR,
-        PLAYER_CHUTE.alpha,
       )
       .setDepth(PLAYER_CHUTE.depth)
       .setVisible(false);
@@ -977,15 +970,17 @@ export class GameScene extends Phaser.Scene {
     this.playerChute.setVisible(chuteOpen);
     if (chuteOpen) {
       // Flash `_xscale` is 0..100; the canopy bulges taller than it is wide as
-      // it opens, so height leads width slightly and clamps at full size.
+      // it opens.
       const openness = Math.max(
         PLAYER_CHUTE.minScale,
         chute.chuteScale / PLAYER_PARACHUTE.chuteScaleMax,
       );
-      this.playerChute.setScale(
+      const open = chuteOpenDisplaySize(
+        PLAYER_CHUTE_DRAW,
         openness,
-        Math.min(1, openness + PLAYER_CHUTE.bulge),
+        PLAYER_CHUTE.bulge,
       );
+      this.playerChute.setDisplaySize(open.w, open.h);
       this.playerChute.setPosition(
         this.arenaOriginX + body.x + body.w / 2,
         this.arenaOriginY + body.y + PLAYER_CHUTE.offsetY,
@@ -996,6 +991,7 @@ export class GameScene extends Phaser.Scene {
   private createGunVisual(): void {
     const pivot = this.session.player.gunPivot;
     const gunDef = getSpriteDef(MACHINEGUN_FRAME);
+    const gunDraw = gameDrawSize(gunDef);
     this.gunSprite = this.add
       .image(
         this.arenaOriginX + pivot.x,
@@ -1004,7 +1000,7 @@ export class GameScene extends Phaser.Scene {
         MACHINEGUN_FRAME,
       )
       .setOrigin(gunDef.pivot.x, gunDef.pivot.y)
-      .setDisplaySize(GUN.spriteW, GUN.spriteH)
+      .setDisplaySize(gunDraw.w, gunDraw.h)
       .setDepth(20);
 
     const muzzleDef = getSpriteDef(MUZZLE_FRAME);
@@ -1026,15 +1022,30 @@ export class GameScene extends Phaser.Scene {
     const player = this.session.player;
     const pivot = player.gunPivot;
     const aim = player.gunAim;
-    const showGun = !player.parachuting && this.session.playerHealth.alive;
+    const gun = heldGunFor(this.session.inventory.activeIndex);
+    // `frame: null` is the ShoulderCannon — predator mode carries it cloaked.
+    const showGun =
+      gun.frame !== null &&
+      !player.parachuting &&
+      this.session.playerHealth.alive;
 
     this.gunSprite.setVisible(showGun);
+    if (showGun && this.gunSprite.frame.name !== gun.frame) {
+      // Guns differ in size *and* in where the hand grips them, so the frame,
+      // the draw box and the origin have to move together — swapping the
+      // texture alone would squash a railgun into machine-gun proportions.
+      const def = getSpriteDef(gun.frame);
+      const draw = gameDrawSize(def);
+      this.gunSprite.setTexture(ATLAS_KEY, gun.frame);
+      this.gunSprite.setOrigin(def.pivot.x, def.pivot.y);
+      this.gunSprite.setDisplaySize(draw.w, draw.h);
+    }
     this.gunSprite.setPosition(
       this.arenaOriginX + pivot.x,
       this.arenaOriginY + pivot.y,
     );
     this.gunSprite.setAngle(aim.rotationDeg);
-    // Flash `_yscale = -100` when aiming left. Use flipY — do NOT setScale,
+    // Aiming left mirrors the gun about its barrel. Use flipY — do NOT setScale,
     // which would wipe setDisplaySize on the atlas Image (#34 lead review).
     this.gunSprite.setFlipY(aim.flipY);
 
@@ -1044,7 +1055,10 @@ export class GameScene extends Phaser.Scene {
     );
     this.muzzleSprite.setAngle(aim.rotationDeg);
     // Brief flash while reloadTime is still near zero after a shot.
-    const firing = showGun && this.session.weapon.reloadTime < 3;
+    const firing =
+      this.session.playerHealth.alive &&
+      !player.parachuting &&
+      this.session.weapon.reloadTime < 3;
     this.muzzleSprite.setVisible(firing);
   }
 
@@ -1098,6 +1112,13 @@ export class GameScene extends Phaser.Scene {
         sprite.setDisplaySize(def.originalW, def.originalH);
       }
       sprite.setVisible(true);
+      // Rail beams fade in place; everything else is opaque. Only write alpha
+      // when it can differ — a recycled slot may still carry a faded beam's.
+      if (bullet.behavior === 'rail') {
+        sprite.setAlpha(railBeamAlpha(bullet.age, bullet.maxLifetime));
+      } else if (sprite.alpha !== 1) {
+        sprite.setAlpha(1);
+      }
       sprite.setPosition(
         this.arenaOriginX + bullet.x,
         this.arenaOriginY + bullet.y,
@@ -1154,12 +1175,10 @@ export class GameScene extends Phaser.Scene {
           .setDepth(HELI_GUNNER_DEPTH)
           .setVisible(false),
       );
-      // Flash nested `gun` — machineGun + hands in the doorway.
+      // The door gunner carries the same clip at its first frame — the
+      // machine gun, hands and all.
       this.heliGunSprites.push(
-        addAtlasImage(this, MACHINEGUN_FRAME, {
-          w: GUN.spriteW,
-          h: GUN.spriteH,
-        })
+        addAtlasImage(this, MACHINEGUN_FRAME)
           .setDepth(HELI_GUN_DEPTH)
           .setVisible(false),
       );

@@ -368,26 +368,20 @@ export const GAME_FLOW = {
 } as const;
 
 /**
- * Held starting gun (machine gun). Size/pivot match Flash `machineGun.png`
- * (29×16, grip at 0.2×0.5). Attach is the grip offset from the player AABB
- * top-left (chest mount). Aim turn rate matches Flash `dif/2*timeStep`.
+ * Where the player holds a gun, and how fast it tracks the mouse.
+ *
+ * The gun's own size, grip and muzzle are per-weapon and live with the weapon
+ * ({@link HELD_GUNS} + the sprite's catalog pivot) — a railgun is twice the
+ * size of a machine gun and does not fire from the same point. Only the hand
+ * is fixed, and that is what this block describes.
  */
 export const GUN = {
-  /** Grip offset from player AABB top-left → gun pivot (world, unrotated). */
-  attachX: 5,
-  attachY: 16,
-  /** Machine-gun draw size (Flash `machineGun.png`). */
-  spriteW: 29,
-  spriteH: 16,
-  /** Normalized Phaser origin — grip-biased. */
-  pivotX: 0.2,
-  pivotY: 0.5,
   /**
-   * Muzzle tip in gun-local space relative to the grip pivot, along +X barrel.
-   * `(1 - pivotX) * spriteW` = distance from grip to the sprite's right edge.
+   * Hand position: grip offset from the player AABB top-left. The gun rotates
+   * about this point, so it is the shoulder/chest mount, not the sprite corner.
    */
-  muzzleLocalX: (1 - 0.2) * 29,
-  muzzleLocalY: 0,
+  attachX: 4.2,
+  attachY: 20,
   /** Flash: `gun._rotation += dif / turnDivisor * timeStep`. */
   turnDivisor: 2,
 } as const;

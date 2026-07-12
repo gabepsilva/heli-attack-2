@@ -68,6 +68,7 @@ import {
   type ScoreState,
 } from '../combat/score';
 import { planWeaponFire } from '../combat/gunFire';
+import { heldGunFor } from '../combat/heldGun';
 import { stepWeaponFire, type WeaponState } from '../combat/weapon';
 import {
   createWeaponInventory,
@@ -429,7 +430,12 @@ export class SimSession {
         this.timeScale.timeStep,
         this.playerPowerup.powerupOn,
       );
-      this.player.step(this.map, playerStep, this.playerPowerup.powerupOn);
+      this.player.step(
+        this.map,
+        playerStep,
+        this.playerPowerup.powerupOn,
+        heldGunFor(this.inventory.activeIndex),
+      );
       if (this.player.hyperJumpFired) {
         this.audioEvents.push({ type: 'hyperJump' });
       }

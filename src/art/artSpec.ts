@@ -48,7 +48,7 @@ export function renderArtSpecMarkdown(): string {
 |---|---|
 | Canvas | **${GAME_WIDTH}×${GAME_HEIGHT}** |
 | Sim / Flash units | 1 game px = 1 original Flash px |
-| Player sprite box (spec) | **${PLAYER.spriteW}×${PLAYER.spriteH}** |
+| Player MC layout box (Flash width/height) | **${PLAYER.spriteW}×${PLAYER.spriteH}** |
 | Player collision box | **${PLAYER.boxW}×${PLAYER.boxH}** (top-left origin) |
 | Tile size (collision grid) | **${WORLD.tile}×${WORLD.tile}** |
 | Tile art | **${TILE_ART_SIZE}×${TILE_ART_SIZE}**, drawn at \`col × ${WORLD.tile} − 1\` (Flash \`drawMap\` 1px overlap) |
@@ -112,8 +112,10 @@ ${rows}
    PNGs under \`${ART_PLAYER_FINAL_DIR}/\` / \`${ART_WORLD_FINAL_DIR}/\`), then set \`final: true\` on the catalog
    entry.
 2. Append a \`SpriteDef\` to \`SPRITE_DEFS\` in \`src/art/catalog.ts\` with measured
-   \`originalW\` / \`originalH\`, pivot, and role.
-3. Mirror the entry in \`scripts/art/pack-atlas.mjs\`.
+   \`originalW\` / \`originalH\`, pivot, and role. \`src/art/catalog.ts\` is the only
+   place sprite data lives — \`pack-atlas.mjs\` loads it, so nothing to mirror.
+3. If the sprite is drawn at a size other than its original pixels, set
+   \`drawW\` / \`drawH\` on the def. Omit them and it draws 1:1.
 4. Run \`npm run art:pack\` — packs \`public/atlas/game-atlas.{png,json}\`,
    copies \`public/${BG_IMAGE_PATH}\` + \`public/${TITLE_IMAGE_PATH}\`, and regenerates this file.
 5. Use the frame via \`ATLAS_KEY\` + frame id (see \`selectPlayerAnimFrame\`,

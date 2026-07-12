@@ -10,6 +10,14 @@
 
 import { PLAYER_ANIM_FRAMES, type SpriteId } from '../art/catalog';
 
+/**
+ * Sim ticks to hold each walk bitmap before advancing.
+ * Flash `gfx.gfx.nextFrame()` ran once per move tick, but the nested walk clip
+ * had a longer timeline than our 2 exported bitmaps (step1/step2) — advancing
+ * every tick here strobes the feet. Hold ~4 ticks ≈ 7.5 pose changes/sec @30Hz.
+ */
+export const PLAYER_WALK_HOLD_TICKS = 4;
+
 /** Inputs derived from live player / combat state each render (or sim) tick. */
 export type PlayerAnimInput = Readonly<{
   /** Collision duck flag (`Player.ducking`). */
@@ -31,25 +39,32 @@ export type PlayerAnimInput = Readonly<{
   parachuting?: boolean;
   /**
    * Walk-cycle phase into {@link PLAYER_ANIM_FRAMES.walk}.
-   * Flash advances the nested walk clip one frame per `move` tick.
+   * Advanced every {@link PLAYER_WALK_HOLD_TICKS} move ticks while moving.
    */
   walkPhase: number;
 }>;
 
 /**
- * Advance the 2-frame walk cycle when the player is moving on a sim move tick.
- * Matches Flash `gfx.gfx.nextFrame()` / wrap to 1 inside the walk parent frame.
+ * Accumulate sim ticks spent walking (Flash nested `gfx.gfx`). Ticks stop while
+ * airborne or idle and resume where they left off, so the cycle never restarts
+ * mid-stride. Pass `steps` to fold a whole sim batch in one call.
  */
-export function advanceWalkPhase(
-  phase: number,
+export function advanceWalkTicks(
+  ticks: number,
   moving: boolean,
-  moveTick: boolean,
+  steps: number,
 ): number {
-  if (!moving || !moveTick) {
-    return phase;
-  }
-  const len = PLAYER_ANIM_FRAMES.walk.length;
-  return (phase + 1) % len;
+  return moving ? ticks + steps : ticks;
+}
+
+/**
+ * Walk bitmap for the accumulated tick count — each is held for
+ * {@link PLAYER_WALK_HOLD_TICKS} ticks before the cycle advances.
+ */
+export function walkPhaseFor(ticks: number): number {
+  return (
+    Math.floor(ticks / PLAYER_WALK_HOLD_TICKS) % PLAYER_ANIM_FRAMES.walk.length
+  );
 }
 
 /**

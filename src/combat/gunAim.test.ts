@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GUN, PLAYER } from '../config/constants';
+import { DEFAULT_HELD_GUN, heldGunFor } from './heldGun';
 import {
   aimAngleDeg,
   createGunAimState,
@@ -12,19 +13,32 @@ import {
   updateGunAim,
 } from './gunAim';
 
+const MG_MUZZLE = DEFAULT_HELD_GUN.muzzle;
+
 describe('gunAim (issue #9 — mouse aiming & gun rotation)', () => {
-  it('locks GUN constants to catalog machine-gun size, grip pivot, and Flash turn rate', () => {
-    expect(GUN.spriteW).toBe(29);
-    expect(GUN.spriteH).toBe(16);
-    expect(GUN.pivotX).toBe(0.2);
-    expect(GUN.pivotY).toBe(0.5);
-    expect(GUN.muzzleLocalX).toBeCloseTo((1 - 0.2) * 29, 10);
-    expect(GUN.muzzleLocalX).toBeCloseTo(23.2, 10);
-    expect(GUN.muzzleLocalY).toBe(0);
+  it('holds the gun at the hand — a fixed mount, not a per-weapon offset', () => {
+    // GUN describes the *hand*. Size, grip and muzzle belong to the weapon.
+    expect(GUN.attachX).toBe(4.2);
+    expect(GUN.attachY).toBe(20);
+    // Roughly centred on the 10×42 collision box: a chest mount.
+    expect(GUN.attachX).toBeLessThan(PLAYER.boxW);
+    expect(GUN.attachY).toBeLessThan(PLAYER.boxH);
     expect(GUN.turnDivisor).toBe(2);
-    expect(GUN.attachX).toBe(PLAYER.boxW / 2);
-    expect(GUN.attachX).toBe(5);
-    expect(GUN.attachY).toBe(16);
+    expect(GUN).not.toHaveProperty('spriteW');
+    expect(GUN).not.toHaveProperty('muzzleLocalX');
+  });
+
+  it('fires each weapon from its own barrel, not the machine gun’s', () => {
+    // A 21px held mine and a 57px railgun cannot share a muzzle offset.
+    const mg = heldGunFor(0).muzzle;
+    const rail = heldGunFor(11).muzzle;
+    const mine = heldGunFor(9).muzzle;
+    expect(rail.x).toBeGreaterThan(mg.x);
+    expect(mine.x).toBeLessThan(mg.x);
+    // The barrel always sits above the grip.
+    for (let i = 0; i < 13; i += 1) {
+      expect(heldGunFor(i).muzzle.y, `weapon ${i}`).toBeLessThan(0);
+    }
   });
 
   it('aims accurately all the way around (cardinals + diagonals)', () => {
@@ -77,34 +91,41 @@ describe('gunAim (issue #9 — mouse aiming & gun rotation)', () => {
   it('places the muzzle at the barrel tip for any angle', () => {
     const gunX = 50;
     const gunY = 100;
-    const L = GUN.muzzleLocalX;
+    const { x: lx, y: ly } = MG_MUZZLE;
+    const reach = Math.hypot(lx, ly);
 
+    // The barrel tip is rigidly attached to the grip: it swings around it at a
+    // constant reach, whatever the aim.
+    for (const deg of [0, 45, 90, 135, 180, -45, -90, -135]) {
+      const m = muzzleWorld(gunX, gunY, deg);
+      expect(Math.hypot(m.x - gunX, m.y - gunY), `${deg}°`).toBeCloseTo(
+        reach,
+        10,
+      );
+    }
+
+    // Aiming right, the tip leads the grip and rides above it.
     const right = muzzleWorld(gunX, gunY, 0);
-    expect(right.x).toBeCloseTo(gunX + L, 10);
-    expect(right.y).toBeCloseTo(gunY, 10);
+    expect(right.x).toBeCloseTo(gunX + lx, 10);
+    expect(right.y).toBeCloseTo(gunY + ly, 10);
+    expect(right.y).toBeLessThan(gunY);
 
+    // Aiming straight down, the barrel points down and the tip's offset swings
+    // to the side rather than staying above the hand.
     const down = muzzleWorld(gunX, gunY, 90);
-    expect(down.x).toBeCloseTo(gunX, 10);
-    expect(down.y).toBeCloseTo(gunY + L, 10);
+    expect(down.y).toBeCloseTo(gunY + lx, 10);
+    expect(down.x).toBeCloseTo(gunX - ly, 10);
 
-    const left = muzzleWorld(gunX, gunY, 180);
-    expect(left.x).toBeCloseTo(gunX - L, 10);
-    expect(left.y).toBeCloseTo(gunY, 10);
+    // Aiming left, Flash mirrors the gun (`_yscale = -100`) so the barrel stays
+    // above the hand instead of hanging under it.
+    const leftFlipped = muzzleWorld(gunX, gunY, 180, lx, ly, true);
+    expect(leftFlipped.x).toBeCloseTo(gunX - lx, 10);
+    expect(leftFlipped.y).toBeCloseTo(gunY + ly, 10);
+    expect(leftFlipped.y).toBeLessThan(gunY);
 
-    const up = muzzleWorld(gunX, gunY, -90);
-    expect(up.x).toBeCloseTo(gunX, 10);
-    expect(up.y).toBeCloseTo(gunY - L, 10);
-
-    // Diagonal 45°: tip is L along the unit vector (√2/2, √2/2)
-    const diag = muzzleWorld(gunX, gunY, 45);
-    const c = Math.SQRT1_2;
-    expect(diag.x).toBeCloseTo(gunX + L * c, 10);
-    expect(diag.y).toBeCloseTo(gunY + L * c, 10);
-
-    // Y=0 local muzzle is invariant under flipY
-    const flipped = muzzleWorld(gunX, gunY, 180, L, 0, true);
-    expect(flipped.x).toBeCloseTo(left.x, 10);
-    expect(flipped.y).toBeCloseTo(left.y, 10);
+    // Without the mirror it would — that is the bug the flip exists to avoid.
+    const leftUnflipped = muzzleWorld(gunX, gunY, 180, lx, ly, false);
+    expect(leftUnflipped.y).toBeGreaterThan(gunY);
   });
 
   it('updateGunAim tracks the cursor and exposes a barrel-aligned muzzle', () => {
@@ -127,8 +148,8 @@ describe('gunAim (issue #9 — mouse aiming & gun rotation)', () => {
     expect(state.flipY).toBe(false);
 
     const { muzzle } = updateGunAim(state, body, mouse, 1);
-    expect(muzzle.x).toBeCloseTo(pivot.x + GUN.muzzleLocalX, 5);
-    expect(muzzle.y).toBeCloseTo(pivot.y, 5);
+    expect(muzzle.x).toBeCloseTo(pivot.x + MG_MUZZLE.x, 5);
+    expect(muzzle.y).toBeCloseTo(pivot.y + MG_MUZZLE.y, 5);
 
     // Aim left — settles near ±180 and flips
     const leftMouse = { x: pivot.x - 200, y: pivot.y };
@@ -143,11 +164,12 @@ describe('gunAim (issue #9 — mouse aiming & gun rotation)', () => {
       pivot.x,
       pivot.y,
       state.rotationDeg,
-      GUN.muzzleLocalX,
-      GUN.muzzleLocalY,
+      MG_MUZZLE.x,
+      MG_MUZZLE.y,
       state.flipY,
     );
-    expect(leftMuzzle.x).toBeCloseTo(pivot.x - GUN.muzzleLocalX, 5);
-    expect(leftMuzzle.y).toBeCloseTo(pivot.y, 5);
+    expect(leftMuzzle.x).toBeCloseTo(pivot.x - MG_MUZZLE.x, 5);
+    // Mirroring the gun keeps the barrel above the hand, not below it.
+    expect(leftMuzzle.y).toBeCloseTo(pivot.y + MG_MUZZLE.y, 5);
   });
 });

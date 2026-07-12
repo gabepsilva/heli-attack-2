@@ -4,14 +4,16 @@ import { PLAYER, WORLD } from '../config/constants';
 import { gameDrawSize, getSpriteDef } from './catalog';
 import {
   TILE_ART_OFFSET,
+  chuteOpenDisplaySize,
   explosionAgeScale,
   playerSpritePlacement,
+  railBeamAlpha,
   scaledDisplaySize,
   tilePlacement,
 } from './spritePlacement';
 
 describe('sprite placement', () => {
-  it('anchors player placeholder on AABB bottom-center with spec draw size', () => {
+  it('anchors player on AABB bottom-center at Flash original draw size', () => {
     const body = { x: 100, y: 200, w: PLAYER.boxW, h: PLAYER.boxH };
     const def = getSpriteDef('player_idle');
     const p = playerSpritePlacement(body, def);
@@ -21,8 +23,8 @@ describe('sprite placement', () => {
     expect(p).toEqual({
       x: 100 + 5,
       y: 200 + 42,
-      displayW: 48,
-      displayH: 48,
+      displayW: 24,
+      displayH: 49,
       originX: 0.5,
       originY: 1,
     });
@@ -86,5 +88,30 @@ describe('atlas display sizing (#34 lead review — setScale must not wipe setDi
     expect(
       scaledDisplaySize(base.w, base.h, explosionAgeScale(10, 20)),
     ).toEqual({ w: 210, h: 210 });
+  });
+
+  it('flashes the rail beam at full alpha once, then fades it to zero', () => {
+    // The sim steps before the scene draws, so a beam is age 1 when first seen.
+    const linger = 3;
+    expect(railBeamAlpha(1, linger)).toBe(1);
+    expect(railBeamAlpha(2, linger)).toBe(0.5);
+    expect(railBeamAlpha(3, linger)).toBe(0);
+    // Never inverts or overshoots, whatever the caller passes.
+    expect(railBeamAlpha(99, linger)).toBe(0);
+    expect(railBeamAlpha(0, linger)).toBe(1);
+    expect(railBeamAlpha(5, 1)).toBe(1);
+    expect(railBeamAlpha(5, 0)).toBe(1);
+  });
+
+  it('opens the chute with height leading width, clamped at the full canopy', () => {
+    const base = gameDrawSize(getSpriteDef('player_chute'));
+    expect(base).toEqual({ w: 126, h: 126 });
+    // Half open: width tracks openness, height runs ahead by the bulge.
+    expect(chuteOpenDisplaySize(base, 0.5, 0.15)).toEqual({
+      w: 63,
+      h: 126 * 0.65,
+    });
+    // Fully open: the bulge cannot push height past the canopy size.
+    expect(chuteOpenDisplaySize(base, 1, 0.15)).toEqual({ w: 126, h: 126 });
   });
 });

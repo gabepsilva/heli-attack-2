@@ -163,7 +163,9 @@ describe('heli variants & Flash motion parity (issue #20)', () => {
     );
 
     const span = Math.floor(HELI.viewW - HELI.spriteW / 2);
-    expect(heli.xDrift).toBeGreaterThanOrEqual(-HELI.viewW / 2 + HELI.spriteW / 2);
+    expect(heli.xDrift).toBeGreaterThanOrEqual(
+      -HELI.viewW / 2 + HELI.spriteW / 2,
+    );
     expect(heli.xDrift).toBeLessThanOrEqual(
       -HELI.viewW / 2 + (span - 1) + HELI.spriteW / 2,
     );

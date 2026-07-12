@@ -7,7 +7,6 @@ import {
   MACHINEGUN_FRAME,
   TITLE_IMAGE_KEY,
 } from '../config/art';
-import { GUN } from '../config/constants';
 import { BOOT_BACKGROUND_COLOR, GAME_HEIGHT, GAME_WIDTH } from '../config/game';
 import { SCENE_KEYS } from '../config/scenes';
 import { getGameAudio } from '../audio/gameAudio';
@@ -176,10 +175,9 @@ export class MenuScene extends Phaser.Scene {
     this.heliGunnerSprite = addAtlasImage(this, ENEMY_GUY_FRAME).setDepth(
       HELI_GUNNER_DEPTH,
     );
-    this.heliGunSprite = addAtlasImage(this, MACHINEGUN_FRAME, {
-      w: GUN.spriteW,
-      h: GUN.spriteH,
-    }).setDepth(HELI_GUN_DEPTH);
+    this.heliGunSprite = addAtlasImage(this, MACHINEGUN_FRAME).setDepth(
+      HELI_GUN_DEPTH,
+    );
     this.cosmeticBulletSprites = this.heliAmbience.bullets.map(() =>
       addAtlasImage(this, BULLET_ENEMY_FRAME)
         .setDepth(HELI_BULLET_DEPTH)

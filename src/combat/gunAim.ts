@@ -10,6 +10,7 @@
  */
 
 import { GUN } from '../config/constants';
+import { DEFAULT_HELD_GUN, type HeldGun } from './heldGun';
 import type { AabbBody } from '../world/aabbBody';
 
 export type Vec2 = Readonly<{ x: number; y: number }>;
@@ -95,14 +96,15 @@ export function gunPivotFromBody(
 
 /**
  * World-space muzzle tip for the current gun pose.
- * Local muzzle is along the barrel (+X); Y flip does not move a Y=0 tip.
+ * Local muzzle is along the barrel (+X), measured from the grip; aiming left
+ * mirrors the gun about the barrel, so the local Y flips with it.
  */
 export function muzzleWorld(
   gunX: number,
   gunY: number,
   rotationDeg: number,
-  localX: number = GUN.muzzleLocalX,
-  localY: number = GUN.muzzleLocalY,
+  localX: number = DEFAULT_HELD_GUN.muzzle.x,
+  localY: number = DEFAULT_HELD_GUN.muzzle.y,
   flipY: boolean = false,
 ): Vec2 {
   const rad = (rotationDeg * Math.PI) / 180;
@@ -124,6 +126,7 @@ export function updateGunAim(
   body: Readonly<Pick<AabbBody, 'x' | 'y' | 'w' | 'h'>>,
   mouse: Vec2,
   timeStep: number,
+  heldGun: HeldGun = DEFAULT_HELD_GUN,
 ): { state: GunAimState; pivot: Vec2; muzzle: Vec2; targetDeg: number } {
   const pivot = gunPivotFromBody(body);
   const targetDeg = aimAngleDeg(pivot.x, pivot.y, mouse.x, mouse.y);
@@ -134,8 +137,8 @@ export function updateGunAim(
     pivot.x,
     pivot.y,
     rotationDeg,
-    GUN.muzzleLocalX,
-    GUN.muzzleLocalY,
+    heldGun.muzzle.x,
+    heldGun.muzzle.y,
     flipY,
   );
   return { state: next, pivot, muzzle, targetDeg };

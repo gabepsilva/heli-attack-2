@@ -6,9 +6,11 @@
 import { describe, expect, it } from 'vitest';
 import { PLAYER_ANIM_FRAMES } from '../art/catalog';
 import {
-  advanceWalkPhase,
+  PLAYER_WALK_HOLD_TICKS,
+  advanceWalkTicks,
   playerAnimMoving,
   selectPlayerAnimFrame,
+  walkPhaseFor,
   type PlayerAnimInput,
 } from './playerAnim';
 
@@ -93,11 +95,25 @@ describe('playerAnim (issue #33 — state → frame)', () => {
     ).toBe('player_death');
   });
 
-  it('advances the 2-frame walk cycle only on move ticks while moving', () => {
-    expect(advanceWalkPhase(0, false, true)).toBe(0);
-    expect(advanceWalkPhase(0, true, false)).toBe(0);
-    expect(advanceWalkPhase(0, true, true)).toBe(1);
-    expect(advanceWalkPhase(1, true, true)).toBe(0);
+  it('only accumulates walk ticks while moving, and folds a whole sim batch', () => {
+    expect(advanceWalkTicks(7, false, 3)).toBe(7);
+    expect(advanceWalkTicks(7, true, 0)).toBe(7);
+    expect(advanceWalkTicks(7, true, 3)).toBe(10);
+    // Standing still holds mid-stride rather than resetting the cycle.
+    expect(walkPhaseFor(advanceWalkTicks(5, false, 9))).toBe(walkPhaseFor(5));
+  });
+
+  it('holds each walk bitmap for PLAYER_WALK_HOLD_TICKS before advancing', () => {
+    expect(PLAYER_WALK_HOLD_TICKS).toBe(4);
+    const cycle = PLAYER_WALK_HOLD_TICKS * PLAYER_ANIM_FRAMES.walk.length;
+    for (let tick = 0; tick < PLAYER_WALK_HOLD_TICKS; tick += 1) {
+      expect(walkPhaseFor(tick), `tick ${tick}`).toBe(0);
+      expect(walkPhaseFor(tick + PLAYER_WALK_HOLD_TICKS), `tick ${tick}`).toBe(
+        1,
+      );
+      // The cycle repeats rather than running off the end of the frame list.
+      expect(walkPhaseFor(tick + cycle), `tick ${tick}`).toBe(0);
+    }
   });
 
   it('treats any non-zero vx as Flash xchange != 0', () => {

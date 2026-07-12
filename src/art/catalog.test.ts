@@ -10,8 +10,6 @@ import {
   ATLAS_KEY,
   ATLAS_IMAGE_PATH,
   ATLAS_JSON_PATH,
-  ATLAS_PADDING,
-  ATLAS_MAX_SIZE,
   BG_IMAGE_PATH,
   BG_ORIGINAL_H,
   BG_ORIGINAL_W,
@@ -190,12 +188,39 @@ describe('art catalog (issue #32 / #33 / #34 acceptance)', () => {
     expect(pngSize(pub)).toEqual(expected);
   });
 
-  it('maps player frames to the spec 48×48 sprite box', () => {
+  it('draws player frames at Flash original pixels (not stretched to MC 48×48)', () => {
     expect(PLAYER.spriteW).toBe(48);
     expect(PLAYER.spriteH).toBe(48);
+    expect(gameDrawSize(getSpriteDef('player_idle'))).toEqual({
+      w: 24,
+      h: 49,
+    });
+    expect(gameDrawSize(getSpriteDef('player_duck'))).toEqual({
+      w: 25,
+      h: 39,
+    });
+    expect(gameDrawSize(getSpriteDef('player_jump'))).toEqual({
+      w: 25,
+      h: 55,
+    });
+    expect(gameDrawSize(getSpriteDef('player_death'))).toEqual({
+      w: 40,
+      h: 49,
+    });
     for (const id of PLAYER_FINAL_FRAME_IDS) {
-      expect(gameDrawSize(getSpriteDef(id))).toEqual({ w: 48, h: 48 });
+      const def = getSpriteDef(id);
+      expect(gameDrawSize(def), id).toEqual({
+        w: def.originalW,
+        h: def.originalH,
+      });
     }
+  });
+
+  it('draws the spawn parachute canopy at 126×126 (not the character box)', () => {
+    expect(gameDrawSize(getSpriteDef('player_chute'))).toEqual({
+      w: 126,
+      h: 126,
+    });
   });
 
   it('draws ground tiles at the 52px Flash art size, not the 50px grid', () => {
@@ -246,24 +271,16 @@ describe('art catalog (issue #32 / #33 / #34 acceptance)', () => {
     expect(ATLAS_JSON_PATH).toBe('atlas/game-atlas.json');
   });
 
-  it('keeps packer script catalog in parity with TypeScript SPRITE_DEFS', () => {
-    const scriptPath = resolve(
-      import.meta.dirname,
-      '../../scripts/art/pack-atlas.mjs',
+  it('keeps the packer free of a forked sprite catalog', () => {
+    // pack-atlas.mjs SSR-loads src/art/catalog.ts. It used to carry a verbatim
+    // copy of SPRITE_DEFS, kept honest by grepping this file for every id —
+    // which could not see pivot or role drift. Guard the property, not the copy.
+    const src = readFileSync(
+      resolve(import.meta.dirname, '../../scripts/art/pack-atlas.mjs'),
+      'utf8',
     );
-    const src = readFileSync(scriptPath, 'utf8');
-    for (const def of SPRITE_DEFS) {
-      expect(src).toContain(`id: '${def.id}'`);
-      expect(src).toContain(`sourceFile: '${def.sourceFile}'`);
-      expect(src).toContain(`originalW: ${def.originalW}`);
-      expect(src).toContain(`originalH: ${def.originalH}`);
-      expect(src).toContain(`final: true`);
-    }
-    expect(src).toContain(`PLACEHOLDER_SCALE = ${ART_PLACEHOLDER_SCALE}`);
-    expect(src).toContain(`PLAYER_FINAL_SCALE = ${ART_PLAYER_FINAL_SCALE}`);
-    expect(src).toContain(`WORLD_FINAL_SCALE = ${ART_WORLD_FINAL_SCALE}`);
-    expect(src).toContain(`ATLAS_PADDING = ${ATLAS_PADDING}`);
-    expect(src).toContain(`ATLAS_MAX_SIZE = ${ATLAS_MAX_SIZE}`);
+    expect(src).toContain("ssrLoadModule('/src/art/catalog.ts')");
+    expect(src).not.toContain('SPRITE_DEFS = [');
   });
 
   it('rejects unknown sprite ids', () => {

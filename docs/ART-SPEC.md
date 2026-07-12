@@ -9,7 +9,7 @@
 |---|---|
 | Canvas | **1920×1080** |
 | Sim / Flash units | 1 game px = 1 original Flash px |
-| Player sprite box (spec) | **48×48** |
+| Player MC layout box (Flash width/height) | **48×48** |
 | Player collision box | **10×42** (top-left origin) |
 | Tile size (collision grid) | **50×50** |
 | Tile art | **52×52**, drawn at `col × 50 − 1` (Flash `drawMap` 1px overlap) |
@@ -65,14 +65,15 @@ origin  = (pivot.x, pivot.y)   // usually (0.5, 1)
 
 | Frame id | Source file | Original (Flash) | Texture | Game draw size | Pivot | Role |
 |---|---|---|---|---|---|---|
-| `player_idle` | `player_idle.png` | 24×49 | 192×392 (final) | 48×48 | (0.5, 1) | Player stand / idle (temp Flash guy.png) |
-| `player_duck` | `player_duck.png` | 25×39 | 200×312 (final) | 48×48 | (0.5, 1) | Player duck (temp Flash duck.png) |
-| `player_jump` | `player_jump.png` | 25×55 | 200×440 (final) | 48×48 | (0.5, 1) | Player jump (temp Flash jump.png) |
-| `player_jump2` | `player_jump2.png` | 25×55 | 200×440 (final) | 48×48 | (0.5, 1) | Player double-jump (temp Flash jump2.png) |
-| `player_step1` | `player_step1.png` | 24×49 | 192×392 (final) | 48×48 | (0.5, 1) | Player walk cycle frame 1 (temp Flash step1.png) |
-| `player_step2` | `player_step2.png` | 24×49 | 192×392 (final) | 48×48 | (0.5, 1) | Player walk cycle frame 2 (temp Flash step2.png) |
-| `player_hurt` | `player_hurt.png` | 24×49 | 192×392 (final) | 48×48 | (0.5, 1) | Player hurt flash (stub: reuse guy.png — no dedicated original) |
-| `player_death` | `player_death.png` | 40×49 | 320×392 (final) | 48×48 | (0.5, 1) | Player death (temp Flash guyburned.png) |
+| `player_idle` | `player_idle.png` | 24×49 | 192×392 (final) | 24×49 | (0.5, 1) | Player stand / idle (temp Flash guy.png) |
+| `player_duck` | `player_duck.png` | 25×39 | 200×312 (final) | 25×39 | (0.5, 1) | Player duck (temp Flash duck.png) |
+| `player_jump` | `player_jump.png` | 25×55 | 200×440 (final) | 25×55 | (0.5, 1) | Player jump (temp Flash jump.png) |
+| `player_jump2` | `player_jump2.png` | 25×55 | 200×440 (final) | 25×55 | (0.5, 1) | Player double-jump (temp Flash jump2.png) |
+| `player_step1` | `player_step1.png` | 24×49 | 192×392 (final) | 24×49 | (0.5, 1) | Player walk cycle frame 1 (temp Flash step1.png) |
+| `player_step2` | `player_step2.png` | 24×49 | 192×392 (final) | 24×49 | (0.5, 1) | Player walk cycle frame 2 (temp Flash step2.png) |
+| `player_hurt` | `player_hurt.png` | 24×49 | 192×392 (final) | 24×49 | (0.5, 1) | Player hurt flash (stub: reuse guy.png — no dedicated original) |
+| `player_death` | `player_death.png` | 40×49 | 320×392 (final) | 40×49 | (0.5, 1) | Player death (temp Flash guyburned.png) |
+| `player_chute` | `player_chute.png` | 12×12 | 96×96 (final) | 126×126 | (0.5, 1) | Player spawn parachute canopy (heroStart gfx.chute) |
 | `heli` | `heli.png` | 212×106 | 848×424 (final) | 212×106 | (0.5, 0.5) | Enemy helicopter look 0 / hover (temp Flash heli.png) |
 | `heli_strafe` | `heli_strafe.png` | 212×106 | 848×424 (final) | 212×106 | (0.5, 0.5) | Enemy helicopter look 1 / strafe (stub: reuse heli.png) |
 | `heli_hit` | `heli_hit.png` | 212×106 | 848×424 (final) | 212×106 | (0.5, 0.5) | Helicopter damaged flash (temp Flash heli_hit.png) |
@@ -85,7 +86,17 @@ origin  = (pivot.x, pivot.y)   // usually (0.5, 1)
 | `enemy_guy` | `enemyguy.png` | 25×48 | 100×192 (final) | 25×48 | (0.5, 1) | Heli door-gunner body (+ ground enemy) (temp Flash enemyguy.png) |
 | `bullet_player` | `bullett.png` | 10×9 | 40×36 (final) | 10×9 | (0.5, 0.5) | Player projectile (temp Flash bullett.png) |
 | `bullet_enemy` | `enemybullet.png` | 10×9 | 40×36 (final) | 10×9 | (0.5, 0.5) | Enemy projectile (temp Flash enemybullet.png) |
-| `weapon_machinegun` | `machineGun.png` | 29×16 | 116×64 (final) | 29×16 | (0.2, 0.5) | Starting machine gun (temp Flash machineGun.png) |
+| `weapon_machinegun` | `machineGun.png` | 29×16 | 116×64 (final) | 29×16 | (0.1724, 0.75) | Held gun 0 — MachineGun (Flash machineGun.png) |
+| `weapon_mac10` | `uzi.png` | 32×37 | 128×148 (final) | 32×37 | (-0.0625, 0.5676) | Held gun 1 — AkimboMac10 (Flash uzi.png) |
+| `weapon_shotgun` | `shotty.png` | 36×16 | 144×64 (final) | 36×16 | (0.1389, 0.75) | Held gun 2 — Shotgun (Flash shotty.png) |
+| `weapon_shotgunrockets` | `shotgunrocket.png` | 41×23 | 164×92 (final) | 41×23 | (0.1707, 0.8261) | Held gun 3 — ShotgunRockets (Flash shotgunrocket.png) |
+| `weapon_grenadelauncher` | `grenadelauncher.png` | 44×22 | 176×88 (final) | 44×22 | (0.2955, 0.8182) | Held gun 4 — GrenadeLauncher (Flash grenadelauncher.png) |
+| `weapon_rpg` | `rpggun.png` | 50×24 | 200×96 (final) | 50×24 | (0.36, 0.8333) | Held gun 5 — RPG (Flash rpggun.png) |
+| `weapon_rocketlauncher` | `rlauncher.png` | 44×27 | 176×108 (final) | 44×27 | (0.4318, 0.8519) | Held gun 6 — RocketLauncher (Flash rlauncher.png) |
+| `weapon_seekerlauncher` | `seekerlauncher.png` | 49×32 | 196×128 (final) | 49×32 | (0.4898, 0.875) | Held gun 7 — SeekerLauncher (Flash seekerlauncher.png) |
+| `weapon_flamethrower` | `flameThrower.png` | 39×20 | 156×80 (final) | 39×20 | (0.2308, 0.8) | Held gun 8 — FlameThrower (Flash flameThrower.png) |
+| `weapon_firemines` | `mine.png` | 21×19 | 84×76 (final) | 21×19 | (-0.4286, 0.7895) | Held gun 9 — FireMines (Flash mine.png, held) |
+| `weapon_abomb` | `abomb.png` | 51×35 | 204×140 (final) | 51×35 | (0.4314, 0.8571) | Held gun 10 — ABombLauncher (Flash abomb.png) |
 | `muzzle_flash` | `muzzle_flash.png` | 16×16 | 64×64 (final) | 18×18 | (0.5, 0.5) | Weapon muzzle flash (generated stub — no Flash original) |
 | `grenade` | `grenade.png` | 19×11 | 76×44 (final) | 19×11 | (0.5, 0.5) | Grenade projectile (temp Flash grenade.png) |
 | `rocket` | `Rocket.png` | 21×15 | 84×60 (final) | 21×15 | (0.5, 0.5) | Rocket projectile (temp Flash Rocket.png) |
@@ -96,7 +107,10 @@ origin  = (pivot.x, pivot.y)   // usually (0.5, 1)
 | `minebullet` | `minebullet.png` | 20×11 | 80×44 (final) | 20×11 | (0.5, 0.5) | FireMines lobbed projectile (Flash minebullet.png / bullet frame 10) |
 | `mine` | `mine.png` | 21×19 | 84×76 (final) | 21×19 | (0.5, 0.5) | FireMines planted look (Flash mine.png) |
 | `abombbullet` | `abombbullet.png` | 36×29 | 144×116 (final) | 36×29 | (0.5, 0.5) | A-Bomb projectile (Flash abombbullet.png / bullet frame 6) |
-| `rail` | `rail.png` | 57×31 | 228×124 (final) | 57×31 | (0.5, 0.5) | RailGun / ShoulderCannon beam (Flash rail.png / bullet frames 9+11) |
+| `railtrail` | `railtrail.png` | 456×32 | 1824×128 (final) | 456×32 | (0, 0.5) | RailGun beam (Flash railtrail.png / bullet frame 9) |
+| `shouldercannon` | `shouldercannon.png` | 456×32 | 1824×128 (final) | 456×32 | (0, 0.5) | ShoulderCannon beam (Flash shouldercannon.png / bullet frame 11) |
+| `weapon_rail` | `rail.png` | 57×31 | 228×124 (final) | 57×31 | (0.4035, 0.871) | Held gun 11 — RailGun (Flash rail.png) |
+| `weapon_grapplecannon` | `grapplegun.png` | 54×27 | 216×108 (final) | 54×27 | (0.3333, 0.8519) | Held gun 12 — GrappleCannon (Flash grapplegun.png) |
 | `grapplebullet` | `grapplebullet.png` | 21×21 | 84×84 (final) | 21×21 | (0.5, 0.5) | GrappleCannon projectile (Flash grapplebullet.png / bullet frame 12) |
 | `smoke` | `smoke.png` | 28×27 | 112×108 (final) | 28×27 | (0.5, 0.5) | Smoke VFX (temp Flash smoke.png) |
 | `blood` | `blood.png` | 30×30 | 120×120 (final) | 30×30 | (0.5, 0.5) | Hit / blood VFX (temp Flash blood.png) |
@@ -136,8 +150,10 @@ origin  = (pivot.x, pivot.y)   // usually (0.5, 1)
    PNGs under `art/player/` / `art/world/`), then set `final: true` on the catalog
    entry.
 2. Append a `SpriteDef` to `SPRITE_DEFS` in `src/art/catalog.ts` with measured
-   `originalW` / `originalH`, pivot, and role.
-3. Mirror the entry in `scripts/art/pack-atlas.mjs`.
+   `originalW` / `originalH`, pivot, and role. `src/art/catalog.ts` is the only
+   place sprite data lives — `pack-atlas.mjs` loads it, so nothing to mirror.
+3. If the sprite is drawn at a size other than its original pixels, set
+   `drawW` / `drawH` on the def. Omit them and it draws 1:1.
 4. Run `npm run art:pack` — packs `public/atlas/game-atlas.{png,json}`,
    copies `public/art/bg.png` + `public/art/title.png`, and regenerates this file.
 5. Use the frame via `ATLAS_KEY` + frame id (see `selectPlayerAnimFrame`,

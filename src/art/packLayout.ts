@@ -1,7 +1,7 @@
 /**
  * Shelf bin-packer for atlas frames (pure, unit-tested).
- * Used by `scripts/art/pack-atlas.mjs` (logic mirrored) and tests that assert
- * packed rects fit within the atlas bounds without overlap.
+ * `scripts/art/pack-atlas.mjs` imports this directly, so the packed atlas and
+ * the tests that assert rects fit in bounds without overlap run the same code.
  */
 
 export type PackInput = Readonly<{

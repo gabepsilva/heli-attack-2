@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_HELD_GUN } from '../combat/heldGun';
 import { BULLET_TIME, PLAYER, WORLD } from '../config/constants';
 import { createTestArena } from '../world/testArena';
 import { DUCK_SIZE, STAND_SIZE } from './duckPhysics';
@@ -822,8 +823,12 @@ describe('Player (gravity, jump, duck — issue #6)', () => {
       player.step(map, 1);
     }
     expect(player.gunAim.flipY).toBe(false);
-    expect(player.muzzle.x).toBeCloseTo(player.gunPivot.x + (1 - 0.2) * 29, 5);
-    expect(player.muzzle.y).toBeCloseTo(player.gunPivot.y, 5);
+    // Aiming right: the barrel tip sits ahead of the grip and slightly above
+    // it — bullets leave the muzzle, not the middle of the player's fist.
+    const mg = DEFAULT_HELD_GUN.muzzle;
+    expect(player.muzzle.x).toBeCloseTo(player.gunPivot.x + mg.x, 5);
+    expect(player.muzzle.y).toBeCloseTo(player.gunPivot.y + mg.y, 5);
+    expect(player.muzzle.y).toBeLessThan(player.gunPivot.y);
   });
 });
 

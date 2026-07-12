@@ -116,3 +116,34 @@ export function explosionAgeScale(age: number, maxAge: number): number {
   }
   return 1 + (age / maxAge) * 1.5;
 }
+
+/**
+ * Rail beam alpha over its linger — Flash `railFrame` fades `_alpha` in place
+ * instead of moving the clip.
+ *
+ * The sim steps before the scene draws, so a beam is already one tick old the
+ * first time it is seen; the ramp starts from that tick so the beam always
+ * flashes at full brightness once rather than appearing pre-faded.
+ */
+export function railBeamAlpha(age: number, maxLifetime: number): number {
+  if (maxLifetime <= 1) {
+    return 1;
+  }
+  const faded = (age - 1) / (maxLifetime - 1);
+  return Math.min(1, Math.max(0, 1 - faded));
+}
+
+/**
+ * Parachute canopy size as it deploys. Flash grew `_xscale` 0..100 with the
+ * canopy bulging taller than it is wide, so height leads width and clamps full.
+ */
+export function chuteOpenDisplaySize(
+  base: Readonly<{ w: number; h: number }>,
+  openness: number,
+  bulge: number,
+): Readonly<{ w: number; h: number }> {
+  return {
+    w: base.w * openness,
+    h: base.h * Math.min(1, openness + bulge),
+  };
+}

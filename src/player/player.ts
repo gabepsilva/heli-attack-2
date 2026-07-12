@@ -4,6 +4,7 @@ import {
   type GunAimState,
   type Vec2,
 } from '../combat/gunAim';
+import { DEFAULT_HELD_GUN, type HeldGun } from '../combat/heldGun';
 import { applyJetpackThrust, isJetpackActive } from '../combat/powerupEffects';
 import { GUN, PLAYER, WORLD } from '../config/constants';
 import { createAabbBody, type AabbBody } from '../world/aabbBody';
@@ -101,7 +102,7 @@ export class Player {
     this.jumpState = createJumpState();
     this.boostState = createBoostState();
     this.mouse = { x: x + GUN.attachX + 100, y: y + GUN.attachY };
-    this.syncGunPose(0);
+    this.syncGunPose(0, DEFAULT_HELD_GUN);
   }
 
   /**
@@ -124,7 +125,7 @@ export class Player {
     this.gunAim = createGunAimState();
     // Default mouse to the right of the grip so aim starts at 0° (no turn).
     this.mouse = { x: x + GUN.attachX + 100, y: y + GUN.attachY };
-    this.syncGunPose(0);
+    this.syncGunPose(0, DEFAULT_HELD_GUN);
   }
 
   /** Start the Flash `heroStart` parachute drop (run start). */
@@ -156,13 +157,18 @@ export class Player {
    * {@link powerupOn} drives Jetpack (#22): hold jump replaces the normal
    * variable-height jump with `yspeed = max(yspeed-2, -32)`.
    */
-  step(map: TileMap, timeStep: number, powerupOn: number = 0): void {
+  step(
+    map: TileMap,
+    timeStep: number,
+    powerupOn: number = 0,
+    heldGun: HeldGun = DEFAULT_HELD_GUN,
+  ): void {
     this.hyperJumpFired = false;
 
     // Flash `heroStart` — chute owns motion until it collapses near ground.
     if (this.parachute.active) {
       stepParachuteIntro(this.parachute, this.body, map, timeStep);
-      this.syncGunPose(timeStep);
+      this.syncGunPose(timeStep, heldGun);
       return;
     }
 
@@ -220,11 +226,17 @@ export class Player {
       cancelJumpOnCeiling(this.jumpState);
     }
 
-    this.syncGunPose(timeStep);
+    this.syncGunPose(timeStep, heldGun);
   }
 
-  private syncGunPose(timeStep: number): void {
-    const result = updateGunAim(this.gunAim, this.body, this.mouse, timeStep);
+  private syncGunPose(timeStep: number, heldGun: HeldGun): void {
+    const result = updateGunAim(
+      this.gunAim,
+      this.body,
+      this.mouse,
+      timeStep,
+      heldGun,
+    );
     this.gunAim = result.state;
     this.gunPivot = result.pivot;
     this.muzzle = result.muzzle;

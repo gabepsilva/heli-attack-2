@@ -74,7 +74,9 @@ describe('original Flash art swap (issue #95 acceptance)', () => {
     expect(FLASH_ORIGINAL_SOURCES.minebullet).toBe('minebullet.png');
     expect(FLASH_ORIGINAL_SOURCES.mine).toBe('mine.png');
     expect(FLASH_ORIGINAL_SOURCES.abombbullet).toBe('abombbullet.png');
-    expect(FLASH_ORIGINAL_SOURCES.rail).toBe('rail.png');
+    expect(FLASH_ORIGINAL_SOURCES.railtrail).toBe('railtrail.png');
+    expect(FLASH_ORIGINAL_SOURCES.shouldercannon).toBe('shouldercannon.png');
+    expect(FLASH_ORIGINAL_SOURCES.weapon_rail).toBe('rail.png');
     expect(FLASH_ORIGINAL_SOURCES.grapplebullet).toBe('grapplebullet.png');
     expect(FLASH_ORIGINAL_SOURCES.smoke).toBe('smoke.png');
     expect(FLASH_ORIGINAL_SOURCES.blood).toBe('blood.png');
@@ -144,12 +146,17 @@ describe('original Flash art swap (issue #95 acceptance)', () => {
 
   it('keeps Flash pivots and game draw sizes (gun grip, feet, heli center)', () => {
     expect(getSpriteDef('player_idle').pivot).toEqual({ x: 0.5, y: 1 });
-    expect(getSpriteDef('weapon_machinegun').pivot).toEqual({ x: 0.2, y: 0.5 });
+    // Grip = the `gun` clip's registration point (extract-swf-guns.py), not
+    // a guess: the gun turns about the hand, which sits low-left on the bitmap.
+    expect(getSpriteDef('weapon_machinegun').pivot).toEqual({
+      x: 0.1724,
+      y: 0.75,
+    });
     expect(getSpriteDef('heli').pivot).toEqual({ x: 0.5, y: 0.5 });
     expect(getSpriteDef('tile_01').pivot).toEqual({ x: 0, y: 0 });
     expect(gameDrawSize(getSpriteDef('player_idle'))).toEqual({
-      w: 48,
-      h: 48,
+      w: 24,
+      h: 49,
     });
     expect(gameDrawSize(getSpriteDef('weapon_machinegun'))).toEqual({
       w: 29,
