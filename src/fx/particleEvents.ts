@@ -58,15 +58,12 @@ function event(
 }
 
 /**
- * Flash heli kill VFX: boom + 3 shards + smoke plume.
- * Distinct from a non-fatal impact burst.
+ * Flash heli kill VFX particles — smoke plume only.
+ * Boom sprite + bouncing shards + falling wreck/pilot are sim entities
+ * ({@link spawnHeliDeathEntities}), not particle bursts.
  */
 export function buildKillFx(x: number, y: number): ParticleFxEvent[] {
-  return [
-    event('explosion', x, y, PARTICLE_FX.explosionBurst),
-    event('debris', x, y, PARTICLE_FX.debrisBurst),
-    event('smoke', x, y, PARTICLE_FX.killSmokeBurst),
-  ];
+  return [event('smoke', x, y, PARTICLE_FX.killSmokeBurst)];
 }
 
 /** Non-fatal bullet-on-heli impact sparks. */

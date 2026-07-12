@@ -17,7 +17,10 @@ import {
   PERF_DESKTOP_FRAME_BUDGET_MS,
   PERF_DESKTOP_TARGET_FPS,
   PERF_EXPLOSION_VISUAL_POOL,
+  PERF_FALLING_PILOT_VISUAL_POOL,
+  PERF_HELI_SHARD_VISUAL_POOL,
   PERF_HELI_VISUAL_POOL,
+  PERF_HELI_WRECK_VISUAL_POOL,
   PERF_MOBILE_FRAME_BUDGET_MS,
   PERF_MOBILE_TARGET_FPS,
   PERF_PEAK_LOAD_MEASURE_TICKS,
@@ -50,7 +53,13 @@ describe('config/perf (#37)', () => {
     expect(PERF.heliMaxConcurrent).toBe(1);
     expect(PERF_HELI_VISUAL_POOL).toBe(8);
     expect(PERF_EXPLOSION_VISUAL_POOL).toBe(8);
+    expect(PERF_HELI_WRECK_VISUAL_POOL).toBe(4);
+    expect(PERF_HELI_SHARD_VISUAL_POOL).toBe(24);
+    expect(PERF_FALLING_PILOT_VISUAL_POOL).toBe(4);
     expect(PERF.heliVisualPool).toBeGreaterThanOrEqual(PERF.heliMaxConcurrent);
+    expect(PERF.heliWreckVisualPool).toBe(PERF_HELI_WRECK_VISUAL_POOL);
+    expect(PERF.heliShardVisualPool).toBe(PERF_HELI_SHARD_VISUAL_POOL);
+    expect(PERF.fallingPilotVisualPool).toBe(PERF_FALLING_PILOT_VISUAL_POOL);
     expect(PERF.particleEventQueueCapacity).toBe(
       PARTICLE_FX.eventQueueCapacity,
     );

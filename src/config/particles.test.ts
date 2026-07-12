@@ -15,7 +15,7 @@ import {
 
 describe('config/particles (#35)', () => {
   it('locks Flash-accurate debris / blood / smoke cadences', () => {
-    // Flash heli kill: 3 shards.
+    // Entity shards own the kill scrap count (HELI_DEATH.shardBurst).
     expect(PARTICLE_FX.debrisBurst).toBe(3);
     // Flash player hurt: 3 blood clips.
     expect(PARTICLE_FX.bloodBurst).toBe(3);
@@ -38,7 +38,7 @@ describe('config/particles (#35)', () => {
     expect(PARTICLE_FX_FRAMES.explosion).toBe('explosion');
     expect(PARTICLE_FX_FRAMES.impact).toBe('blood');
     expect(PARTICLE_FX_FRAMES.smoke).toBe('smoke');
-    expect(PARTICLE_FX_FRAMES.debris).toBe('heli_destroyed');
+    expect(PARTICLE_FX_FRAMES.debris).toBe('shard');
     expect(PARTICLE_FX_FRAMES.muzzle).toBe('muzzle_flash');
     expect(PARTICLE_FX_FRAMES.blood).toBe('blood');
   });

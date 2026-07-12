@@ -203,7 +203,7 @@ export const HELI = {
   exitViewMulLeft: 2,
   exitViewMulRight: 1,
   exitViewMulTop: 1,
-  /** Placeholder boom VFX lifetime (sim frames). */
+  /** Boom VFX lifetime (sim frames) — kill + wreck ground impact. */
   explosionDurationFrames: 20,
   /**
    * Hit-flash duration in sim frames. Flash applies a white tint for the
@@ -247,6 +247,28 @@ export const HELI = {
    * the same X — so the nested `gun` clip rides his chest.
    */
   gunnerFeetBelowGunY: 21,
+} as const;
+
+/**
+ * Flash kill aftermath — `HeliDestroyed` / `Shard` / `GuyBurned` (`heliFall`,
+ * `shardFrame`, `guyFall`). Counts match the ActionScript spawn loops.
+ */
+export const HELI_DEATH = {
+  /** Shards spawned on kill and again on wreck ground impact. */
+  shardBurst: 3,
+  /** Flash `Shard` frame count — assets shard0/1/3/4/5 (5 looks). */
+  shardLookCount: 5,
+  /** Remove shard after this many floor bounces. */
+  shardMaxBounces: 3,
+  /**
+   * Flash `!((sbounce++)%3)` — one clang per this many bounces, counted across
+   * every live shard, so a burst rings a few times instead of once per shard.
+   */
+  metalBounceInterval: 3,
+  /** Flash `smetal0`…`smetal3` — `random(4)` picks the clang. */
+  metalSoundCount: 4,
+  /** Flash `guyFall`: settle / remove when downward speed is below this. */
+  pilotSettleSpeed: 4,
 } as const;
 
 /**

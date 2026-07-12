@@ -15,10 +15,12 @@ import { createWeaponInventory } from '../combat/weaponInventory';
 import { createSpawnRng } from '../combat/helicopter';
 import {
   eventMapMatchesFlashArsenal,
+  BOOM_SOUND,
   HEALTH_PICKUP_SOUND,
   HELI_BOOM_SOUND,
   HURT_SOUND,
   HYPER_JUMP_SOUND,
+  METAL_SOUNDS,
   soundForAudioEvent,
   soundForPowerupCollect,
   soundForWeaponFire,
@@ -153,12 +155,16 @@ describe('eventMap (issue #27 AC — correct Flash sounds)', () => {
     }
   });
 
-  it('maps combat one-shots to hjump / hurt / heliboom', () => {
+  it('maps combat one-shots to hjump / hurt / heliboom / boom / metal', () => {
     expect(soundForAudioEvent({ type: 'hyperJump' })).toBe(HYPER_JUMP_SOUND);
     expect(HYPER_JUMP_SOUND).toBe('hjump');
     expect(soundForAudioEvent({ type: 'hurt' })).toBe(HURT_SOUND);
     expect(HURT_SOUND).toBe('hurt');
     expect(soundForAudioEvent({ type: 'heliBoom' })).toBe(HELI_BOOM_SOUND);
     expect(HELI_BOOM_SOUND).toBe('heliboom');
+    expect(soundForAudioEvent({ type: 'boom' })).toBe(BOOM_SOUND);
+    expect(BOOM_SOUND).toBe('boom');
+    expect(soundForAudioEvent({ type: 'metal', index: 2 })).toBe('metal2');
+    expect(METAL_SOUNDS).toEqual(['metal0', 'metal1', 'metal2', 'metal3']);
   });
 });

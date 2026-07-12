@@ -966,7 +966,7 @@ describe('SimSession', () => {
     expect(impact!.count).toBe(6);
     expect(impactFx.some((e) => e.kind === 'explosion')).toBe(false);
 
-    // Kill → explosion + debris(3) + smoke — not a lone impact.
+    // Kill → smoke plume + wreck/shards/pilot entities (not particle debris).
     session.reset();
     enterCombat(session);
     const victim = session.helicopters[0]!;
@@ -987,12 +987,13 @@ describe('SimSession', () => {
       session.update(1000 / 30);
     }
     expect(victim.active).toBe(false);
+    expect(session.heliWrecks.length).toBeGreaterThanOrEqual(1);
+    expect(session.heliShards.length).toBeGreaterThanOrEqual(3);
+    expect(session.fallingPilots.length).toBeGreaterThanOrEqual(1);
+    expect(session.explosions.length).toBeGreaterThanOrEqual(1);
     const killFx = session.drainParticleFx();
-    expect(killFx.some((e) => e.kind === 'explosion' && e.count === 14)).toBe(
-      true,
-    );
-    expect(killFx.some((e) => e.kind === 'debris' && e.count === 3)).toBe(true);
     expect(killFx.some((e) => e.kind === 'smoke' && e.count === 5)).toBe(true);
+    expect(killFx.some((e) => e.kind === 'debris')).toBe(false);
     expect(killFx.some((e) => e.kind === 'impact')).toBe(false);
   });
 

@@ -24,23 +24,19 @@ import {
 import { shouldEmitSmokeTrail } from './smokeTrail';
 
 describe('fx/particleEvents (#35)', () => {
-  it('kill FX is explosion + debris(3) + smoke — distinct from impact', () => {
+  it('kill FX is smoke plume — boom/shards/wreck are sim entities', () => {
     const kill = buildKillFx(100, 200);
     expect(kill).toEqual([
-      { kind: 'explosion', x: 100, y: 200, count: FX.explosionBurst },
-      { kind: 'debris', x: 100, y: 200, count: FX.debrisBurst },
       { kind: 'smoke', x: 100, y: 200, count: FX.killSmokeBurst },
     ]);
-    expect(FX.debrisBurst).toBe(3);
 
     const impact = buildImpactFx(50, 60);
     expect(impact).toEqual([
       { kind: 'impact', x: 50, y: 60, count: FX.impactBurst },
     ]);
-    // Distinct kinds — kill never emits 'impact', impact never emits 'explosion'.
+    // Distinct kinds — kill never emits 'impact', impact never emits 'smoke'.
     expect(kill.map((e) => e.kind)).not.toContain('impact');
-    expect(impact.map((e) => e.kind)).not.toContain('explosion');
-    expect(kill[0]!.count).toBeGreaterThan(impact[0]!.count);
+    expect(impact.map((e) => e.kind)).not.toContain('smoke');
   });
 
   it('muzzle / smoke / blood builders use Flash-accurate counts', () => {

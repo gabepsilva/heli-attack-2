@@ -131,6 +131,12 @@ def main() -> None:
         ("heli.png", "heli_strafe.png"),  # stub: reuse hover
         ("heli_hit.png", "heli_hit.png"),
         ("heliDestroyed.png", "heliDestroyed.png"),
+        # Flash Shard MovieClip frames (assets skip shard2).
+        ("shard0.png", "shard.png"),
+        ("shard1.png", "shard_1.png"),
+        ("shard3.png", "shard_3.png"),
+        ("shard4.png", "shard_4.png"),
+        ("shard5.png", "shard_5.png"),
         ("enemyguy.png", "enemyguy.png"),
         ("bullett.png", "bullett.png"),
         ("enemybullet.png", "enemybullet.png"),

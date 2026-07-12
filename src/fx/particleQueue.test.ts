@@ -25,14 +25,14 @@ describe('fx/particleQueue (#35)', () => {
     expect(q.length).toBe(capacity);
     expect(q.dropped).toBe(0);
 
-    // Flood with kill FX (3 events each) — must not grow the ring.
+    // Flood with kill FX (1 smoke event each) — must not grow the ring.
     for (let i = 0; i < 40; i += 1) {
       q.pushAll(buildKillFx(i, i));
     }
     expect(q.capacity).toBe(capacity);
     expect(q.length).toBe(capacity);
     expect(q.dropped).toBeGreaterThan(0);
-    expect(q.pushed).toBe(capacity + 40 * 3);
+    expect(q.pushed).toBe(capacity + 40 * 1);
   });
 
   it('drain returns events in order and clears the ring', () => {
@@ -40,14 +40,14 @@ describe('fx/particleQueue (#35)', () => {
     q.pushAll(buildImpactFx(1, 2));
     q.pushAll(buildKillFx(3, 4));
     const drained = q.drain();
-    expect(drained).toHaveLength(1 + 3);
+    expect(drained).toHaveLength(1 + 1);
     expect(drained[0]).toEqual({
       kind: 'impact',
       x: 1,
       y: 2,
       count: PARTICLE_FX.impactBurst,
     });
-    expect(drained[1]!.kind).toBe('explosion');
+    expect(drained[1]!.kind).toBe('smoke');
     expect(q.length).toBe(0);
     expect(q.drain()).toEqual([]);
   });

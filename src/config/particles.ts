@@ -3,7 +3,8 @@
  *
  * Burst counts and pool caps keep simultaneous kills/impacts at a fixed
  * particle budget so 60fps holds under heavy load. Flash references:
- * - heli kill: boom @ 200% + 3 shards
+ * - heli kill entities: boom + 3 shards + wreck + pilot (see heliDeathFx)
+ * - kill smoke plume (extra atmospheric layer)
  * - player hurt: 3 blood clips
  * - rocket smoke: every 2 frames (seeker/rocket), every 4 (smallrocket)
  */
@@ -19,7 +20,7 @@ export const PARTICLE_FX_FRAMES: Readonly<Record<ParticleFxKind, SpriteId>> = {
   explosion: 'explosion',
   impact: 'blood',
   smoke: 'smoke',
-  debris: 'heli_destroyed',
+  debris: 'shard',
   muzzle: 'muzzle_flash',
   blood: 'blood',
 };
@@ -48,7 +49,7 @@ export const PARTICLE_FX = {
   impactBurst: 6,
   /** Smoke puff (trail tick or kill plume). */
   smokeBurst: 3,
-  /** Flash heli kill: 3 shards — debris particles per kill. */
+  /** Legacy debris burst size (entity shards own kill scrap now). */
   debrisBurst: 3,
   /** Muzzle flash spark burst on weapon fire. */
   muzzleBurst: 4,

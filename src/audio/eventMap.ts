@@ -70,6 +70,17 @@ export const HURT_SOUND: SoundId = 'hurt';
 /** Helicopter destroyed — Flash `sheliboom`. */
 export const HELI_BOOM_SOUND: SoundId = 'heliboom';
 
+/** Wreck ground impact — Flash `sboom`. */
+export const BOOM_SOUND: SoundId = 'boom';
+
+/** Shard bounce metals — Flash `smetal0`…`smetal3`. */
+export const METAL_SOUNDS = [
+  'metal0',
+  'metal1',
+  'metal2',
+  'metal3',
+] as const satisfies readonly SoundId[];
+
 /** Arsenal indices whose fire SFX is a held loop (Flash `soundhold:1`). */
 export const WEAPON_FIRE_HOLD: ReadonlySet<number> = new Set([8]);
 
@@ -79,6 +90,8 @@ export type GameAudioEvent =
   | { type: 'hyperJump' }
   | { type: 'hurt' }
   | { type: 'heliBoom' }
+  | { type: 'boom' }
+  | { type: 'metal'; index: number }
   | { type: 'powerup'; collect: PowerupCollectResult };
 
 /** Resolve a weapon fire to its catalog id, or null when silent. */
@@ -122,6 +135,12 @@ export function soundForAudioEvent(event: GameAudioEvent): SoundId | null {
       return HURT_SOUND;
     case 'heliBoom':
       return HELI_BOOM_SOUND;
+    case 'boom':
+      return BOOM_SOUND;
+    case 'metal': {
+      const id = METAL_SOUNDS[event.index];
+      return id ?? METAL_SOUNDS[0];
+    }
     case 'powerup':
       return soundForPowerupCollect(event.collect);
     default: {
@@ -145,6 +164,8 @@ export function eventMapMatchesFlashArsenal(): boolean {
     HEALTH_PICKUP_SOUND === 'sphealth' &&
     HYPER_JUMP_SOUND === 'hjump' &&
     HURT_SOUND === 'hurt' &&
-    HELI_BOOM_SOUND === 'heliboom'
+    HELI_BOOM_SOUND === 'heliboom' &&
+    BOOM_SOUND === 'boom' &&
+    METAL_SOUNDS.length === 4
   );
 }

@@ -77,6 +77,11 @@ origin  = (pivot.x, pivot.y)   // usually (0.5, 1)
 | `heli_strafe` | `heli_strafe.png` | 212×106 | 848×424 (final) | 212×106 | (0.5, 0.5) | Enemy helicopter look 1 / strafe (stub: reuse heli.png) |
 | `heli_hit` | `heli_hit.png` | 212×106 | 848×424 (final) | 212×106 | (0.5, 0.5) | Helicopter damaged flash (temp Flash heli_hit.png) |
 | `heli_destroyed` | `heliDestroyed.png` | 173×89 | 692×356 (final) | 173×89 | (0.5, 0.5) | Helicopter wreck (temp Flash heliDestroyed.png) |
+| `shard` | `shard.png` | 24×19 | 96×76 (final) | 24×19 | (0.5, 0.5) | Heli death scrap (temp Flash shard0.png) |
+| `shard_1` | `shard_1.png` | 17×21 | 68×84 (final) | 17×21 | (0.5, 0.5) | Heli death scrap (temp Flash shard1.png) |
+| `shard_3` | `shard_3.png` | 14×11 | 56×44 (final) | 14×11 | (0.5, 0.5) | Heli death scrap (temp Flash shard3.png) |
+| `shard_4` | `shard_4.png` | 10×24 | 40×96 (final) | 10×24 | (0.5, 0.5) | Heli death scrap (temp Flash shard4.png) |
+| `shard_5` | `shard_5.png` | 10×24 | 40×96 (final) | 10×24 | (0.5, 0.5) | Heli death scrap (temp Flash shard5.png) |
 | `enemy_guy` | `enemyguy.png` | 25×48 | 100×192 (final) | 25×48 | (0.5, 1) | Heli door-gunner body (+ ground enemy) (temp Flash enemyguy.png) |
 | `bullet_player` | `bullett.png` | 10×9 | 40×36 (final) | 10×9 | (0.5, 0.5) | Player projectile (temp Flash bullett.png) |
 | `bullet_enemy` | `enemybullet.png` | 10×9 | 40×36 (final) | 10×9 | (0.5, 0.5) | Enemy projectile (temp Flash enemybullet.png) |

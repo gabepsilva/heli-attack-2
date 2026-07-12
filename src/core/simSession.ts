@@ -23,6 +23,16 @@ import {
   type Helicopter,
 } from '../combat/helicopter';
 import {
+  createHeliShards,
+  spawnHeliDeathEntities,
+  stepFallingPilot,
+  stepHeliShard,
+  stepHeliWreck,
+  type FallingPilot,
+  type HeliShard,
+  type HeliWreck,
+} from '../combat/heliDeathFx';
+import {
   createHeliSpawnState,
   ensureHeliPopulation,
   recordHeliKill,
@@ -78,7 +88,7 @@ import {
 import { ParticleFxQueue } from '../fx/particleQueue';
 import { shouldEmitSmokeTrail } from '../fx/smokeTrail';
 import { PLAYER_SPAWN, Player } from '../player/player';
-import { POWERUP } from '../config/constants';
+import { HELI_DEATH, POWERUP } from '../config/constants';
 import {
   LEVEL1_HEIGHT_PX,
   LEVEL1_WIDTH_PX,
@@ -166,7 +176,19 @@ export class SimSession {
   /** Active helicopter enemies in arena space (#12/#19). */
   helicopters: Helicopter[] = [];
 
-  /** Short-lived placeholder explosions after heli kills (#12/#13). */
+  /** Falling wrecks after kills — Flash `HeliDestroyed` / `heliFall`. */
+  heliWrecks: HeliWreck[] = [];
+
+  /** Bouncing scrap — Flash `Shard` / `shardFrame`. */
+  heliShards: HeliShard[] = [];
+
+  /** Burned gunner tumble — Flash `GuyBurned` / `guyFall`. */
+  fallingPilots: FallingPilot[] = [];
+
+  /** Flash global `sbounce` — gates metal SFX on shard bounces. */
+  private shardMetalBounce = { value: 0 };
+
+  /** Short-lived boom sprites after heli kills / wreck ground impacts. */
   explosions: HeliExplosion[] = [];
 
   /** Damage-dealt score (Flash `score += damage`) (#13). */
@@ -260,6 +282,10 @@ export class SimSession {
     this.heliSpawn = createHeliSpawnState();
     // Flash waits for `heroStart` chute collapse before `addEnemy(300)`.
     this.helicopters = [];
+    this.heliWrecks = [];
+    this.heliShards = [];
+    this.fallingPilots = [];
+    this.shardMetalBounce.value = 0;
     this.explosions = [];
     this.score = createScoreState();
     this.runHits = 0;
@@ -462,6 +488,10 @@ export class SimSession {
           this.runHits += 1;
         }
         if (event.killed) {
+          const death = spawnHeliDeathEntities(event.heli, this.spawnRng);
+          this.heliWrecks.push(death.wreck);
+          this.fallingPilots.push(death.pilot);
+          this.heliShards.push(...death.shards);
           this.explosions.push(createHeliExplosion(event.heli.x, event.heli.y));
           this.particleFx.pushAll(buildKillFx(event.heli.x, event.heli.y));
           this.audioEvents.push({ type: 'heliBoom' });
@@ -592,6 +622,42 @@ export class SimSession {
     for (let i = this.explosions.length - 1; i >= 0; i -= 1) {
       if (stepHeliExplosion(this.explosions[i]!, this.timeScale.timeStep)) {
         this.explosions.splice(i, 1);
+      }
+    }
+
+    const dt = this.timeScale.timeStep;
+    for (let i = this.heliWrecks.length - 1; i >= 0; i -= 1) {
+      const wreck = this.heliWrecks[i]!;
+      const done = stepHeliWreck(wreck, this.map, dt, (sx, sy) => {
+        this.heliShards.push(
+          ...createHeliShards(sx, sy, HELI_DEATH.shardBurst, this.spawnRng),
+        );
+        this.explosions.push(createHeliExplosion(wreck.x, wreck.y));
+        this.audioEvents.push({ type: 'boom' });
+      });
+      if (done) {
+        this.heliWrecks.splice(i, 1);
+      }
+    }
+    for (let i = this.heliShards.length - 1; i >= 0; i -= 1) {
+      if (
+        stepHeliShard(
+          this.heliShards[i]!,
+          this.map,
+          dt,
+          this.shardMetalBounce,
+          this.spawnRng,
+          (index) => {
+            this.audioEvents.push({ type: 'metal', index });
+          },
+        )
+      ) {
+        this.heliShards.splice(i, 1);
+      }
+    }
+    for (let i = this.fallingPilots.length - 1; i >= 0; i -= 1) {
+      if (stepFallingPilot(this.fallingPilots[i]!, this.map, dt)) {
+        this.fallingPilots.splice(i, 1);
       }
     }
   }

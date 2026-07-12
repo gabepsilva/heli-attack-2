@@ -6,6 +6,7 @@ import {
   GUN,
   HEALTH_PICKUP,
   HELI,
+  HELI_DEATH,
   HELI_SPAWN,
   HURT_FLASH,
   PLAYER,
@@ -119,6 +120,12 @@ describe('config/constants (spec seed)', () => {
       gunBarrelLocalX: 22.7,
       gunBarrelLocalY: -7.4,
       gunnerFeetBelowGunY: 21,
+    });
+    expect(HELI_DEATH).toEqual({
+      shardBurst: 3,
+      shardLookCount: 5,
+      shardMaxBounces: 3,
+      pilotSettleSpeed: 4,
     });
     expect(HELI_SPAWN).toEqual({
       initialConcurrent: 1,

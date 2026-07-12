@@ -6,6 +6,7 @@ import {
   heliFrameForLook,
   powerupCrateFrame,
   projectileFrameForWeapon,
+  shardFrameForLook,
   tileFrameForCell,
   type SpriteId,
 } from '../art/catalog';
@@ -150,12 +151,27 @@ const HELI_GUN_DEPTH = 5;
 const EXPLOSION_FRAME = 'explosion';
 /** Booms draw over everything they consume, player included. */
 const EXPLOSION_DEPTH = 25;
+const HELI_DESTROYED_FRAME = 'heli_destroyed';
+const PLAYER_DEATH_FRAME = 'player_death';
+/** Wreck / shards / pilot sit above living helis, under the boom. */
+const HELI_DEATH_FX_DEPTH = 15;
 /** Foliage sits behind the ground (depth 0) but above the sky plate (-10). */
 const BG_LAYER_DEPTH = -1;
 /** Planted FireMine body — replaces the lobbed projectile frame on contact. */
 const MINE_PLANTED_FRAME = 'mine';
 /** Crate frame every powerup sprite is built with; swapped per pickup kind. */
 const POWERUP_FRAME = 'powerup';
+
+/**
+ * A kill-aftermath entity that gravity throws around: wreck, shard or burned
+ * pilot. All three carry a position and a free rotation and draw the same way.
+ */
+type TumblingFx = Readonly<{
+  active: boolean;
+  x: number;
+  y: number;
+  rotationDeg: number;
+}>;
 
 /**
  * Thin Phaser shell: banks render deltas into a 30 Hz fixed sim, draws the
@@ -254,6 +270,12 @@ export class GameScene extends Phaser.Scene {
   private heliGunnerSprites: Phaser.GameObjects.Image[] = [];
   /** One visual per in-flight explosion (kills can overlap). */
   private explosionSprites: Phaser.GameObjects.Image[] = [];
+  /** Falling wreck hulls — Flash `HeliDestroyed`. */
+  private heliWreckSprites: Phaser.GameObjects.Image[] = [];
+  /** Bouncing scrap — Flash `Shard`. */
+  private heliShardSprites: Phaser.GameObjects.Image[] = [];
+  /** Burned gunners — Flash `GuyBurned`. */
+  private fallingPilotSprites: Phaser.GameObjects.Image[] = [];
   /** Crate + chute visuals for parachuting pickups (#21). */
   private powerupSprites: Phaser.GameObjects.Container[] = [];
   private gameHud!: GameHud;
@@ -1150,6 +1172,31 @@ export class GameScene extends Phaser.Scene {
           .setVisible(false),
       );
     }
+    this.heliWreckSprites = [];
+    for (let i = 0; i < PERF.heliWreckVisualPool; i += 1) {
+      this.heliWreckSprites.push(
+        addAtlasImage(this, HELI_DESTROYED_FRAME)
+          .setDepth(HELI_DEATH_FX_DEPTH)
+          .setVisible(false),
+      );
+    }
+    this.heliShardSprites = [];
+    for (let i = 0; i < PERF.heliShardVisualPool; i += 1) {
+      // Seed texture only — each shard swaps to its own look every frame.
+      this.heliShardSprites.push(
+        addAtlasImage(this, shardFrameForLook(0))
+          .setDepth(HELI_DEATH_FX_DEPTH)
+          .setVisible(false),
+      );
+    }
+    this.fallingPilotSprites = [];
+    for (let i = 0; i < PERF.fallingPilotVisualPool; i += 1) {
+      this.fallingPilotSprites.push(
+        addAtlasImage(this, PLAYER_DEATH_FRAME)
+          .setDepth(HELI_DEATH_FX_DEPTH)
+          .setVisible(false),
+      );
+    }
   }
 
   private syncGameHud(): void {
@@ -1261,6 +1308,58 @@ export class GameScene extends Phaser.Scene {
       );
       sprite.setDisplaySize(size.w, size.h);
       sprite.setAlpha(Math.max(0, 1 - boom.age / boom.maxAge));
+    }
+
+    this.syncTumblingFx(
+      this.heliWreckSprites,
+      this.session.heliWrecks,
+      () => HELI_DESTROYED_FRAME,
+    );
+    this.syncTumblingFx(
+      this.heliShardSprites,
+      this.session.heliShards,
+      (shard) => shardFrameForLook(shard.look),
+    );
+    this.syncTumblingFx(
+      this.fallingPilotSprites,
+      this.session.fallingPilots,
+      () => PLAYER_DEATH_FRAME,
+    );
+  }
+
+  /**
+   * Draw one pool of kill-aftermath entities. Wreck, shards and pilot all
+   * render identically — catalog pivot, arena position, free rotation — and
+   * only differ in which frame each entity wants, so `frameFor` is the whole
+   * difference between them.
+   */
+  private syncTumblingFx<T extends TumblingFx>(
+    sprites: readonly Phaser.GameObjects.Image[],
+    entities: readonly T[],
+    frameFor: (entity: T) => SpriteId,
+  ): void {
+    for (let i = 0; i < sprites.length; i += 1) {
+      const sprite = sprites[i]!;
+      const entity = entities[i];
+      if (!entity || !entity.active) {
+        sprite.setVisible(false);
+        continue;
+      }
+      const frame = frameFor(entity);
+      const def = getSpriteDef(frame);
+      const place = placeOnCenter(entity.x, entity.y, def.pivot, {
+        w: def.originalW,
+        h: def.originalH,
+      });
+      sprite.setVisible(true);
+      sprite.setTexture(ATLAS_KEY, frame);
+      sprite.setOrigin(place.originX, place.originY);
+      sprite.setDisplaySize(place.displayW, place.displayH);
+      sprite.setPosition(
+        this.arenaOriginX + place.x,
+        this.arenaOriginY + place.y,
+      );
+      sprite.setAngle(entity.rotationDeg);
     }
   }
 

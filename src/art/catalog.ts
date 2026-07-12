@@ -154,6 +154,51 @@ export const SPRITE_DEFS = [
     final: true,
   },
   {
+    id: 'shard',
+    sourceFile: 'shard.png',
+    originalW: 24,
+    originalH: 19,
+    pivot: { x: 0.5, y: 0.5 },
+    role: 'Heli death scrap (temp Flash shard0.png)',
+    final: true,
+  },
+  {
+    id: 'shard_1',
+    sourceFile: 'shard_1.png',
+    originalW: 17,
+    originalH: 21,
+    pivot: { x: 0.5, y: 0.5 },
+    role: 'Heli death scrap (temp Flash shard1.png)',
+    final: true,
+  },
+  {
+    id: 'shard_3',
+    sourceFile: 'shard_3.png',
+    originalW: 14,
+    originalH: 11,
+    pivot: { x: 0.5, y: 0.5 },
+    role: 'Heli death scrap (temp Flash shard3.png)',
+    final: true,
+  },
+  {
+    id: 'shard_4',
+    sourceFile: 'shard_4.png',
+    originalW: 10,
+    originalH: 24,
+    pivot: { x: 0.5, y: 0.5 },
+    role: 'Heli death scrap (temp Flash shard4.png)',
+    final: true,
+  },
+  {
+    id: 'shard_5',
+    sourceFile: 'shard_5.png',
+    originalW: 10,
+    originalH: 24,
+    pivot: { x: 0.5, y: 0.5 },
+    role: 'Heli death scrap (temp Flash shard5.png)',
+    final: true,
+  },
+  {
     id: 'enemy_guy',
     sourceFile: 'enemyguy.png',
     originalW: 25,
@@ -676,6 +721,20 @@ export const HELI_LOOK_FRAMES = [
   'heli_strafe',
 ] as const satisfies readonly SpriteId[];
 
+/** Flash `Shard` looks — `shard0/1/3/4/5.png` (no shard2 in assets). */
+export const SHARD_LOOK_FRAMES = [
+  'shard',
+  'shard_1',
+  'shard_3',
+  'shard_4',
+  'shard_5',
+] as const satisfies readonly SpriteId[];
+
+/** Atlas frame for a bouncing scrap look index. */
+export function shardFrameForLook(look: number): SpriteId {
+  return SHARD_LOOK_FRAMES[look] ?? SHARD_LOOK_FRAMES[0];
+}
+
 /** World (non-player) frame ids. */
 export const WORLD_FINAL_FRAME_IDS: readonly SpriteId[] = SPRITE_DEFS.filter(
   (d) => !d.id.startsWith('player_'),
@@ -698,6 +757,11 @@ export const FLASH_ORIGINAL_SOURCES = {
   heli_strafe: 'heli.png', // stub reuse
   heli_hit: 'heli_hit.png',
   heli_destroyed: 'heliDestroyed.png',
+  shard: 'shard0.png',
+  shard_1: 'shard1.png',
+  shard_3: 'shard3.png',
+  shard_4: 'shard4.png',
+  shard_5: 'shard5.png',
   enemy_guy: 'enemyguy.png',
   bullet_player: 'bullett.png',
   bullet_enemy: 'enemybullet.png',
@@ -825,8 +889,14 @@ export const FLASH_STUB_FRAME_IDS = [
   'muzzle_flash',
 ] as const satisfies readonly SpriteId[];
 
+/** Indexed once at load — the render loops call {@link getSpriteDef} per sprite
+ * per frame, which a linear scan of the whole catalog would not survive. */
+const SPRITE_DEFS_BY_ID: ReadonlyMap<SpriteId, SpriteDef> = new Map(
+  SPRITE_DEFS.map((def) => [def.id, def]),
+);
+
 export function getSpriteDef(id: SpriteId): SpriteDef {
-  const def = SPRITE_DEFS.find((s) => s.id === id);
+  const def = SPRITE_DEFS_BY_ID.get(id);
   if (!def) {
     throw new Error(`Unknown sprite id: ${id}`);
   }

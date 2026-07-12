@@ -121,9 +121,13 @@ describe('original Flash art swap (issue #95 acceptance)', () => {
     expect(FLASH_ORIGINAL_SOURCES.player_hurt).toBe('guy.png');
     expect(FLASH_ORIGINAL_SOURCES.heli_strafe).toBe('heli.png');
     expect(FLASH_ORIGINAL_SOURCES.muzzle_flash).toBeNull();
+    expect(FLASH_ORIGINAL_SOURCES.shard).toBe('shard0.png');
+    expect(FLASH_ORIGINAL_SOURCES.shard_1).toBe('shard1.png');
+    expect(FLASH_ORIGINAL_SOURCES.shard_5).toBe('shard5.png');
     expect(getSpriteDef('player_hurt').role).toMatch(/stub: reuse guy\.png/i);
     expect(getSpriteDef('heli_strafe').role).toMatch(/stub: reuse heli\.png/i);
     expect(getSpriteDef('muzzle_flash').role).toMatch(/generated stub/i);
+    expect(getSpriteDef('shard').role).toMatch(/shard0/i);
   });
 
   it('ships stub frames as byte-identical copies of their reuse sources', () => {

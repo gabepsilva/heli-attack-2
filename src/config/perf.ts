@@ -36,6 +36,12 @@ export const PERF_PEAK_LOAD_MEASURE_TICKS = 300;
  */
 export const PERF_HELI_VISUAL_POOL = 8;
 export const PERF_EXPLOSION_VISUAL_POOL = 8;
+/** Falling wrecks — spare slots for overlapping kill + ground-impact timing. */
+export const PERF_HELI_WRECK_VISUAL_POOL = 4;
+/** Bouncing scrap — kill burst (3) + ground burst (3) with headroom. */
+export const PERF_HELI_SHARD_VISUAL_POOL = 24;
+/** Burned pilots tumbling after kills. */
+export const PERF_FALLING_PILOT_VISUAL_POOL = 4;
 
 /**
  * Central perf tunables — locked by unit tests so the HUD / report / harness
@@ -58,6 +64,9 @@ export const PERF = {
   heliMaxConcurrent: HELI_SPAWN.maxConcurrent,
   heliVisualPool: PERF_HELI_VISUAL_POOL,
   explosionVisualPool: PERF_EXPLOSION_VISUAL_POOL,
+  heliWreckVisualPool: PERF_HELI_WRECK_VISUAL_POOL,
+  heliShardVisualPool: PERF_HELI_SHARD_VISUAL_POOL,
+  fallingPilotVisualPool: PERF_FALLING_PILOT_VISUAL_POOL,
 
   /** Particle FX fixed budgets (#35). */
   particleEventQueueCapacity: PARTICLE_FX.eventQueueCapacity,
