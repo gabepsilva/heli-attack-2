@@ -15,9 +15,14 @@
  *   HUD.powerup.text + powerup.mask._yscale = powerupTime/powerupTime * 100
  *   heroDie: HUD.ammo = "0 x "
  *
- * Meter composition (#106): Flash `Symbol 38` (HUD) instance **header**
- * places put hyperjump → bullettime → reload left-to-right on the 450×320
- * stage (reload is not under the weapon crate). Coords scale to 1920×1080.
+ * Meter composition (#106): Flash HUD places put hyperjump → bullettime →
+ * reload left-to-right on the 450×320 stage. Weapon crate + ammo sit
+ * bottom-right above reload (ammo left of crate, right-aligned). Coords
+ * scale to 1920×1080 via {@link flashToDesign}.
+ *
+ * All FLASH_* constants below are read from `reference/ha2-source/heli2.swf`
+ * (DefineSprite "HUD", export id 215) — PlaceObject2 matrices and the
+ * DefineEditText records, twips ÷ 20.
  */
 
 import {
@@ -42,7 +47,7 @@ import type { PlayerPowerupState } from '../combat/powerupDrop';
 import { bulletTimeMeterRatio, type BulletTimeState } from '../core/bulletTime';
 import { boostChargeRatio, type BoostState } from '../player/boostPhysics';
 import type { WeaponDef } from '../config/weapons';
-import type { WeaponState } from '../combat/weapon';
+import { hasAmmo, isReloadReady, type WeaponState } from '../combat/weapon';
 import { weaponHudIconFrame, type SpriteId } from '../art/catalog';
 
 /** Flash `HUD.powerup.text` labels for `powerupOn` 1..5. */
@@ -61,19 +66,12 @@ export const POWERUP_HUD_NAMES: Readonly<Record<number, string>> = {
 export const FLASH_STAGE = { width: 450, height: 320 } as const;
 
 /**
- * Flash `Symbol 38` (HUD) meter instance **place** positions in stage pixels
- * (FLA twips ÷ 20).
+ * Flash `HUD` (export id 215 / Symbol 38) meter instance **place** positions
+ * in stage pixels (SWF PlaceObject2 matrix tx/ty, twips ÷ 20).
  *
- * Extraction (OLE `Symbol 38` in `reference/ha2-source/heli2.fla`):
- * each len-prefixed instance record stores the place translate in the
- * **header** (`01 00 <tx> <ty> …` before the symbol id / name). A post-name
- * `13 80 01` translate is the **next-sibling cursor** (equals the next
- * instance’s header), not this clip’s place — e.g. reload header (407,302)
- * with post-name (129,302) which is hyperjump’s header. Identity-matrix
- * clips (`07 80 01`, including bullettime) also use the header place.
- *
- * Cross-check: each meter sits just right of its label, and health/weapon
- * headers land top-right / bottom-right as in the live HUD.
+ * Extracted from `reference/ha2-source/heli2.swf` DefineSprite "HUD".
+ * Cross-check: each meter sits just right of its label; weapon/ammo sit
+ * bottom-right above the reload meter.
  */
 export const FLASH_HUD_METERS = {
   hyperjump: { x: 129, y: 302 },
@@ -83,13 +81,46 @@ export const FLASH_HUD_METERS = {
 
 /**
  * Flash HUD meter labels (left of each bar) in stage pixels.
- * Text-field place is the header `tx,ty` immediately before the font block
- * for that string (not the following field’s header).
+ *
+ * These are the **white** static-text places. Every text in the Flash HUD is
+ * drawn twice — a black copy offset by {@link FLASH_HUD_TEXT_SHADOW}, then the
+ * white one on top — so the black twins sit at (58,307)/(210,307)/(365,307).
  */
 export const FLASH_HUD_METER_LABELS = {
-  hyperjump: { x: 58, y: 307, text: 'HyperJump:' },
-  bullettime: { x: 210, y: 307, text: 'TimeDistort:' },
-  reload: { x: 365, y: 307, text: 'Reload:' },
+  hyperjump: { x: 57, y: 306, text: 'HyperJump:' },
+  bullettime: { x: 209, y: 306, text: 'TimeDistort:' },
+  reload: { x: 364, y: 306, text: 'Reload:' },
+} as const;
+
+/**
+ * Offset of the black shadow twin behind every Flash HUD text, in stage px.
+ * e.g. white `ammo` at (363,287), black `ammo` at (364,288).
+ */
+export const FLASH_HUD_TEXT_SHADOW = { dx: 1, dy: 1 } as const;
+
+/**
+ * Flash `HUD.weapon` crate clip place (named instance, 14-frame power*.png).
+ * Bottom-right of the 450×320 stage, above the reload meter.
+ */
+export const FLASH_HUD_WEAPON = { x: 416, y: 269 } as const;
+
+/**
+ * Flash `HUD.ammo` EditText (white copy; the black twin is offset by
+ * {@link FLASH_HUD_TEXT_SHADOW}). DefineEditText: `align=right`, font height 8,
+ * bounds x −2..55.2 / y −2..14, `varName="ammo"`.
+ *
+ * The field is 16 stage px tall for an 8px font and Flash lays a single line
+ * out from the **top** of the box, so `y` is the text top — not its baseline
+ * and not the crate's bottom edge. Its right edge (`x + boundsRight` = 418.2)
+ * overhangs the crate's left edge (416) by ~2px, so long counts read into the
+ * crate exactly as they did in the original.
+ */
+export const FLASH_HUD_AMMO = {
+  x: 363,
+  y: 287,
+  /** EditText bounds xmax, place-relative: right edge = x + boundsRight. */
+  boundsRight: 55.2,
+  fontSize: 8,
 } as const;
 
 /** Map a Flash stage point into the 1920×1080 design resolution. */
@@ -140,12 +171,33 @@ const DESIGN_RL_LABEL = flashToDesign(
   FLASH_HUD_METER_LABELS.reload.x,
   FLASH_HUD_METER_LABELS.reload.y,
 );
+/**
+ * Uniform HUD scale — the **height** factor (450×320 → 1920×1080).
+ *
+ * The Flash stage is 1.41:1 and our canvas is 16:9, so {@link flashToDesign}
+ * stretches X harder than Y. That is fine for spreading positions across the
+ * wider canvas, but applying it to *art* distorts it: the crate came out 26%
+ * too wide. Art therefore scales uniformly by this factor, and the bottom-right
+ * cluster is anchored to the right edge (see {@link flashRightAnchoredX}) so it
+ * still hugs the corner the way Flash's did.
+ */
+const FLASH_HUD_SCALE = GAME_HEIGHT / FLASH_STAGE.height;
+
+/**
+ * Design X for a Flash stage X, measured inward from the **right** edge at
+ * uniform scale. Keeps a right-hugging cluster's internal spacing intact
+ * instead of stretching it: Flash's crate sat 1px off the 450px stage edge, so
+ * ours sits `1 × scale` off the canvas edge.
+ */
+function flashRightAnchoredX(stageX: number): number {
+  return GAME_WIDTH - (FLASH_STAGE.width - stageX) * FLASH_HUD_SCALE;
+}
 
 /**
  * Layout anchored to the 1920×1080 design resolution (#23 / #28 / #106).
  * Under Phaser Scale.FIT these design-space coords stay correct at any
  * window / fullscreen aspect (uniform canvas scale + letterbox).
- * Sizes chosen so bars and labels read clearly at full HD.
+ * Weapon/ammo/meters use Flash Symbol 38 places scaled 450×320 → 1920×1080.
  */
 export const HUD_LAYOUT = {
   designWidth: GAME_WIDTH,
@@ -156,21 +208,32 @@ export const HUD_LAYOUT = {
   /** Top-right score. */
   score: { x: GAME_WIDTH - 40, y: 36, fontSize: 48 },
   /**
-   * Bottom-left weapon cluster (#105): crate icon + ammo.
-   * Reload lives with the bottom meters (#106), not under the crate.
-   * Icon is Flash `power*.png` (33×32) drawn larger for 1080p readability.
+   * Bottom-right weapon cluster (#105): Flash `HUD.weapon` + `HUD.ammo`.
+   * Crate hugs the right margin; the ammo count sits to its left, right-aligned
+   * so it grows leftwards. Reload lives with the bottom meters (#106), not
+   * under the crate.
+   *
+   * The whole cluster is right-anchored at uniform {@link FLASH_HUD_SCALE}, so
+   * the crate keeps its 33×32 aspect and the count keeps its Flash gap from the
+   * crate. Every value here is design-space and ready to draw.
    */
   weapon: {
-    x: 40,
-    y: GAME_HEIGHT - 120,
-    /** Flash crate logical size (power*.png). */
+    x: flashRightAnchoredX(FLASH_HUD_WEAPON.x),
+    y: FLASH_HUD_WEAPON.y * FLASH_HUD_SCALE,
+    /** Flash crate logical size (power*.png), drawn at uniform scale. */
     iconW: 33,
     iconH: 32,
-    /** Display scale so the crate reads at 1080p (≈3× Flash). */
-    iconDisplayScale: 3,
-    /** Gap between crate icon and ammo text. */
-    iconTextGap: 16,
-    ammoFontSize: 32,
+    iconScale: FLASH_HUD_SCALE,
+    /** Right edge of the Flash ammo field — the right-align anchor. */
+    ammoRightX: flashRightAnchoredX(
+      FLASH_HUD_AMMO.x + FLASH_HUD_AMMO.boundsRight,
+    ),
+    /** Top of the ammo line; see {@link FLASH_HUD_AMMO} on why it is the top. */
+    ammoTopY: FLASH_HUD_AMMO.y * FLASH_HUD_SCALE,
+    /** Flash font 8px × uniform scale. */
+    ammoFontSize: FLASH_HUD_AMMO.fontSize * FLASH_HUD_SCALE,
+    ammoShadowDx: FLASH_HUD_TEXT_SHADOW.dx * FLASH_HUD_SCALE,
+    ammoShadowDy: FLASH_HUD_TEXT_SHADOW.dy * FLASH_HUD_SCALE,
   },
   /**
    * Bottom meters (#106): Flash order hyper-jump → bullet-time → reload.
@@ -271,17 +334,21 @@ export type HudBuildInput = {
 
 /**
  * Flash: `HUD.ammo = "Infinite x "` when bullets are infinite;
- * otherwise `bullets + " x "`. Trailing space omitted in the port string.
+ * otherwise `bullets + " x "`.
+ *
+ * The trailing space is load-bearing, not a typo: the field is right-aligned
+ * against the crate's left edge, so that space *is* the gap between the count
+ * and the crate. Drop it and the `x` collides with the crate.
  */
 export function formatAmmoHud(bullets: number): string {
   if (!Number.isFinite(bullets)) {
-    return 'Infinite x';
+    return 'Infinite x ';
   }
-  return `${Math.max(0, Math.floor(bullets))} x`;
+  return `${Math.max(0, Math.floor(bullets))} x `;
 }
 
-/** Flash `heroDie`: `HUD.ammo = "0 x "`. */
-export const DEATH_AMMO_HUD = '0 x';
+/** Flash `heroDie`: `HUD.ammo = "0 x "` (trailing space — see {@link formatAmmoHud}). */
+export const DEATH_AMMO_HUD = '0 x ';
 
 /** Flash: `HUD.reload.mask._xscale = reloadtime/reloadtime * 100`. */
 export function weaponReloadFraction(
@@ -326,7 +393,8 @@ export function buildHudSnapshot(input: HudBuildInput): HudSnapshot {
     // Flash heroDie forces "0 x " regardless of remaining bullets.
     ammoText: alive ? formatAmmoHud(weapon.bullets) : DEATH_AMMO_HUD,
     reloadFraction: weaponReloadFraction(weapon, weaponDef),
-    reloadReady: weapon.reloadTime >= weaponDef.reload,
+    // Flash: `if (reloadtime >= reload) { if (bullets > 0) yellow._visible = 1 }`
+    reloadReady: isReloadReady(weapon, weaponDef) && hasAmmo(weapon),
     hyperJumpFraction: boostChargeRatio(input.boost),
     bulletTimeFraction: bulletTimeMeterRatio(input.bulletTime),
     powerupVisible,
@@ -351,11 +419,11 @@ export function hudSpecSeeds() {
   };
 }
 
-/** Design-space size of the bottom-left weapon crate icon. */
+/** Design-space size of the weapon crate icon (uniform — keeps its aspect). */
 export function weaponHudIconDisplaySize(): { w: number; h: number } {
-  const { iconW, iconH, iconDisplayScale } = HUD_LAYOUT.weapon;
+  const { iconW, iconH, iconScale } = HUD_LAYOUT.weapon;
   return {
-    w: iconW * iconDisplayScale,
-    h: iconH * iconDisplayScale,
+    w: iconW * iconScale,
+    h: iconH * iconScale,
   };
 }

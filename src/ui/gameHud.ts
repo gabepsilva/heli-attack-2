@@ -5,8 +5,8 @@
  * Anchored to the 1920×1080 design resolution via {@link HUD_LAYOUT}; scroll
  * factor 0 so the HUD stays fixed while the camera follows play.
  *
- * Bottom-left cluster matches Flash weapon crate + ammo (#105). Bottom meters
- * match Flash Symbol 38 order/positions: hyper-jump → bullet-time → reload (#106).
+ * Bottom-right cluster matches Flash `HUD.weapon` + `HUD.ammo` places (#105).
+ * Bottom meters match Flash order/positions: hyper-jump → bullet-time → reload (#106).
  */
 
 import type Phaser from 'phaser';
@@ -14,19 +14,30 @@ import { ATLAS_KEY } from '../config/art';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/game';
 import { HUD_LAYOUT, weaponHudIconDisplaySize, type HudSnapshot } from './hud';
 
+/**
+ * Meter fills are the mean opaque colour of each Flash bar's bitmap fill,
+ * sampled from `heli2.swf` (the originals are gradient-textured, we draw flat).
+ * The rest of the palette is ours — Flash had no equivalent chrome.
+ */
 const COLORS = {
   panel: 0x1b263b,
   panelStroke: 0x415a77,
-  health: 0x2a9d8f,
+  /** Flash `HUD.health` fill (bitmap 174). */
+  health: 0xfd755d,
   healthDead: 0xe63946,
   healthLabel: '#7dcfb6',
   healthDeadLabel: '#e63946',
   score: '#ffe066',
-  ammo: '#f2e9e4',
-  reload: 0xffe066,
-  reloadReady: 0x2a9d8f,
-  hyperJump: 0x4cc9f0,
-  bulletTime: 0xc77dff,
+  ammo: '#ffffff',
+  ammoShadow: '#000000',
+  /** Flash `HUD.reload` fill (bitmap 151) — shown while charging. */
+  reload: 0xf87931,
+  /** Flash `HUD.reload.yellow` overlay (bitmap 153) — shown when ready to fire. */
+  reloadReady: 0xf8b827,
+  /** Flash `HUD.hyperjump` fill (bitmap 161). */
+  hyperJump: 0x4b9292,
+  /** Flash `HUD.bullettime` fill (bitmap 164). */
+  bulletTime: 0x74b624,
   powerup: 0xf72585,
   powerupLabel: '#f72585',
   death: '#e63946',
@@ -104,23 +115,31 @@ export class GameHud {
       .setScrollFactor(0)
       .setDepth(depth);
 
-    // --- Weapon crate + ammo (Flash bottom-left cluster; reload is with meters) ---
-    const wx = L.weapon.x;
-    const wy = L.weapon.y;
+    // --- Weapon crate + ammo (Flash bottom-right; ammo left, right-aligned) ---
     const iconSize = weaponHudIconDisplaySize();
     this.weaponIcon = scene.add
-      .image(wx, wy, ATLAS_KEY, 'powermachinegun')
+      .image(L.weapon.x, L.weapon.y, ATLAS_KEY, 'powermachinegun')
       .setOrigin(0, 0)
       .setDisplaySize(iconSize.w, iconSize.h)
       .setScrollFactor(0)
       .setDepth(depth);
+    // Origin (1, 0): Flash right-aligns the field and lays its line out from
+    // the top, so the count grows leftwards from the field's right edge.
     this.ammoText = scene.add
-      .text(wx + iconSize.w + L.weapon.iconTextGap, wy + iconSize.h / 2, '', {
+      .text(L.weapon.ammoRightX, L.weapon.ammoTopY, '', {
         fontFamily: 'monospace',
         fontSize: `${L.weapon.ammoFontSize}px`,
         color: COLORS.ammo,
       })
-      .setOrigin(0, 0.5)
+      .setOrigin(1, 0)
+      .setShadow(
+        L.weapon.ammoShadowDx,
+        L.weapon.ammoShadowDy,
+        COLORS.ammoShadow,
+        0,
+        false,
+        true,
+      )
       .setScrollFactor(0)
       .setDepth(depth);
 
@@ -280,7 +299,10 @@ export class GameHud {
     );
 
     // Flash: HUD.weapon.gotoAndStop(cgun+1) + HUD.ammo = "Infinite x " | "N x "
-    this.weaponIcon.setFrame(snap.weaponIconFrame);
+    // updateOrigin=false: every power* frame carries pivot 0.5/0.5, and Phaser
+    // re-applies a frame's pivot as the origin on setFrame — which would undo
+    // the top-left origin below and re-centre the crate on its anchor.
+    this.weaponIcon.setFrame(snap.weaponIconFrame, true, false);
     this.ammoText.setText(snap.ammoText);
 
     // Flash: HUD.reload.mask._xscale + HUD.reload.yellow when ready

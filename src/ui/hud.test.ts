@@ -44,8 +44,11 @@ import {
 import {
   buildHudSnapshot,
   DEATH_AMMO_HUD,
+  FLASH_HUD_AMMO,
   FLASH_HUD_METER_LABELS,
   FLASH_HUD_METERS,
+  FLASH_HUD_TEXT_SHADOW,
+  FLASH_HUD_WEAPON,
   FLASH_STAGE,
   flashHudMeterOrderLeftToRight,
   flashToDesign,
@@ -92,10 +95,12 @@ describe('HUD layout @ 1080p (issue #23)', () => {
     // Three Flash-anchored bottom meters (#106): width fits reload at Flash X.
     expect(HUD_LAYOUT.meters.width).toBeGreaterThanOrEqual(160);
     expect(HUD_LAYOUT.meters.height).toBeGreaterThanOrEqual(14);
-    // Score / ammo / crate icon large enough to scan during play.
+    // Score large enough to scan; ammo/crate follow Flash stage proportions.
     expect(HUD_LAYOUT.score.fontSize).toBeGreaterThanOrEqual(40);
-    expect(HUD_LAYOUT.weapon.ammoFontSize).toBeGreaterThanOrEqual(28);
-    expect(HUD_LAYOUT.weapon.iconDisplayScale).toBeGreaterThanOrEqual(2);
+    expect(HUD_LAYOUT.weapon.ammoFontSize).toBe(
+      (8 * GAME_HEIGHT) / FLASH_STAGE.height,
+    );
+    expect(HUD_LAYOUT.weapon.iconScale).toBe(GAME_HEIGHT / FLASH_STAGE.height);
     expect(HUD_LAYOUT.powerup.fontSize).toBeGreaterThanOrEqual(22);
     // Elements stay inside the design canvas with a margin.
     expect(HUD_LAYOUT.margin).toBe(40);
@@ -112,7 +117,13 @@ describe('HUD layout @ 1080p (issue #23)', () => {
     expect(a.margin).toBe(40);
     expect(a.health).toEqual({ x: 40, y: 40 });
     expect(a.score).toEqual({ x: GAME_WIDTH - 40, y: 36 });
-    expect(a.weapon).toEqual({ x: 40, y: GAME_HEIGHT - 120 });
+    // Weapon crate = Flash (416,269), right-anchored at uniform scale so the
+    // art keeps its aspect — bottom-right corner, not the margin corner.
+    const s = GAME_HEIGHT / 320;
+    expect(a.weapon).toEqual({
+      x: GAME_WIDTH - (450 - 416) * s,
+      y: 269 * s,
+    });
     expect(a.powerup).toEqual({ x: 40, y: 100 });
     // Meter Y is Flash 302 scaled to 1080p (#106), not the old ad-hoc bottom strip.
     expect(a.meters.y).toBe((302 * GAME_HEIGHT) / 320);
@@ -162,7 +173,7 @@ describe('HUD live updates (issue #23 AC)', () => {
     expect(snap.weaponName).toBe('MachineGun');
     expect(snap.weaponIndex).toBe(0);
     expect(snap.weaponIconFrame).toBe('powermachinegun');
-    expect(snap.ammoText).toBe('Infinite x');
+    expect(snap.ammoText).toBe('Infinite x ');
     expect(snap.reloadFraction).toBe(1);
     expect(snap.reloadReady).toBe(true);
     expect(snap.hyperJumpFraction).toBe(1);
@@ -205,8 +216,8 @@ describe('HUD live updates (issue #23 AC)', () => {
     expect(snap.weaponName).toBe('Shotgun');
     expect(snap.weaponIndex).toBe(2);
     expect(snap.weaponIconFrame).toBe('powershotgun');
-    expect(snap.ammoText).toBe('17 x');
-    expect(formatAmmoHud(17)).toBe('17 x');
+    expect(snap.ammoText).toBe('17 x ');
+    expect(formatAmmoHud(17)).toBe('17 x ');
     expect(WEAPONS[2].reload).toBe(25);
     expect(snap.reloadFraction).toBe(10 / 25);
     expect(weaponReloadFraction(shotgun, WEAPONS[2])).toBe(0.4);
@@ -238,7 +249,7 @@ describe('HUD live updates (issue #23 AC)', () => {
     expect(snap.showDeath).toBe(true);
     // Flash heroDie: HUD.ammo = "0 x "
     expect(snap.ammoText).toBe(DEATH_AMMO_HUD);
-    expect(snap.ammoText).toBe('0 x');
+    expect(snap.ammoText).toBe('0 x ');
   });
 });
 
@@ -385,12 +396,12 @@ describe('HUD weapon crate + ammo (issue #105 AC)', () => {
   });
 
   it('formats ammo exactly like Flash HUD.ammo (Infinite x / N x)', () => {
-    expect(formatAmmoHud(Number.POSITIVE_INFINITY)).toBe('Infinite x');
-    expect(formatAmmoHud(50)).toBe('50 x');
-    expect(formatAmmoHud(14)).toBe('14 x');
-    expect(formatAmmoHud(0)).toBe('0 x');
-    expect(formatAmmoHud(-3)).toBe('0 x');
-    expect(DEATH_AMMO_HUD).toBe('0 x');
+    expect(formatAmmoHud(Number.POSITIVE_INFINITY)).toBe('Infinite x ');
+    expect(formatAmmoHud(50)).toBe('50 x ');
+    expect(formatAmmoHud(14)).toBe('14 x ');
+    expect(formatAmmoHud(0)).toBe('0 x ');
+    expect(formatAmmoHud(-3)).toBe('0 x ');
+    expect(DEATH_AMMO_HUD).toBe('0 x ');
   });
 
   it('updates weapon crate icon + ammo live when switching or spending ammo', () => {
@@ -404,7 +415,7 @@ describe('HUD weapon crate + ammo (issue #105 AC)', () => {
     );
     expect(snap.weaponIconFrame).toBe('powermachinegun');
     expect(snap.weaponIndex).toBe(0);
-    expect(snap.ammoText).toBe('Infinite x');
+    expect(snap.ammoText).toBe('Infinite x ');
 
     // Switch to Shotgun with 14 rounds (Flash pickup amount).
     snap = buildHudSnapshot(
@@ -415,7 +426,7 @@ describe('HUD weapon crate + ammo (issue #105 AC)', () => {
       }),
     );
     expect(snap.weaponIconFrame).toBe('powershotgun');
-    expect(snap.ammoText).toBe('14 x');
+    expect(snap.ammoText).toBe('14 x ');
 
     // Spend one round.
     snap = buildHudSnapshot(
@@ -426,7 +437,7 @@ describe('HUD weapon crate + ammo (issue #105 AC)', () => {
       }),
     );
     expect(snap.weaponIconFrame).toBe('powershotgun');
-    expect(snap.ammoText).toBe('13 x');
+    expect(snap.ammoText).toBe('13 x ');
 
     // Gain ammo (pickup).
     snap = buildHudSnapshot(
@@ -436,7 +447,7 @@ describe('HUD weapon crate + ammo (issue #105 AC)', () => {
         weaponIndex: 2,
       }),
     );
-    expect(snap.ammoText).toBe('27 x');
+    expect(snap.ammoText).toBe('27 x ');
 
     // Switch to FlameThrower.
     snap = buildHudSnapshot(
@@ -447,10 +458,10 @@ describe('HUD weapon crate + ammo (issue #105 AC)', () => {
       }),
     );
     expect(snap.weaponIconFrame).toBe('powerflamethrower');
-    expect(snap.ammoText).toBe('150 x');
+    expect(snap.ammoText).toBe('150 x ');
   });
 
-  it('forces Flash heroDie ammo "0 x" on death even with infinite MG', () => {
+  it('forces Flash heroDie ammo "0 x " on death even with infinite MG', () => {
     const health = createPlayerHealth();
     for (let i = 0; i < 10; i += 1) {
       health.iFramesRemaining = 0;
@@ -466,31 +477,66 @@ describe('HUD weapon crate + ammo (issue #105 AC)', () => {
     );
     expect(snap.healthAlive).toBe(false);
     expect(Number.isFinite(createMachineGunState().bullets)).toBe(false);
-    expect(snap.ammoText).toBe('0 x');
+    expect(snap.ammoText).toBe('0 x ');
     // Crate still reflects last cgun (Flash keeps HUD.weapon frame).
     expect(snap.weaponIconFrame).toBe('powermachinegun');
   });
 
-  it('lays out a bottom-left crate+ammo cluster (not a free-floating text chip)', () => {
+  it('lays out a Flash-scaled bottom-right crate+ammo cluster (#105)', () => {
     const seeds = hudSpecSeeds();
     expect(seeds.weaponIconW).toBe(33);
     expect(seeds.weaponIconH).toBe(32);
     expect(HUD_LAYOUT.weapon.iconW).toBe(33);
     expect(HUD_LAYOUT.weapon.iconH).toBe(32);
 
-    const icon = weaponHudIconDisplaySize();
-    expect(icon).toEqual({
-      w: 33 * HUD_LAYOUT.weapon.iconDisplayScale,
-      h: 32 * HUD_LAYOUT.weapon.iconDisplayScale,
+    // SWF DefineSprite "HUD": crate place, ammo EditText place + bounds + font.
+    expect(FLASH_HUD_WEAPON).toEqual({ x: 416, y: 269 });
+    expect(FLASH_HUD_AMMO).toEqual({
+      x: 363,
+      y: 287,
+      boundsRight: 55.2,
+      fontSize: 8,
     });
-    expect(icon.w).toBe(99);
-    expect(icon.h).toBe(96);
+    expect(FLASH_HUD_TEXT_SHADOW).toEqual({ dx: 1, dy: 1 });
 
-    // Cluster sits in the bottom-left margin, icon then ammo gap.
-    expect(HUD_LAYOUT.weapon.x).toBe(HUD_LAYOUT.margin);
-    expect(HUD_LAYOUT.weapon.y).toBe(GAME_HEIGHT - 120);
-    expect(HUD_LAYOUT.weapon.iconTextGap).toBe(16);
-    expect(HUD_LAYOUT.weapon.ammoFontSize).toBe(32);
+    // The cluster scales UNIFORMLY by the height factor. Scaling X by the wider
+    // 16:9 factor instead would stretch the crate art ~26% too wide.
+    const s = GAME_HEIGHT / FLASH_STAGE.height;
+    expect(s).toBeLessThan(GAME_WIDTH / FLASH_STAGE.width);
+    const icon = weaponHudIconDisplaySize();
+    expect(icon).toEqual({ w: 33 * s, h: 32 * s });
+    expect(icon.w / icon.h).toBeCloseTo(33 / 32, 10); // aspect preserved
+    expect(HUD_LAYOUT.weapon.iconScale).toBe(s);
+    expect(HUD_LAYOUT.weapon.ammoFontSize).toBe(8 * s);
+    expect(HUD_LAYOUT.weapon.ammoShadowDx).toBe(s);
+    expect(HUD_LAYOUT.weapon.ammoShadowDy).toBe(s);
+
+    // Crate is anchored to the RIGHT edge, keeping Flash's 1px corner gap
+    // (crate spans 416..449 on the 450px stage).
+    const crateRight = HUD_LAYOUT.weapon.x + icon.w;
+    expect(GAME_WIDTH - crateRight).toBeCloseTo(1 * s, 6);
+    expect(HUD_LAYOUT.weapon.y).toBe(269 * s);
+
+    // Ammo is right-aligned to its field's right edge (363 + 55.2 = 418.2),
+    // which overhangs the crate's left edge (416) by 2.2 stage px.
+    expect(HUD_LAYOUT.weapon.ammoRightX - HUD_LAYOUT.weapon.x).toBeCloseTo(
+      2.2 * s,
+      6,
+    );
+    // Anchor is the text TOP (Flash lays the field's line out from the top),
+    // which puts the count over the lower half of the crate — not on its baseline.
+    expect(HUD_LAYOUT.weapon.ammoTopY).toBe(287 * s);
+    expect(HUD_LAYOUT.weapon.ammoTopY).toBeGreaterThan(HUD_LAYOUT.weapon.y);
+    expect(HUD_LAYOUT.weapon.ammoTopY).toBeLessThan(
+      HUD_LAYOUT.weapon.y + icon.h,
+    );
+
+    // The field's right edge overhangs the crate, so the count would collide
+    // with it — Flash's trailing space is what holds the "x" clear. Without it
+    // the glyphs would run right up to ammoRightX.
+    expect(formatAmmoHud(14).endsWith(' ')).toBe(true);
+    expect(DEATH_AMMO_HUD.endsWith(' ')).toBe(true);
+
     // Reload is NOT under the crate — it sits with the Flash bottom meters (#106).
     expect(
       'reloadWidth' in HUD_LAYOUT.weapon || 'reloadGap' in HUD_LAYOUT.weapon,
@@ -499,33 +545,32 @@ describe('HUD weapon crate + ammo (issue #105 AC)', () => {
 });
 
 describe('HUD meter order + Flash positions (issue #106 AC)', () => {
-  it('locks Flash stage size and Symbol 38 meter instance coords', () => {
+  it('locks Flash stage size and HUD meter instance coords', () => {
     expect(FLASH_STAGE).toEqual({ width: 450, height: 320 });
-    // Place positions = FLA instance **header** tx/ty (twips÷20), not the
-    // post-name next-sibling cursor (see FLASH_HUD_METERS doc).
+    // PlaceObject2 tx/ty (twips÷20) of the named clips in DefineSprite "HUD".
     expect(FLASH_HUD_METERS.hyperjump).toEqual({ x: 129, y: 302 });
     expect(FLASH_HUD_METERS.bullettime).toEqual({ x: 282, y: 302 });
     expect(FLASH_HUD_METERS.reload).toEqual({ x: 407, y: 302 });
+    // Labels are the WHITE static-text places; the black shadow twins sit one
+    // px down-right at (58,307)/(210,307)/(365,307) — do not use those.
     expect(FLASH_HUD_METER_LABELS.hyperjump).toEqual({
-      x: 58,
-      y: 307,
+      x: 57,
+      y: 306,
       text: 'HyperJump:',
     });
     expect(FLASH_HUD_METER_LABELS.bullettime).toEqual({
-      x: 210,
-      y: 307,
+      x: 209,
+      y: 306,
       text: 'TimeDistort:',
     });
     expect(FLASH_HUD_METER_LABELS.reload).toEqual({
-      x: 365,
-      y: 307,
+      x: 364,
+      y: 306,
       text: 'Reload:',
     });
   });
 
   it('pairs each Flash label to the meter on its right (name↔coord check)', () => {
-    // Mis-reading the post-name matrix as place swaps reload↔hyperjump and
-    // breaks these pairs — keep them locked to the FLA header places.
     expect(FLASH_HUD_METER_LABELS.hyperjump.x).toBeLessThan(
       FLASH_HUD_METERS.hyperjump.x,
     );
@@ -535,16 +580,13 @@ describe('HUD meter order + Flash positions (issue #106 AC)', () => {
     expect(FLASH_HUD_METER_LABELS.reload.x).toBeLessThan(
       FLASH_HUD_METERS.reload.x,
     );
-    // Gaps match the Flash layout (~71–72px label→bar).
-    expect(
-      FLASH_HUD_METERS.hyperjump.x - FLASH_HUD_METER_LABELS.hyperjump.x,
-    ).toBe(71);
-    expect(
-      FLASH_HUD_METERS.bullettime.x - FLASH_HUD_METER_LABELS.bullettime.x,
-    ).toBe(72);
-    expect(FLASH_HUD_METERS.reload.x - FLASH_HUD_METER_LABELS.reload.x).toBe(
-      42,
-    );
+    // Each label is adjacent to *its own* bar, not merely left of every bar —
+    // a label↔meter mix-up would blow past this gap.
+    for (const id of ['hyperjump', 'bullettime', 'reload'] as const) {
+      const gap = FLASH_HUD_METERS[id].x - FLASH_HUD_METER_LABELS[id].x;
+      expect(gap).toBeGreaterThan(0);
+      expect(gap).toBeLessThanOrEqual(80);
+    }
   });
 
   it('derives L→R order from Flash stage X (hyperjump → bullettime → reload)', () => {
@@ -587,11 +629,11 @@ describe('HUD meter order + Flash positions (issue #106 AC)', () => {
     expect(bt.x).toBe(1203.2);
     expect(rl.x).toBeCloseTo(1736.5333333333, 10);
 
-    // Labels sit left of each bar at Flash-scaled positions.
-    expect(HUD_LAYOUT.meters.hyperJumpLabelX).toBe((58 * 1920) / 450);
-    expect(HUD_LAYOUT.meters.bulletTimeLabelX).toBe((210 * 1920) / 450);
-    expect(HUD_LAYOUT.meters.reloadLabelX).toBe((365 * 1920) / 450);
-    expect(HUD_LAYOUT.meters.labelY).toBe((307 * 1080) / 320);
+    // Labels sit left of each bar at Flash-scaled positions (white text places).
+    expect(HUD_LAYOUT.meters.hyperJumpLabelX).toBe((57 * 1920) / 450);
+    expect(HUD_LAYOUT.meters.bulletTimeLabelX).toBe((209 * 1920) / 450);
+    expect(HUD_LAYOUT.meters.reloadLabelX).toBe((364 * 1920) / 450);
+    expect(HUD_LAYOUT.meters.labelY).toBe((306 * 1080) / 320);
     expect(HUD_LAYOUT.meters.hyperJumpLabel).toBe('HyperJump:');
     expect(HUD_LAYOUT.meters.bulletTimeLabel).toBe('TimeDistort:');
     expect(HUD_LAYOUT.meters.reloadLabel).toBe('Reload:');
@@ -652,6 +694,23 @@ describe('HUD meter order + Flash positions (issue #106 AC)', () => {
       baseInput({ weapon, weaponDef: WEAPONS[2], weaponIndex: 2 }),
     );
     expect(snap.reloadFraction).toBe(1);
+    expect(snap.reloadReady).toBe(true);
+
+    // Flash: `if (reloadtime >= reload) { if (bullets > 0) yellow._visible = 1 }`
+    // — a charged gun with no ammo left shows no yellow.
+    weapon.bullets = 0;
+    snap = buildHudSnapshot(
+      baseInput({ weapon, weaponDef: WEAPONS[2], weaponIndex: 2 }),
+    );
+    expect(snap.reloadReady).toBe(false);
+
+    // ...but the MachineGun's +∞ ammo must still count as "bullets > 0",
+    // or the default weapon would never show a ready meter.
+    const machineGun = createMachineGunState();
+    snap = buildHudSnapshot(
+      baseInput({ weapon: machineGun, weaponDef: WEAPONS[0], weaponIndex: 0 }),
+    );
+    expect(machineGun.bullets).toBe(Number.POSITIVE_INFINITY);
     expect(snap.reloadReady).toBe(true);
   });
 });
